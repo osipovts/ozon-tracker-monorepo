@@ -1,0 +1,30 @@
+services:
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env
+    # ports:
+    #   - "3000:3000"
+
+  app-dev:
+    profiles: ['dev']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    init: true
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - pnpm_store:/pnpm-store
+    env_file:
+      - .env
+
+volumes:
+  node_modules:
+  pnpm_store:
