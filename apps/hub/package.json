@@ -1,0 +1,48 @@
+{
+  "name": "hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "type": "module",
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.js"
+  ],
+  "scripts": {
+    "generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://localhost:5432/hub}\" prisma generate",
+    "build": "pnpm generate && tsc",
+    "typecheck": "pnpm generate && tsc --noEmit",
+    "test": "pnpm build && node --test \"dist/**/*.test.js\"",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "migrate:deploy": "prisma migrate deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nestjs/testing": "12.2.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.2.0",
+    "@nestjs/core": "12.2.0",
+    "@nestjs/platform-express": "12.2.0",
+    "@nestjs/swagger": "12.0.3",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "bullmq": "^6.4.0",
+    "ioredis": "^6.0.0",
+    "logger": "workspace:*",
+    "prisma": "7.10.1",
+    "product-reference": "workspace:*",
+    "queue-contract": "workspace:*",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.7"
+  }
+}

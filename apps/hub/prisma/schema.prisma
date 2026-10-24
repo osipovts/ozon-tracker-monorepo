@@ -1,0 +1,119 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Proxy {
+  /// Proxy URL without credentials, e.g. socks5://203.0.113.10:1080
+  server        String   @id
+  source        String
+  country       String?
+  exitIp        String?
+  /// Result of the last check.
+  alive         Boolean
+  /// Latency of the last successful check, in milliseconds.
+  latencyMs     Int?
+  checksTotal   Int      @default(0)
+  checksAlive   Int      @default(0)
+  /// checksAlive / checksTotal, kept in the row to sort by it.
+  successRate   Float    @default(0)
+  lastCheckedAt DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([alive, successRate(sort: Desc), latencyMs])
+  @@map("proxies")
+}
+
+model TrackedProduct {
+  id            String             @id @default(uuid()) @db.Uuid
+  marketplace   String
+  externalId    String
+  /// Canonical product URL.
+  url           String
+  /// Status of the last fetch, including failed ones.
+  lastStatus    String?
+  lastCheckedAt DateTime?
+  createdAt     DateTime           @default(now())
+  observations  PriceObservation[]
+
+  @@unique([marketplace, externalId], name: "marketplaceExternalId")
+  @@map("tracked_products")
+}
+
+model PriceObservation {
+  id               String         @id @default(uuid()) @db.Uuid
+  trackedProductId String         @db.Uuid
+  trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
+  /// Fetch job that produced the observation; makes redelivered results idempotent.
+  jobId            String         @db.Uuid
+  status           String
+  title            String
+  observedAt       DateTime
+  availability     String
+  /// Array of { amountMinor, currency }.
+  prices           Json
+  exitIp           String?
+  createdAt        DateTime       @default(now())
+
+  @@unique([jobId, trackedProductId])
+  @@index([trackedProductId, observedAt(sort: Desc)])
+  @@map("price_observations")
+}
+
+model JobRecord {
+  /// The job id given to the queue.
+  id         String    @id @db.Uuid
+  /// proxy_fetch or price_fetch.
+  kind       String
+  /// The proxy source of a proxy job or the product id of a price job.
+  subject    String
+  /// queued, running, retrying, completed or failed.
+  status     String
+  /// Completion of the job, from 0 to 100.
+  percent    Int       @default(0)
+  processed  Int       @default(0)
+  /// Null until the worker knows how much work there is.
+  total      Int?
+  succeeded  Int       @default(0)
+  error      String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@index([kind, status])
+  @@map("jobs")
+}
+
+model BrowserSession {
+  /// The session id given by `session:create`.
+  id             String    @id @db.Uuid
+  marketplace    String
+  /// Proxy URL without credentials the session was created through; null for a direct connection.
+  proxyServer    String?
+  /// proxyServer or "direct": a marketplace has one session per route.
+  routeKey       String
+  exitIp         String
+  userAgent      String
+  platform       String
+  browserVersion String
+  /// Playwright storageState: cookies and localStorage.
+  storageState   Json
+  /// active or stale.
+  status         String
+  staleReason    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastUsedAt     DateTime?
+
+  @@unique([marketplace, routeKey], name: "marketplaceRouteKey")
+  @@map("browser_sessions")
+}

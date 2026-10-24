@@ -1,94 +1,110 @@
-# About
+# Price Tracker
 
-A simple "Hello World" template with TypeScript, Docker, and ESLint pre-configured.
+Автоматический трекер цен на различных маркетплейсах. Позволяет следить за историей цены товара и легко сравнивать цены с различных площадок.
 
-# Usage
+Пока реализован только Ozon. Планируется:
 
-Use this repository as a template for your project by copying with [github](https://github.com)'s UI or manually with `git clone`.
+- Aliexpress
+- Wildberries
+- DNS
+- и др.
 
-It is recommended to run `pnpm up` to update dev-dependencies (eslint, tsx, etc.) after copying this template.
+## Архитектура
 
-## Copy with github.com UI
+Проект представляет собой pnpm-монорепу:
 
-Please refer to [this page](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) for details.
+- `apps/hub` - оркестратор и хранилище данных
+- `apps/proxy-fetcher` - собирает и проверяет прокси
+- `apps/price-fetcher` - читает цены
+- `packages/*` - общий код
 
-## Copy manually
+## Быстрый старт
+
+1. Запустить сервисы
+2. Обновить список прокси
+3. Создать браузерные сессии
+4. Добавить ссылку на товар
+5. Запустить обновление цены
+6. Посмотреть историю цены
+
+### 1 (a). Запуск приложения в Docker
 
 ```sh
-git clone https://github.com/osipovts/skeleton.git
-mv skeleton my_project
-cd my_project
-git remote remove origin
-git remote add origin <YOUR_REPO_URL>
-git push -u origin --all
-git push -u origin --tags
+docker compose up -d --build
 ```
 
-# Setup
+Далее см. [Swagger](http://localhost:3000/docs).
+
+### 1 (b). Запуск приложения без Docker (pnpm)
+
+Нужны Node.js (требуемая версия в `.nvmrc`), pnpm версии из `packageManager` в `package.json`, Postgres и Redis. Postgres и Redis
+проще всего поднять из `docker-compose.yml`; можно и свои - адреса задаются в `.env`.
 
 ```sh
-nvm use              # Node.js version from .nvmrc
+nvm use
+npm install -g pnpm@11.3.0 # Corepack в Node.js 25+ не поставляется
 pnpm install
-cp .env.example .env # required by docker compose
+pnpm --filter price-fetcher exec playwright install chromium
+cp apps/hub/.env.example apps/hub/.env
+cp apps/price-fetcher/.env.example apps/price-fetcher/.env
+docker compose up -d postgres redis # если локально не подняты
+pnpm build
+
+# приложения читают переменные окружения, а не файл .env
+set -a; source apps/hub/.env; set +a
+pnpm --filter hub migrate:deploy
 ```
 
-# Run
+Запустить каждый сервис в своём терминале:
 
-- `pnpm build && pnpm start`: Compile TypeScript to JavaScript and run the app
-- `pnpm dev`: Run in "watch mode" for development
-- `pnpm typecheck`: Type-check without emitting files
-- `pnpm lint`: Run ESLint to check code style
-- `pnpm lint:fix`: Automatically fix code style issues
-- `pnpm format` / `pnpm format:check`: Format or check all files with Prettier
-
-# Docker
-
-Run in dev mode:
-
-```
-# install new packages (optional)
-docker compose --profile dev run --rm app-dev pnpm install
-# run
-docker compose --profile dev up app-dev
+```sh
+# hub
+set -a; source apps/hub/.env; set +a; pnpm --filter hub start
+# proxy-fetcher
+pnpm --filter proxy-fetcher start
+# price-fetcher
+set -a; source apps/price-fetcher/.env; set +a
+xvfb-run -a pnpm --filter price-fetcher start:worker
 ```
 
-Run in prod mode
+В сеансе Wayland воркер запускайте через `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 xvfb-run -a …`,
+иначе Chromium будет открывать окно прямо на рабочем столе.
 
-```
-docker compose up -d app-prod --build
-```
+Далее см. [Swagger](http://localhost:3000/docs).
 
-## Notes
+### 2. Обновить список прокси
 
-1. Using cached pnpm packages.
-2. Using distroless image in production to minimize image size.
-3. Using non-root user to improve security.
-4. Using `init: true` so the app receives `SIGTERM` and stops gracefully on `docker compose stop`.
+`POST /proxy-sources/github-free-proxy-list/refresh` - собрать и проверить прокси.
 
-# VS Code tips
+Прогресс: `GET /jobs/{jobId}`
 
-## Auto-linter on save
+Результат: `GET /proxies`.
 
-To run Prettier and ESLint fix automaticly on file save:
+### 3. Создать браузерные сессии
 
-1. Install `dbaeumer.vscode-eslint` and `esbenp.prettier-vscode` extensions via Extensions (`Ctrl + Shift + X`) or Quick Open (`Ctrl + P`):
+`pnpm sessions:onboard --hub http://localhost:3000` - замените url хаба на свой и выполните эту команду для создания сессий и загрузки их в хаб. Ниже объясняется зачем это нужно.
 
-```
-ext install dbaeumer.vscode-eslint
-ext install esbenp.prettier-vscode
-```
+Маркетплейсы обычно ограничивают автоматический сбор информации. Что бы программно получить цену товара необходимо хотя бы один раз открыть любую страницу маркетплейса обычным "живым" браузером и позволить серверу записать cookies - создать сессию. Далее price-fetcher присоединяет сессию к своим запросам и маркетплейсы отдают нужные данные.
 
-2. Edit your settings.json:
+`pnpm sessions:onboard --hub http://localhost:3000` по очереди открывает окно браузера через
+прокси; в окне пройдите антибот-проверку, сессия загрузится в hub и привяжется к прокси сама. Обычно антибот-проверка не требует явных действий от пользователя, но может потребоваться и решение несложной капчи.
 
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.fixAll.eslint": "explicit"
-  },
-  "eslint.validate": ["javascript", "typescript", "typescriptreact", "javascriptreact"],
-  "prettier.requireConfig": true
-}
-```
+Прокси с сессией получает `ready: true` в `GET /proxies`. Если маркетплейс снова требует проверку
+или сменился выходной IP, сессия становится `stale`, и прокси снова попадает в выборку
+`sessions:onboard`.
+
+Бесплатные прокси часто меняют IP, поэтому сессии на них живут недолго. Необходимо периодически подкидывать свежие сессии в систему с помощью `pnpm sessions:onboard`.
+
+### 4. Добавить ссылку на товар
+
+`POST /products` с `{ "url": "<ссылка на товар>" }`
+
+### 5. Запустить джобу обновления цены
+
+`POST /products/{id}/prices` запустит обновление цены. Если завершится успехом то сохранит результат в историю в БД.
+Статус и процент выполнения - `GET /jobs/{jobId}`; причина неудачи - в логах `price-fetcher` и
+в `lastStatus` товара.
+
+### 6. Посмотреть историю цен
+
+`GET /products/{id}/prices` покажет историю цен по интересующему продукту.

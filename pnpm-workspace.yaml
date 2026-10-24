@@ -1,2 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+
 allowBuilds:
   esbuild: true
+  # Optional native accelerator of msgpackr; BullMQ works without it.
+  msgpackr-extract: false
+  # Downloads the schema engine used by `prisma migrate`.
+  '@prisma/engines': true
+  prisma: true
+  # Usage analytics of the Prisma packages.
+  '@scarf/scarf': false
