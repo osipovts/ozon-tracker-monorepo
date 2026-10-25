@@ -24,8 +24,6 @@ export interface BrowserSessionInterface {
   proxyServer: string | null;
   exitIp: string;
   userAgent: string;
-  platform: string;
-  browserVersion: string;
   storageState: StorageStateInterface;
   status: SessionStatusType;
   staleReason: string | null;

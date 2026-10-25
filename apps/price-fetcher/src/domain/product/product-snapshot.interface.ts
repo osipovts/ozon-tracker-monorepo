@@ -1,16 +1,11 @@
-import type { MarketplaceType } from 'product-reference';
-
 export interface PriceObservationInterface {
   amountMinor: number;
   currency: 'RUB';
 }
 
 export interface ProductSnapshotInterface {
-  productId: string;
-  url: string;
   title: string;
   observedAt: string;
-  deliveryContext: 'site_default';
   prices: PriceObservationInterface[];
   availability: 'in_stock' | 'out_of_stock' | 'unknown';
 }
@@ -29,9 +24,6 @@ export interface ProductAttemptInterface {
 }
 
 export interface TrackingResultInterface {
-  marketplace: MarketplaceType;
-  productId: string;
-  url: string;
   status: ReadProductResultType['status'] | 'no_proxies';
   attempts: ProductAttemptInterface[];
 }

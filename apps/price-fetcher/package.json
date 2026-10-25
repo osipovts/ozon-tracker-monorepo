@@ -11,11 +11,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
     "start:worker": "node dist/worker.js",
     "dev:worker": "tsx watch src/worker.ts",
-    "session:create": "node dist/session-create.js",
     "session:onboard": "node dist/session-onboard.js"
   },
   "keywords": [],
@@ -28,7 +25,6 @@
   },
   "dependencies": {
     "bullmq": "^6.4.0",
-    "ioredis": "^6.0.0",
     "logger": "workspace:*",
     "playwright": "^1.64.1",
     "product-reference": "workspace:*",

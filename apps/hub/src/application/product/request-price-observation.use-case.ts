@@ -68,8 +68,6 @@ export class RequestPriceObservationUseCase {
           id: session.snapshot.id,
           exitIp: session.snapshot.exitIp,
           userAgent: session.snapshot.userAgent,
-          platform: session.snapshot.platform,
-          browserVersion: session.snapshot.browserVersion,
           storageState: session.snapshot.storageState,
         },
       }),

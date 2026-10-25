@@ -21,8 +21,6 @@ const session: BrowserSessionInterface = {
   id: '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11',
   exitIp: '217.71.230.103',
   userAgent: 'Mozilla/5.0',
-  platform: 'linux',
-  browserVersion: '148.0.0.0',
   storageState: { cookies: [cookie], origins: [] },
 };
 

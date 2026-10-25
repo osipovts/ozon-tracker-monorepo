@@ -22,5 +22,3 @@ export const storageStateSchema = z.object({
     }),
   ),
 });
-
-export type StorageStateType = z.infer<typeof storageStateSchema>;

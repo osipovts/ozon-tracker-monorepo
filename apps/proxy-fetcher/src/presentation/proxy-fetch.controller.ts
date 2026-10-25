@@ -1,11 +1,14 @@
 import { type LoggerPort, silentLogger } from 'logger';
-import { proxyFetchJobSchema, type ProxyFetchResultType } from 'queue-contract';
+import {
+  proxyFetchJobSchema,
+  type ProxyFetchJobType,
+  type ProxyFetchResultType,
+} from 'queue-contract';
 
 import type {
   RefreshProxySourceListenerInterface,
-  RefreshProxySourceSummaryInterface,
+  RefreshProxySourceUseCase,
 } from '../application/refresh-proxy-source.use-case.js';
-import type { RefreshProxySourceUseCase } from '../application/refresh-proxy-source.use-case.js';
 import type { ProxySourceType } from '../domain/proxy-source.type.js';
 
 /** Indexed by the contract source, so a source unknown to the domain fails to compile. */
@@ -37,25 +40,16 @@ export class ProxyFetchController {
       );
       throw new InvalidProxyFetchJobError('Malformed proxy fetch job');
     }
+
     const job = parsed.data;
-    const sources = Array.from(new Set(job.sources));
     const startedAt = performance.now();
     this.logger.info(
-      `Job ${job.jobId} started: ${sources.join(', ')}, up to ${String(job.maxCandidates)} candidates, probe timeout ${String(job.probeTimeoutMs)} ms`,
+      `Job ${job.jobId} started: ${job.source}, up to ${String(job.maxCandidates)} candidates, probe timeout ${String(job.probeTimeoutMs)} ms`,
     );
-    await this.publish({ type: 'job_started', jobId: job.jobId, sources });
+    await this.publish({ type: 'job_started', jobId: job.jobId });
+
     try {
-      for (const [index, source] of sources.entries()) {
-        signal.throwIfAborted();
-        await this.refreshSource(
-          job.jobId,
-          source,
-          { index, count: sources.length },
-          job.maxCandidates,
-          job.probeTimeoutMs,
-          signal,
-        );
-      }
+      await this.refresh(job, signal);
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
@@ -73,73 +67,39 @@ export class ProxyFetchController {
       });
       throw error;
     }
-    const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.info(`Job ${job.jobId} done in ${String(durationMs)} ms`);
-    await this.publish({ type: 'job_done', jobId: job.jobId, durationMs });
+
+    this.logger.info(
+      `Job ${job.jobId} done in ${String(Math.round(performance.now() - startedAt))} ms`,
+    );
+    await this.publish({ type: 'job_done', jobId: job.jobId });
   }
 
-  private async refreshSource(
-    jobId: string,
-    source: ProxySourceType,
-    position: { index: number; count: number },
-    maxCandidates: number,
-    probeTimeoutMs: number,
-    signal: AbortSignal,
-  ): Promise<void> {
+  private async refresh(job: ProxyFetchJobType, signal: AbortSignal): Promise<void> {
     let total = 0;
     let processed = 0;
     let succeeded = 0;
-    // The sources share the job evenly: a finished source counts as a whole share.
     const reportProgress = (): Promise<void> =>
-      this.publish({
-        type: 'job_progress',
-        jobId,
-        percent: Math.floor(
-          ((position.index + (total === 0 ? 1 : processed / total)) / position.count) * 100,
-        ),
-        processed,
-        total,
-        succeeded,
-      });
+      this.publish({ type: 'job_progress', jobId: job.jobId, processed, total, succeeded });
     const listener: RefreshProxySourceListenerInterface = {
       onCandidates: async (candidates): Promise<void> => {
         total = candidates;
-        await this.publish({ type: 'source_started', jobId, source, candidates });
         await reportProgress();
       },
       onChecks: async (checks): Promise<void> => {
-        await this.publish({ type: 'proxy_checks', jobId, source, checks });
+        await this.publish({ type: 'proxy_checks', jobId: job.jobId, source: job.source, checks });
         processed += checks.length;
         succeeded += checks.filter((check): boolean => check.alive).length;
         await reportProgress();
       },
     };
-    let summary: RefreshProxySourceSummaryInterface;
-    try {
-      summary = await this.useCases[source].execute(
-        { maxCandidates, probeTimeoutMs },
-        signal,
-        listener,
-      );
-    } catch (error: unknown) {
-      // A cancelled job is retried by the queue; a failed source is reported and skipped.
-      signal.throwIfAborted();
-      this.logger.error(
-        `Source ${source} failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
-      await this.publish({
-        type: 'source_done',
-        jobId,
-        source,
-        status: 'failed',
-        candidates: 0,
-        alive: 0,
-      });
-      return;
-    }
-    this.logger.info(
-      `Source ${source}: ${String(summary.alive)} of ${String(summary.candidates)} proxies alive`,
+
+    await this.useCases[job.source].execute(
+      { maxCandidates: job.maxCandidates, probeTimeoutMs: job.probeTimeoutMs },
+      signal,
+      listener,
     );
-    await this.publish({ type: 'source_done', jobId, source, status: 'ok', ...summary });
+    this.logger.info(
+      `Source ${job.source}: ${String(succeeded)} of ${String(total)} proxies alive`,
+    );
   }
 }

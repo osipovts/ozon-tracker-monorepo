@@ -63,7 +63,6 @@ function toObservation(observation: PriceObservationInterface): PriceObservation
   return {
     id: observation.id,
     observedAt: observation.observedAt.toISOString(),
-    status: observation.status,
     title: observation.title,
     availability: observation.availability,
     prices: observation.prices,

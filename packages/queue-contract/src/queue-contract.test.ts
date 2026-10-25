@@ -12,8 +12,6 @@ const session = {
   id: uuid,
   exitIp: '203.0.113.10',
   userAgent: 'Mozilla/5.0',
-  platform: 'linux',
-  browserVersion: '148.0.0.0',
   storageState: {
     cookies: [
       {
@@ -69,8 +67,6 @@ void test('discriminates price fetch results by type', (): void => {
       type: 'product_result',
       jobId: uuid,
       trackedProductId: uuid,
-      marketplace: 'ozon',
-      externalId: '1',
       status: 'challenge_required',
       attempts: [
         {
@@ -79,7 +75,6 @@ void test('discriminates price fetch results by type', (): void => {
           result: { status: 'challenge_required' },
         },
       ],
-      warnings: ['platform_mismatch'],
     }).success,
     true,
   );
@@ -100,7 +95,7 @@ void test('validates proxy fetch jobs and results', (): void => {
   assert.equal(
     proxyFetchJobSchema.safeParse({
       jobId: uuid,
-      sources: ['github-free-proxy-list'],
+      source: 'github-free-proxy-list',
       maxCandidates: 100,
       probeTimeoutMs: 10000,
     }).success,
@@ -109,7 +104,7 @@ void test('validates proxy fetch jobs and results', (): void => {
   assert.equal(
     proxyFetchJobSchema.safeParse({
       jobId: uuid,
-      sources: ['unknown'],
+      source: 'unknown',
       maxCandidates: 1,
       probeTimeoutMs: 1000,
     }).success,
@@ -145,25 +140,25 @@ void test('validates proxy fetch jobs and results', (): void => {
 
 void test('validates job progress messages of both workers', (): void => {
   for (const message of [
-    { type: 'job_started', jobId: uuid, products: 2 },
-    { type: 'job_progress', jobId: uuid, percent: 50, processed: 1, total: 2, succeeded: 1 },
+    { type: 'job_started', jobId: uuid },
+    { type: 'job_progress', jobId: uuid, processed: 1, total: 2, succeeded: 1 },
     { type: 'job_failed', jobId: uuid, reason: 'Browser crashed', willRetry: true },
+    { type: 'job_done', jobId: uuid },
   ])
     assert.equal(priceFetchResultSchema.safeParse(message).success, true);
   for (const message of [
-    { type: 'job_started', jobId: uuid, sources: ['github-free-proxy-list'] },
-    { type: 'job_progress', jobId: uuid, percent: 0, processed: 0, total: 20, succeeded: 0 },
-    { type: 'source_started', jobId: uuid, source: 'github-free-proxy-list', candidates: 20 },
-    { type: 'job_done', jobId: uuid, durationMs: 1200 },
+    { type: 'job_started', jobId: uuid },
+    { type: 'job_progress', jobId: uuid, processed: 0, total: 20, succeeded: 0 },
+    { type: 'job_done', jobId: uuid },
     { type: 'job_failed', jobId: uuid, reason: 'Source down', willRetry: false },
   ])
     assert.equal(proxyFetchResultSchema.safeParse(message).success, true);
   assert.equal(
     proxyFetchResultSchema.safeParse({
-      type: 'source_started',
+      type: 'proxy_checks',
       jobId: uuid,
       source: 'x',
-      candidates: 1,
+      checks: [],
     }).success,
     false,
   );

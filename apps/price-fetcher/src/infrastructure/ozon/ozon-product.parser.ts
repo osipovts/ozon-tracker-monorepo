@@ -96,11 +96,8 @@ export class OzonProductParser {
     else if (/в корзину|купить сейчас/i.test(purchase)) availability = 'in_stock';
     if (title === '' || (prices.length === 0 && availability !== 'out_of_stock')) return null;
     return {
-      productId: reference.id,
-      url: reference.url,
       title,
       observedAt: new Date().toISOString(),
-      deliveryContext: 'site_default',
       prices,
       availability,
     };

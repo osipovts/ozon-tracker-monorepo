@@ -4,5 +4,3 @@ export const queueNames = {
   proxyFetchJobs: 'proxy-fetch.jobs',
   proxyFetchResults: 'proxy-fetch.results',
 } as const;
-
-export type QueueNameType = (typeof queueNames)[keyof typeof queueNames];

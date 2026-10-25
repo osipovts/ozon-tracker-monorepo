@@ -70,4 +70,4 @@ RUN apt-get update && \
 RUN node node_modules/playwright/cli.js install --with-deps chromium && chmod -R a+rX /opt/playwright
 USER node
 ENTRYPOINT ["xvfb-run", "-a"]
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/worker.js"]

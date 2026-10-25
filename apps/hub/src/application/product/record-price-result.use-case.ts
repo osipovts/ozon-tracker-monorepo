@@ -11,10 +11,7 @@ export interface PriceResultInterface {
   trackedProductId: string;
   status: string;
   /** Present when a fetch attempt read the product card. */
-  observation: Omit<
-    PriceObservationInterface,
-    'id' | 'trackedProductId' | 'jobId' | 'status'
-  > | null;
+  observation: Omit<PriceObservationInterface, 'id' | 'trackedProductId' | 'jobId'> | null;
 }
 
 export class RecordPriceResultUseCase {
@@ -36,7 +33,6 @@ export class RecordPriceResultUseCase {
         id: randomUUID(),
         trackedProductId: result.trackedProductId,
         jobId: result.jobId,
-        status: result.status,
       });
     }
     await this.products.markChecked(result.trackedProductId, result.status, new Date());

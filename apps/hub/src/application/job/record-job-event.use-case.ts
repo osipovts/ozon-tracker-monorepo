@@ -25,7 +25,7 @@ export class RecordJobEventUseCase {
     }
     await this.jobs.save(next);
     this.logger.verbose(
-      `Job ${event.jobId}: ${event.type} -> ${next.snapshot.status} ${String(next.snapshot.percent)}%`,
+      `Job ${event.jobId}: ${event.type} -> ${next.snapshot.status} ${String(next.percent)}%`,
     );
   }
 

@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { ProxySourceType } from 'queue-contract';
+import { proxySourceSchema, type ProxySourceType } from 'queue-contract';
 
 import { RefreshProxySourceUseCase } from '../../application/proxy/refresh-proxy-source.use-case.js';
 import {
@@ -8,7 +8,6 @@ import {
   type JobAcceptedResponseType,
   proxySourceRefreshBodySchema,
   type ProxySourceRefreshBodyType,
-  proxySourceSchema,
 } from './proxy-source-refresh.type.js';
 
 @ApiTags('proxies')

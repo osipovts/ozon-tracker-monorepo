@@ -24,7 +24,7 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
   private readonly chromium = new ChromiumLaunchAdapter();
 
   constructor(
-    private readonly browser: Pick<Browser, 'newContext' | 'version'>,
+    private readonly browser: Pick<Browser, 'newContext'>,
     private readonly parser: OzonProductParser,
     private readonly navigationTimeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,
@@ -61,7 +61,6 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
     exitIp: string,
   ): SessionCaptureInterface {
     return {
-      exitIp,
       waitUntilPassed: async (signal): Promise<void> => {
         for (;;) {
           signal.throwIfAborted();
@@ -81,8 +80,6 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
           id: randomUUID(),
           exitIp,
           userAgent: await page.evaluate((): string => window.navigator.userAgent),
-          platform: process.platform,
-          browserVersion: this.browser.version(),
           storageState: await context.storageState(),
         },
         createdAt: new Date().toISOString(),

@@ -53,14 +53,6 @@ void test('stores the checks of a source and ignores its completion message', as
       },
     ],
   });
-  await consumer.handle({
-    type: 'source_done',
-    jobId,
-    source: 'github-free-proxy-list',
-    status: 'ok',
-    candidates: 2,
-    alive: 1,
-  });
   const page = await repository.list({}, { page: 1, pageSize: 10 });
   assert.deepEqual(
     page.items.map((proxy): [string, boolean] => [proxy.server, proxy.alive]),
@@ -92,29 +84,22 @@ void test('tracks the progress of a proxy job until it is done', async (): Promi
     config,
     silentLogger,
   );
-  await consumer.handle({ type: 'job_started', jobId, sources: ['github-free-proxy-list'] });
-  await consumer.handle({
-    type: 'source_started',
-    jobId,
-    source: 'github-free-proxy-list',
-    candidates: 20,
-  });
+  await consumer.handle({ type: 'job_started', jobId });
   await consumer.handle({
     type: 'job_progress',
     jobId,
-    percent: 25,
     processed: 5,
     total: 20,
     succeeded: 2,
   });
   const running = await jobs.findById(jobId);
   assert.deepEqual(
-    running && [running.snapshot.status, running.snapshot.percent, running.snapshot.succeeded],
+    running && [running.snapshot.status, running.percent, running.snapshot.succeeded],
     ['running', 25, 2],
   );
   await consumer.handle({ type: 'job_failed', jobId, reason: 'Source down', willRetry: true });
   assert.equal((await jobs.findById(jobId))?.snapshot.status, 'retrying');
-  await consumer.handle({ type: 'job_done', jobId, durationMs: 3000 });
+  await consumer.handle({ type: 'job_done', jobId });
   const done = await jobs.findById(jobId);
-  assert.deepEqual(done && [done.snapshot.status, done.snapshot.percent], ['completed', 100]);
+  assert.deepEqual(done && [done.snapshot.status, done.percent], ['completed', 100]);
 });

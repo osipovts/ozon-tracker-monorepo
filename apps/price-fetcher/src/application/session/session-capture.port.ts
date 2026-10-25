@@ -4,7 +4,6 @@ import type { CapturedSessionInterface } from '../../domain/session/captured-ses
 
 /** An open browser window on the marketplace through one route. */
 export interface SessionCaptureInterface {
-  readonly exitIp: string;
   /** Resolves once the site shows its pages instead of a check. */
   waitUntilPassed(signal: AbortSignal): Promise<void>;
   export(): Promise<CapturedSessionInterface>;

@@ -5,17 +5,12 @@ const priceObservationSchema = z.object({
   currency: z.literal('RUB'),
 });
 
-export const productSnapshotSchema = z.object({
-  productId: z.string(),
-  url: z.string(),
+const productSnapshotSchema = z.object({
   title: z.string(),
   observedAt: z.iso.datetime(),
-  deliveryContext: z.literal('site_default'),
   prices: z.array(priceObservationSchema),
   availability: z.enum(['in_stock', 'out_of_stock', 'unknown']),
 });
-
-export type ProductSnapshotType = z.infer<typeof productSnapshotSchema>;
 
 export const readProductResultSchema = z.union([
   z.object({
@@ -34,5 +29,3 @@ export const readProductResultSchema = z.union([
     httpStatus: z.number().int().optional(),
   }),
 ]);
-
-export type ReadProductResultSchemaType = z.infer<typeof readProductResultSchema>;

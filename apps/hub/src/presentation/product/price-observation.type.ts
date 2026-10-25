@@ -3,8 +3,6 @@ import { z } from 'zod';
 export const priceObservationSchema = z.object({
   id: z.uuid(),
   observedAt: z.iso.datetime(),
-  /** Status of the fetch: `success` or `partial`. */
-  status: z.string(),
   title: z.string(),
   availability: z.enum(['in_stock', 'out_of_stock', 'unknown']),
   /** Amounts are in kopecks. */

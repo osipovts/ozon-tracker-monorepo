@@ -22,20 +22,20 @@ void test('applies the events of a job in order and reports its progress', async
     type: 'progress',
     jobId,
     at: new Date(),
-    progress: { percent: 50, processed: 1, total: 2, succeeded: 1 },
+    progress: { processed: 1, total: 2, succeeded: 1 },
   });
   const running = await get.execute(jobId);
   assert.equal(running.snapshot.status, 'running');
-  assert.equal(running.snapshot.percent, 50);
+  assert.equal(running.percent, 50);
   await record.execute({ type: 'completed', jobId, at: new Date() });
   const done = await get.execute(jobId);
   assert.equal(done.snapshot.status, 'completed');
-  assert.equal(done.snapshot.percent, 100);
+  assert.equal(done.percent, 100);
 });
 
 void test('a redelivered progress message does not move the job back or count twice', async (): Promise<void> => {
   const { record, get } = await setup();
-  const progress = { percent: 50, processed: 1, total: 2, succeeded: 1 };
+  const progress = { processed: 1, total: 2, succeeded: 1 };
   await record.execute({ type: 'progress', jobId, at: new Date(), progress });
   await record.execute({ type: 'progress', jobId, at: new Date(), progress });
   assert.equal((await get.execute(jobId)).snapshot.processed, 1);

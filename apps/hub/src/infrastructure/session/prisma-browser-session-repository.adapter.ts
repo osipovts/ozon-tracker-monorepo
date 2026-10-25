@@ -21,8 +21,6 @@ function toEntity(row: BrowserSessionRow): BrowserSessionEntity {
     proxyServer: row.proxyServer,
     exitIp: row.exitIp,
     userAgent: row.userAgent,
-    platform: row.platform,
-    browserVersion: row.browserVersion,
     storageState: storageStateSchema.parse(row.storageState),
     status: statusSchema.parse(row.status),
     staleReason: row.staleReason,

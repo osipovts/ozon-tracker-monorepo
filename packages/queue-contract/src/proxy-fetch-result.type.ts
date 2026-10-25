@@ -9,19 +9,10 @@ export const proxyFetchResultSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job_started'),
     jobId: z.uuid(),
-    sources: z.array(proxySourceSchema),
-  }),
-  z.object({
-    type: z.literal('source_started'),
-    jobId: z.uuid(),
-    source: proxySourceSchema,
-    /** How many candidates are going to be checked. */
-    candidates: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('job_done'),
     jobId: z.uuid(),
-    durationMs: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('job_failed'),
@@ -49,14 +40,6 @@ export const proxyFetchResultSchema = z.discriminatedUnion('type', [
         checkedAt: z.iso.datetime(),
       }),
     ),
-  }),
-  z.object({
-    type: z.literal('source_done'),
-    jobId: z.uuid(),
-    source: proxySourceSchema,
-    status: z.enum(['ok', 'failed']),
-    candidates: z.number().int().nonnegative(),
-    alive: z.number().int().nonnegative(),
   }),
 ]);
 

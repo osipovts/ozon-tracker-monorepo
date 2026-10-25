@@ -21,7 +21,5 @@ export interface BrowserSessionInterface {
   id: string;
   exitIp: string;
   userAgent: string;
-  platform: string;
-  browserVersion: string;
   storageState: StorageStateInterface;
 }

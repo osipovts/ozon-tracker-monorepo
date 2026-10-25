@@ -63,7 +63,6 @@ export class ProxyResultsConsumer implements OnApplicationBootstrap, OnApplicati
           jobId: message.jobId,
           at,
           progress: {
-            percent: message.percent,
             processed: message.processed,
             total: message.total,
             succeeded: message.succeeded,
@@ -91,16 +90,6 @@ export class ProxyResultsConsumer implements OnApplicationBootstrap, OnApplicati
             checkedAt: new Date(check.checkedAt),
           })),
         );
-      case 'source_started':
-        this.logger.info(
-          `Source ${message.source} of job ${message.jobId}: ${String(message.candidates)} candidates to check`,
-        );
-        return;
-      case 'source_done':
-        this.logger.info(
-          `Source ${message.source} is ${message.status}: ${String(message.alive)} of ${String(message.candidates)} proxies alive (job ${message.jobId})`,
-        );
-        return;
     }
   }
 }

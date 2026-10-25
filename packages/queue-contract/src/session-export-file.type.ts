@@ -4,7 +4,7 @@ import { browserSessionSchema } from './browser-session.type.js';
 import { marketplaceSchema } from './marketplace.type.js';
 import { proxyServerSchema } from './proxy-server.type.js';
 
-/** File written by `session:create` and imported into the hub. */
+/** A session captured by `session:onboard` and imported into the hub. */
 export const sessionExportFileSchema = z.object({
   /** The marketplace the session was created on. */
   marketplace: marketplaceSchema,

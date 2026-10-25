@@ -40,12 +40,7 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
   }
 
   async enqueueProxyFetch(request: ProxyFetchRequestInterface): Promise<void> {
-    const job: ProxyFetchJobType = proxyFetchJobSchema.parse({
-      jobId: request.jobId,
-      sources: [request.source],
-      maxCandidates: request.maxCandidates,
-      probeTimeoutMs: request.probeTimeoutMs,
-    });
+    const job: ProxyFetchJobType = proxyFetchJobSchema.parse(request);
     await this.proxyFetchQueue.add('proxy-fetch', job, { ...jobOptions, jobId: job.jobId });
     this.logger.debug(`Published proxy-fetch ${job.jobId} to ${queueNames.proxyFetchJobs}`);
   }

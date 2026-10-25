@@ -8,7 +8,6 @@ export interface PriceObservationInterface {
   trackedProductId: string;
   /** Fetch job that produced the observation. */
   jobId: string;
-  status: string;
   title: string;
   observedAt: Date;
   availability: 'in_stock' | 'out_of_stock' | 'unknown';

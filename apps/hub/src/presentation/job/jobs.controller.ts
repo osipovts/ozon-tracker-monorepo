@@ -18,6 +18,7 @@ function toJob(job: JobEntity): JobType {
   const { createdAt, startedAt, finishedAt, ...rest } = job.snapshot;
   return {
     ...rest,
+    percent: job.percent,
     createdAt: createdAt.toISOString(),
     startedAt: startedAt?.toISOString() ?? null,
     finishedAt: finishedAt?.toISOString() ?? null,

@@ -329,8 +329,6 @@ const sessionFile = {
     id: '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22',
     exitIp: '217.71.230.9',
     userAgent: 'Mozilla/5.0',
-    platform: 'linux',
-    browserVersion: '148.0.0.0',
     storageState: {
       cookies: [
         {
@@ -389,7 +387,7 @@ void test('the queued session goes to the worker first, then the job reports its
     type: 'progress',
     jobId,
     at: new Date(),
-    progress: { percent: 100, processed: 1, total: 1, succeeded: 1 },
+    progress: { processed: 1, total: 1, succeeded: 1 },
   });
   await events.execute({ type: 'completed', jobId, at: new Date() });
   const done = await call(`/jobs/${jobId}`);

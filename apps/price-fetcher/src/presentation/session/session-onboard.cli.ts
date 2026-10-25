@@ -59,7 +59,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
       ),
       logger,
     ).execute({ marketplace: 'ozon', limit }, new AbortController().signal, (step) =>
-      promptCapture(terminal, step, waitMs, true),
+      promptCapture(terminal, step, waitMs),
     );
     logger.info(
       `Done: ${String(summary.ready.length)} ready, ${String(summary.skipped.length)} skipped`,

@@ -18,7 +18,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import type { SessionExportFileType } from 'queue-contract';
+import { sessionExportFileSchema, type SessionExportFileType } from 'queue-contract';
 
 import { DeleteSessionUseCase } from '../../application/session/delete-session.use-case.js';
 import { ImportSessionUseCase } from '../../application/session/import-session.use-case.js';
@@ -29,7 +29,6 @@ import {
   type PaginationQueryType,
 } from '../shared/pagination-query.type.js';
 import {
-  sessionExportFileSchema,
   sessionIdParamSchema,
   sessionListResponseSchema,
   type SessionListResponseType,
@@ -45,8 +44,6 @@ function toSession(session: BrowserSessionEntity): SessionType {
     proxy: snapshot.proxyServer,
     exitIp: snapshot.exitIp,
     userAgent: snapshot.userAgent,
-    platform: snapshot.platform,
-    browserVersion: snapshot.browserVersion,
     status: snapshot.status,
     staleReason: snapshot.staleReason,
     cookies: snapshot.storageState.cookies.length,
@@ -69,7 +66,7 @@ export class SessionsController {
   @ApiOperation({
     summary: 'Import a browser session',
     description:
-      'Send the content of the file written by `pnpm --filter price-fetcher session:create`. ' +
+      'Sent by `pnpm sessions:onboard` with a session captured in a browser window. ' +
       'It replaces the session of the same marketplace and proxy and is given to the workers ' +
       'together with that proxy.',
   })
@@ -84,8 +81,6 @@ export class SessionsController {
         proxyServer: body.proxy,
         exitIp: body.session.exitIp,
         userAgent: body.session.userAgent,
-        platform: body.session.platform,
-        browserVersion: body.session.browserVersion,
         storageState: body.session.storageState,
         createdAt: new Date(body.createdAt),
       }),

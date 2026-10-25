@@ -1,7 +1,4 @@
-import { sessionExportFileSchema } from 'queue-contract';
 import { z } from 'zod';
-
-export { sessionExportFileSchema };
 
 export const sessionIdParamSchema = z.uuid();
 
@@ -13,8 +10,6 @@ export const sessionSchema = z.object({
   proxy: z.string().nullable(),
   exitIp: z.string(),
   userAgent: z.string(),
-  platform: z.string(),
-  browserVersion: z.string(),
   /** A stale session is not given to the workers any more. */
   status: z.enum(['active', 'stale']),
   staleReason: z.string().nullable(),

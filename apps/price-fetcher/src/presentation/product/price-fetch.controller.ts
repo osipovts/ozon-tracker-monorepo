@@ -6,7 +6,6 @@ import {
   priceFetchJobSchema,
   type PriceFetchJobType,
   type PriceFetchResultType,
-  type SessionWarningType,
 } from 'queue-contract';
 
 import { GetProductSnapshotUseCase } from '../../application/product/get-product-snapshot.use-case.js';
@@ -19,18 +18,9 @@ import {
 
 export class InvalidPriceFetchJobError extends Error {}
 
-export interface BrowserEnvironmentInterface {
-  platform: string;
-  browserVersion: string;
-}
-
 type ProductResultType = Extract<PriceFetchResultType, { type: 'product_result' }>;
 
 const maxReasonLength = 200;
-
-function majorVersion(version: string): string {
-  return version.split('.')[0] ?? version;
-}
 
 export class PriceFetchController {
   constructor(
@@ -39,7 +29,6 @@ export class PriceFetchController {
       sessions: SessionStorePort,
       timeoutMs: number,
     ) => ProductReaderPort,
-    private readonly environment: BrowserEnvironmentInterface,
     private readonly publish: (message: PriceFetchResultType) => Promise<void>,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
@@ -61,7 +50,7 @@ export class PriceFetchController {
     this.logger.info(
       `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes (${String(job.proxies.filter((route): boolean => route.session !== undefined).length)} with a session), timeout ${String(job.timeoutMs)} ms`,
     );
-    await this.publish({ type: 'job_started', jobId: job.jobId, products: job.products.length });
+    await this.publish({ type: 'job_started', jobId: job.jobId });
     try {
       await this.process(job, signal, startedAt);
     } catch (error: unknown) {
@@ -103,19 +92,7 @@ export class PriceFetchController {
       if (route.session !== undefined) sessionRoutes.push({ proxy, session: route.session });
     }
     const sessions = new InMemorySessionStoreAdapter(sessionRoutes);
-    const warnings = new Map<string, SessionWarningType[]>();
-    for (const { session } of sessionRoutes) {
-      const found: SessionWarningType[] = [];
-      if (session.platform !== this.environment.platform) found.push('platform_mismatch');
-      if (majorVersion(session.browserVersion) !== majorVersion(this.environment.browserVersion))
-        found.push('browser_version_mismatch');
-      warnings.set(session.id, found);
-    }
     const useCase = new GetProductSnapshotUseCase(
-      {
-        getCandidates: (): Promise<Array<ProxyEndpointEntity | null>> =>
-          Promise.resolve(candidates),
-      },
       this.createReader(sessions, job.timeoutMs),
       this.logger.child('snapshot'),
     );
@@ -126,7 +103,6 @@ export class PriceFetchController {
       this.publish({
         type: 'job_progress',
         jobId: job.jobId,
-        percent: Math.floor((processed / job.products.length) * 100),
         processed,
         total: job.products.length,
         succeeded,
@@ -147,32 +123,24 @@ export class PriceFetchController {
       this.logger.info(
         `Product ${product.trackedProductId} (${reference.marketplace} ${reference.id}): reading`,
       );
-      const result = await useCase.execute(reference, signal);
+      const result = await useCase.execute(reference, candidates, signal);
       this.logger.info(
         `Product ${product.trackedProductId}: ${result.status} after ${String(result.attempts.length)} attempts`,
       );
-      const attempts = result.attempts.map((attempt): ProductResultType['attempts'][number] => {
-        const sessionId = sessions.findByServer(attempt.proxy)?.id;
-        return {
-          proxy: attempt.proxy,
-          ...(sessionId === undefined ? {} : { sessionId }),
-          result: attempt.result,
-        };
-      });
-      const attemptedWarnings = new Set<SessionWarningType>();
-      for (const attempt of attempts) {
-        for (const warning of warnings.get(attempt.sessionId ?? '') ?? [])
-          attemptedWarnings.add(warning);
-      }
       await this.publish({
         type: 'product_result',
         jobId: job.jobId,
         trackedProductId: product.trackedProductId,
-        marketplace: reference.marketplace,
-        externalId: reference.id,
         status: result.status,
-        attempts,
-        warnings: Array.from(attemptedWarnings),
+        attempts: result.attempts.map((attempt): ProductResultType['attempts'][number] => {
+          const sessionId = sessions.findByServer(attempt.proxy)?.id;
+
+          return {
+            proxy: attempt.proxy,
+            ...(sessionId === undefined ? {} : { sessionId }),
+            result: attempt.result,
+          };
+        }),
       });
       processed += 1;
       if (result.status === 'success' || result.status === 'partial') succeeded += 1;
@@ -190,14 +158,10 @@ export class PriceFetchController {
       );
       await this.publish({ type: 'session_ip_mismatch', jobId: job.jobId, ...mismatch });
     }
-    const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.info(`Job ${job.jobId} done in ${String(durationMs)} ms`);
-    await this.publish({
-      type: 'job_done',
-      jobId: job.jobId,
-      products: job.products.length,
-      durationMs,
-    });
+    this.logger.info(
+      `Job ${job.jobId} done in ${String(Math.round(performance.now() - startedAt))} ms`,
+    );
+    await this.publish({ type: 'job_done', jobId: job.jobId });
   }
 
   private invalidUrlResult(jobId: string, trackedProductId: string): ProductResultType {
@@ -205,11 +169,8 @@ export class PriceFetchController {
       type: 'product_result',
       jobId,
       trackedProductId,
-      marketplace: null,
-      externalId: null,
       status: 'invalid_url',
       attempts: [],
-      warnings: [],
     };
   }
 }

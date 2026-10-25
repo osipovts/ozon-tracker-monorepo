@@ -60,17 +60,6 @@ services:
       - redis
     restart: unless-stopped
 
-  # One-off CLI run: docker compose run --rm price-fetcher-cli node dist/index.js '<URL>' ...
-  price-fetcher-cli:
-    <<: *price-fetcher
-    container_name: price-tracker-price-fetcher-cli
-    image: price-fetcher:prod
-    profiles: ['cli']
-    # Rootless Docker: container root is the host user, so it can use the mounted profile.
-    user: root
-    volumes:
-      - ./apps/price-fetcher/.ozon-browser:/root/.ozon-browser
-
   price-fetcher-dev:
     <<: *price-fetcher
     container_name: price-tracker-price-fetcher-dev

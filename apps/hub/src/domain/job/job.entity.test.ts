@@ -13,14 +13,14 @@ const job = JobEntity.queued(
 );
 
 void test('follows a job from queued to completed with its progress', (): void => {
-  const running = job.progressed({ percent: 40, processed: 8, total: 20, succeeded: 3 }, at(5));
+  const running = job.progressed({ processed: 8, total: 20, succeeded: 3 }, at(5));
   assert.equal(running.snapshot.status, 'running');
-  assert.equal(running.snapshot.percent, 40);
+  assert.equal(running.percent, 40);
   assert.equal(running.snapshot.total, 20);
   assert.equal(running.snapshot.startedAt?.getTime(), at(5).getTime());
   const done = running.completed(at(9));
   assert.equal(done.snapshot.status, 'completed');
-  assert.equal(done.snapshot.percent, 100);
+  assert.equal(done.percent, 100);
   assert.equal(done.snapshot.processed, 8);
   assert.equal(done.snapshot.finishedAt?.getTime(), at(9).getTime());
 });
@@ -40,7 +40,7 @@ void test('keeps the first start time and distinguishes a retried failure from a
 
 void test('ignores events after the job has finished', (): void => {
   const done = job.completed(at(2));
-  assert.equal(done.progressed({ percent: 10, processed: 1, total: 5, succeeded: 1 }, at(3)), done);
+  assert.equal(done.progressed({ processed: 1, total: 5, succeeded: 1 }, at(3)), done);
   assert.equal(done.failed('late', false, at(4)), done);
   assert.equal(done.started(at(5)), done);
 });

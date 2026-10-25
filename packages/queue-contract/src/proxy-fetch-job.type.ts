@@ -4,8 +4,8 @@ import { proxySourceSchema } from './proxy-source.type.js';
 
 export const proxyFetchJobSchema = z.object({
   jobId: z.uuid(),
-  sources: z.array(proxySourceSchema).min(1),
-  /** Upper bound of candidates checked per source. */
+  source: proxySourceSchema,
+  /** Upper bound of candidates checked. */
   maxCandidates: z.number().int().min(1).max(5000),
   /** Timeout of a single proxy check. */
   probeTimeoutMs: z.number().int().min(1000).max(60000),

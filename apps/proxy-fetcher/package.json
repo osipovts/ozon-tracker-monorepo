@@ -25,7 +25,6 @@
   "dependencies": {
     "bullmq": "^6.4.0",
     "https-proxy-agent": "^9.1.0",
-    "ioredis": "^6.0.0",
     "logger": "workspace:*",
     "proxy-endpoint": "workspace:*",
     "queue-contract": "workspace:*",

@@ -5,30 +5,21 @@ import type { ProductReferenceEntity } from 'product-reference';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { TrackingResultInterface } from '../../domain/product/product-snapshot.interface.js';
-import type { ProxyProviderPort } from '../proxy/proxy-provider.port.js';
 import type { ProductReaderPort } from './product-reader.port.js';
 
 export class GetProductSnapshotUseCase {
   constructor(
-    private readonly proxies: ProxyProviderPort,
     private readonly reader: ProductReaderPort,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
+  /** Tries the routes in order; a null route is a direct connection. */
   async execute(
     reference: ProductReferenceEntity,
+    candidates: ReadonlyArray<ProxyEndpointEntity | null>,
     signal: AbortSignal,
-    override?: ProxyEndpointEntity | null,
   ): Promise<TrackingResultInterface> {
-    const candidates =
-      override === undefined ? await this.proxies.getCandidates(signal) : [override];
-    const output: TrackingResultInterface = {
-      marketplace: reference.marketplace,
-      productId: reference.id,
-      url: reference.url,
-      status: 'no_proxies',
-      attempts: [],
-    };
+    const output: TrackingResultInterface = { status: 'no_proxies', attempts: [] };
     this.logger.debug(`${String(candidates.length)} routes to try`);
     for (const proxy of candidates) {
       signal.throwIfAborted();
@@ -51,6 +42,7 @@ export class GetProductSnapshotUseCase {
       )
         break;
     }
+
     return output;
   }
 }

@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-import { sessionWarningSchema } from './browser-session.type.js';
 import { jobProgressSchema } from './job-progress.type.js';
-import { marketplaceSchema } from './marketplace.type.js';
 import { readProductResultSchema } from './read-product-result.type.js';
 import { storageStateSchema } from './storage-state.type.js';
 
@@ -11,7 +9,6 @@ export const priceFetchResultSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job_started'),
     jobId: z.uuid(),
-    products: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('job_failed'),
@@ -25,9 +22,6 @@ export const priceFetchResultSchema = z.discriminatedUnion('type', [
     type: z.literal('product_result'),
     jobId: z.uuid(),
     trackedProductId: z.uuid(),
-    /** Null when the URL does not belong to a supported marketplace. */
-    marketplace: marketplaceSchema.nullable(),
-    externalId: z.string().nullable(),
     status: z.enum([
       'success',
       'partial',
@@ -47,7 +41,6 @@ export const priceFetchResultSchema = z.discriminatedUnion('type', [
         result: readProductResultSchema,
       }),
     ),
-    warnings: z.array(sessionWarningSchema),
   }),
   z.object({
     type: z.literal('session_update'),
@@ -66,8 +59,6 @@ export const priceFetchResultSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job_done'),
     jobId: z.uuid(),
-    products: z.number().int().nonnegative(),
-    durationMs: z.number().int().nonnegative(),
   }),
 ]);
 

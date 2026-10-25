@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { paginationQuerySchema } from '../shared/pagination-query.type.js';
 import { priceObservationSchema } from './price-observation.type.js';
 
 export const productIdParamSchema = z.uuid();
@@ -25,8 +24,6 @@ export const productSchema = z.object({
 });
 
 export type ProductType = z.infer<typeof productSchema>;
-
-export const productListQuerySchema = paginationQuerySchema;
 
 export const productListItemSchema = productSchema.extend({
   /** The newest price observation, null until the first one is recorded. */

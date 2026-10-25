@@ -18,8 +18,6 @@ function input(
     proxyServer,
     exitIp: '217.71.230.103',
     userAgent: 'Mozilla/5.0',
-    platform: 'linux',
-    browserVersion: '148.0.0.0',
     storageState: {
       cookies: [
         {

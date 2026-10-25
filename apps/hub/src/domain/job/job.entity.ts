@@ -8,8 +8,6 @@ export interface JobInterface {
   /** The proxy source of a proxy job or the product id of a price job. */
   subject: string;
   status: JobStatusType;
-  /** Completion of the job, from 0 to 100. */
-  percent: number;
   processed: number;
   /** Null until the worker knows how much work there is. */
   total: number | null;
@@ -21,7 +19,6 @@ export interface JobInterface {
 }
 
 export interface JobProgressInterface {
-  percent: number;
   processed: number;
   total: number;
   succeeded: number;
@@ -43,7 +40,6 @@ export class JobEntity {
       kind,
       subject,
       status: 'queued',
-      percent: 0,
       processed: 0,
       total,
       succeeded: 0,
@@ -52,6 +48,15 @@ export class JobEntity {
       startedAt: null,
       finishedAt: null,
     });
+  }
+
+  /** Completion of the job, from 0 to 100. */
+  get percent(): number {
+    if (this.snapshot.status === 'completed') return 100;
+
+    const { processed, total } = this.snapshot;
+
+    return total === null || total === 0 ? 0 : Math.floor((processed / total) * 100);
   }
 
   get finished(): boolean {
@@ -83,7 +88,6 @@ export class JobEntity {
     return new JobEntity({
       ...this.snapshot,
       status: 'completed',
-      percent: 100,
       error: null,
       startedAt: this.snapshot.startedAt ?? at,
       finishedAt: at,

@@ -1,7 +1,4 @@
-import { proxySourceSchema } from 'queue-contract';
 import { z } from 'zod';
-
-export { proxySourceSchema };
 
 export const proxySourceRefreshBodySchema = z
   .object({

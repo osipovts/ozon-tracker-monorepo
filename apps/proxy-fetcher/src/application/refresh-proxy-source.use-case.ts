@@ -9,11 +9,6 @@ export interface RefreshProxySourceParamsInterface {
   probeTimeoutMs: number;
 }
 
-export interface RefreshProxySourceSummaryInterface {
-  candidates: number;
-  alive: number;
-}
-
 export interface RefreshProxySourceListenerInterface {
   /** Called once the candidates are known, before the first check. */
   onCandidates(count: number): Promise<void>;
@@ -34,28 +29,31 @@ export class RefreshProxySourceUseCase {
     params: RefreshProxySourceParamsInterface,
     signal: AbortSignal,
     listener: RefreshProxySourceListenerInterface,
-  ): Promise<RefreshProxySourceSummaryInterface> {
+  ): Promise<void> {
     const fetched = await this.source.fetchCandidates(signal);
     const candidates = fetched.slice(0, params.maxCandidates);
+    const total = candidates.length;
     this.logger.debug(
-      `Source ${this.source.name} returned ${String(fetched.length)} candidates, checking ${String(candidates.length)}`,
+      `Source ${this.source.name} returned ${String(fetched.length)} candidates, checking ${String(total)}`,
     );
-    await listener.onCandidates(candidates.length);
-    const pending = [...candidates];
+    await listener.onCandidates(total);
+
     let buffer: ProxyCheckInterface[] = [];
     let alive = 0;
     let checked = 0;
     const flush = async (): Promise<void> => {
       if (buffer.length === 0) return;
+
       const checks = buffer;
       buffer = [];
       await listener.onChecks(checks);
       this.logger.debug(
-        `Source ${this.source.name}: ${String(checked)}/${String(candidates.length)} checked, ${String(alive)} alive`,
+        `Source ${this.source.name}: ${String(checked)}/${String(total)} checked, ${String(alive)} alive`,
       );
     };
+    // The workers take the candidates one by one from the shared queue.
     const run = async (): Promise<void> => {
-      for (let proxy = pending.shift(); proxy !== undefined; proxy = pending.shift()) {
+      for (let proxy = candidates.shift(); proxy !== undefined; proxy = candidates.shift()) {
         signal.throwIfAborted();
         const check = await this.probe.probe(proxy, params.probeTimeoutMs, signal);
         checked += 1;
@@ -64,8 +62,8 @@ export class RefreshProxySourceUseCase {
         if (buffer.length >= this.batchSize) await flush();
       }
     };
-    await Promise.all(Array.from({ length: Math.min(this.concurrency, candidates.length) }, run));
+
+    await Promise.all(Array.from({ length: Math.min(this.concurrency, total) }, run));
     await flush();
-    return { candidates: candidates.length, alive };
   }
 }

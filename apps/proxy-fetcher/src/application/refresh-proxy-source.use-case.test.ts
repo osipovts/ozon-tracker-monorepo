@@ -32,21 +32,25 @@ const probe: ProxyProbePort = {
 void test('limits candidates, counts alive proxies and reports checks in batches', async (): Promise<void> => {
   const batches: number[] = [];
   const announced: number[] = [];
-  const summary = await new RefreshProxySourceUseCase(source, probe, 3, 2).execute(
+  let alive = 0;
+  await new RefreshProxySourceUseCase(source, probe, 3, 2).execute(
     { maxCandidates: 5, probeTimeoutMs: 1000 },
     new AbortController().signal,
     {
       onCandidates: (count): Promise<void> => {
         announced.push(count);
+
         return Promise.resolve();
       },
       onChecks: (checks): Promise<void> => {
         batches.push(checks.length);
+        alive += checks.filter((check): boolean => check.alive).length;
+
         return Promise.resolve();
       },
     },
   );
-  assert.deepEqual(summary, { candidates: 5, alive: 4 });
+  assert.equal(alive, 4);
   assert.deepEqual(announced, [5]);
   assert.equal(
     batches.reduce((sum, size): number => sum + size, 0),

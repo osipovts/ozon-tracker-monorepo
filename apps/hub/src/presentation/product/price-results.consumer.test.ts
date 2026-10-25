@@ -47,8 +47,6 @@ async function setup(): Promise<{
     proxyServer: 'socks5://217.71.230.2:1080',
     exitIp: '217.71.230.2',
     userAgent: 'Mozilla/5.0',
-    platform: 'linux',
-    browserVersion: '148.0.0.0',
     storageState: { cookies: [], origins: [] },
     createdAt: new Date(),
   });
@@ -72,8 +70,6 @@ void test('stores the snapshot of the attempt that read the product', async (): 
     type: 'product_result',
     jobId,
     trackedProductId: productId,
-    marketplace: 'ozon',
-    externalId: '4775581891',
     status: 'partial',
     attempts: [
       { proxy: 'socks5://217.71.230.1:1080', result: { status: 'network_error' } },
@@ -84,22 +80,17 @@ void test('stores the snapshot of the attempt that read the product', async (): 
           status: 'partial',
           exitIp: '217.71.230.2',
           snapshot: {
-            productId: '4775581891',
-            url: 'https://www.ozon.ru/product/4775581891/',
             title: 'Notebook',
             observedAt: '2026-10-24T12:00:00.000Z',
-            deliveryContext: 'site_default',
             prices: [{ amountMinor: 18673000, currency: 'RUB' }],
             availability: 'in_stock',
           },
         },
       },
     ],
-    warnings: [],
   });
   const [observation] = (await history.execute(productId, { page: 1, pageSize: 10 })).page.items;
-  assert.equal(observation?.status, 'partial');
-  assert.equal(observation.exitIp, '217.71.230.2');
+  assert.equal(observation?.exitIp, '217.71.230.2');
   assert.equal(observation.prices[0]?.amountMinor, 18673000);
   assert.notEqual((await sessions.findById(sessionId))?.snapshot.lastUsedAt, null);
 });
@@ -110,8 +101,6 @@ void test('marks a session stale after a challenge or an exit address mismatch',
     type: 'product_result',
     jobId,
     trackedProductId: productId,
-    marketplace: 'ozon',
-    externalId: '4775581891',
     status: 'challenge_required',
     attempts: [
       {
@@ -120,7 +109,6 @@ void test('marks a session stale after a challenge or an exit address mismatch',
         result: { status: 'challenge_required' },
       },
     ],
-    warnings: [],
   });
   assert.equal((await sessions.findById(sessionId))?.snapshot.staleReason, 'challenge_required');
   await consumer.handle({
@@ -161,6 +149,6 @@ void test('keeps the refreshed cookies of a session', async (): Promise<void> =>
 
 void test('ignores session messages and rejects malformed ones for good', async (): Promise<void> => {
   const { consumer } = await setup();
-  await consumer.handle({ type: 'job_done', jobId, products: 1, durationMs: 10 });
+  await consumer.handle({ type: 'job_done', jobId });
   await assert.rejects(consumer.handle({ type: 'product_result' }), UnrecoverableError);
 });

@@ -12,8 +12,6 @@ export interface SessionImportInterface {
   proxyServer: string | null;
   exitIp: string;
   userAgent: string;
-  platform: string;
-  browserVersion: string;
   storageState: StorageStateInterface;
   createdAt: Date;
 }

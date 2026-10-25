@@ -69,7 +69,6 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
           jobId: message.jobId,
           at,
           progress: {
-            percent: message.percent,
             processed: message.processed,
             total: message.total,
             succeeded: message.succeeded,

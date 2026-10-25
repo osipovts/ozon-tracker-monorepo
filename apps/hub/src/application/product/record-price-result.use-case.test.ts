@@ -56,7 +56,7 @@ void test('records an observation once even if the result is delivered twice', a
   const { product, page } = await history.execute(productId, { page: 1, pageSize: 10 });
   assert.equal(product.url, 'https://www.ozon.ru/product/1/');
   assert.equal(page.total, 1);
-  assert.equal(page.items[0]?.status, 'success');
+  assert.equal(page.items[0]?.prices.length, 1);
   assert.equal((await products.findById(productId))?.lastStatus, 'success');
 });
 

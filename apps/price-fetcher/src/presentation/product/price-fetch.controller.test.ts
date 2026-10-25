@@ -38,8 +38,6 @@ const job = {
         id: sessionId,
         exitIp: '217.71.230.103',
         userAgent: 'Mozilla/5.0',
-        platform: 'linux',
-        browserVersion: '148.0.7778.96',
         storageState,
       },
     },
@@ -54,21 +52,15 @@ const job = {
 const success: ReadProductResultType = {
   status: 'success',
   snapshot: {
-    productId: '4775581891',
-    url: 'https://www.ozon.ru/product/4775581891/',
     title: 'Notebook',
     observedAt: '2026-10-24T12:00:00.000Z',
-    deliveryContext: 'site_default',
     prices: [{ amountMinor: 10000000, currency: 'RUB' }],
     availability: 'in_stock',
   },
   exitIp: '217.71.230.103',
 };
 
-function createController(
-  published: PriceFetchResultType[],
-  environment = { platform: 'linux', browserVersion: '148.0.7778.96' },
-): PriceFetchController {
+function createController(published: PriceFetchResultType[]): PriceFetchController {
   return new PriceFetchController(
     new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
     (sessions: SessionStorePort): ProductReaderPort => ({
@@ -79,12 +71,13 @@ function createController(
             cookies: [{ ...storageState.cookies[0], value: 'v2' }],
             origins: [],
           });
+
         return Promise.resolve(success);
       },
     }),
-    environment,
     (message): Promise<void> => {
       published.push(message);
+
       return Promise.resolve();
     },
   );
@@ -116,16 +109,11 @@ void test('reads products through the given routes and reports progress, session
   assert.deepEqual(
     published
       .filter(isType('job_progress'))
-      .map((progress): number[] => [
-        progress.percent,
-        progress.processed,
-        progress.total,
-        progress.succeeded,
-      ]),
+      .map((progress): number[] => [progress.processed, progress.total, progress.succeeded]),
     [
-      [0, 0, 2, 0],
-      [50, 1, 2, 1],
-      [100, 2, 2, 1],
+      [0, 2, 0],
+      [1, 2, 1],
+      [2, 2, 1],
     ],
   );
   const [first, second] = published.filter(isType('product_result'));
@@ -133,26 +121,13 @@ void test('reads products through the given routes and reports progress, session
     type: 'product_result',
     jobId,
     trackedProductId: productId,
-    marketplace: 'ozon',
-    externalId: '4775581891',
     status: 'success',
     attempts: [{ proxy: 'socks5://217.71.230.103:1080', sessionId, result: success }],
-    warnings: [],
   });
   assert.equal(second?.status, 'invalid_url');
   const [update] = published.filter(isType('session_update'));
   assert.equal(update?.sessionId, sessionId);
   assert.equal(update.storageState.cookies[0]?.value, 'v2');
-});
-
-void test('warns when the session was created in another environment', async (): Promise<void> => {
-  const published: PriceFetchResultType[] = [];
-  await createController(published, { platform: 'darwin', browserVersion: '147.0.0.0' }).handle(
-    job,
-    new AbortController().signal,
-  );
-  const [first] = published.filter(isType('product_result'));
-  assert.deepEqual(first?.warnings, ['platform_mismatch', 'browser_version_mismatch']);
 });
 
 void test('reports no proxies when every route is unsafe', async (): Promise<void> => {

@@ -70,7 +70,6 @@ const controller = new PriceFetchController(
         logger.child('ozon'),
       ),
     }),
-  { platform: process.platform, browserVersion: browser.version() },
   async (message): Promise<void> => {
     logger.verbose(`Publishing ${message.type} of job ${message.jobId}`);
     await results.add(message.type, message);

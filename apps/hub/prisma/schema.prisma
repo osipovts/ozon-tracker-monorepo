@@ -25,7 +25,6 @@ model Proxy {
   /// checksAlive / checksTotal, kept in the row to sort by it.
   successRate   Float    @default(0)
   lastCheckedAt DateTime
-  createdAt     DateTime @default(now())
 
   @@index([alive, successRate(sort: Desc), latencyMs])
   @@map("proxies")
@@ -53,14 +52,12 @@ model PriceObservation {
   trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
   /// Fetch job that produced the observation; makes redelivered results idempotent.
   jobId            String         @db.Uuid
-  status           String
   title            String
   observedAt       DateTime
   availability     String
   /// Array of { amountMinor, currency }.
   prices           Json
   exitIp           String?
-  createdAt        DateTime       @default(now())
 
   @@unique([jobId, trackedProductId])
   @@index([trackedProductId, observedAt(sort: Desc)])
@@ -76,8 +73,6 @@ model JobRecord {
   subject    String
   /// queued, running, retrying, completed or failed.
   status     String
-  /// Completion of the job, from 0 to 100.
-  percent    Int       @default(0)
   processed  Int       @default(0)
   /// Null until the worker knows how much work there is.
   total      Int?
@@ -86,7 +81,6 @@ model JobRecord {
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?
-  updatedAt  DateTime  @updatedAt
 
   @@index([createdAt(sort: Desc)])
   @@index([kind, status])
@@ -94,25 +88,23 @@ model JobRecord {
 }
 
 model BrowserSession {
-  /// The session id given by `session:create`.
-  id             String    @id @db.Uuid
-  marketplace    String
+  /// The session id given by `session:onboard`.
+  id           String    @id @db.Uuid
+  marketplace  String
   /// Proxy URL without credentials the session was created through; null for a direct connection.
-  proxyServer    String?
+  proxyServer  String?
   /// proxyServer or "direct": a marketplace has one session per route.
-  routeKey       String
-  exitIp         String
-  userAgent      String
-  platform       String
-  browserVersion String
+  routeKey     String
+  exitIp       String
+  userAgent    String
   /// Playwright storageState: cookies and localStorage.
-  storageState   Json
+  storageState Json
   /// active or stale.
-  status         String
-  staleReason    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  lastUsedAt     DateTime?
+  status       String
+  staleReason  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastUsedAt   DateTime?
 
   @@unique([marketplace, routeKey], name: "marketplaceRouteKey")
   @@map("browser_sessions")
