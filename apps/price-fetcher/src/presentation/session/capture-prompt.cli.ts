@@ -16,6 +16,7 @@ export async function promptCapture(
 ): Promise<CaptureDecisionType> {
   const controller = new AbortController();
   const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(waitMs)]);
+
   try {
     return await Promise.race([
       step.capture.waitUntilPassed(signal).then((): CaptureDecisionType => 'save'),

@@ -25,8 +25,10 @@ export class RecordPriceResultUseCase {
     // The product may have been deleted while the job was running.
     if ((await this.products.findById(result.trackedProductId)) === null) {
       this.logger.warn(`Ignoring a result of the unknown product ${result.trackedProductId}`);
+
       return;
     }
+
     if (result.observation !== null) {
       await this.observations.saveIfAbsent({
         ...result.observation,
@@ -35,6 +37,7 @@ export class RecordPriceResultUseCase {
         jobId: result.jobId,
       });
     }
+
     await this.products.markChecked(result.trackedProductId, result.status, new Date());
     this.logger.info(
       `Product ${result.trackedProductId}: ${result.status}${result.observation === null ? ', no price recorded' : `, ${String(result.observation.prices.length)} prices recorded`} (job ${result.jobId})`,

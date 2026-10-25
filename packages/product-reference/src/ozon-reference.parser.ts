@@ -16,6 +16,7 @@ export class OzonReferenceParser implements MarketplaceReferenceParserPort {
       id === undefined
     )
       return null;
+
     return new ProductReferenceEntity(this.marketplace, id, `https://www.ozon.ru/product/${id}/`);
   }
 }

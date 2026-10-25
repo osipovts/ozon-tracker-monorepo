@@ -24,6 +24,7 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   logLevel: 'error',
 };
+
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 const sessionId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
@@ -40,6 +41,7 @@ async function setup(): Promise<{
     externalId: '4775581891',
     url: 'https://www.ozon.ru/product/4775581891/',
   });
+
   const sessions = new InMemoryBrowserSessionRepositoryAdapter();
   await new ImportSessionUseCase(sessions).execute({
     id: sessionId,
@@ -50,6 +52,7 @@ async function setup(): Promise<{
     storageState: { cookies: [], origins: [] },
     createdAt: new Date(),
   });
+
   return {
     consumer: new PriceResultsConsumer(
       new RecordPriceResultUseCase(products, observations),
@@ -66,6 +69,7 @@ async function setup(): Promise<{
 
 void test('stores the snapshot of the attempt that read the product', async (): Promise<void> => {
   const { consumer, history, sessions, productId } = await setup();
+
   await consumer.handle({
     type: 'product_result',
     jobId,
@@ -89,6 +93,7 @@ void test('stores the snapshot of the attempt that read the product', async (): 
       },
     ],
   });
+
   const [observation] = (await history.execute(productId, { page: 1, pageSize: 10 })).page.items;
   assert.equal(observation?.exitIp, '217.71.230.2');
   assert.equal(observation.prices[0]?.amountMinor, 18673000);
@@ -97,6 +102,7 @@ void test('stores the snapshot of the attempt that read the product', async (): 
 
 void test('marks a session stale after a challenge or an exit address mismatch', async (): Promise<void> => {
   const { consumer, sessions, productId } = await setup();
+
   await consumer.handle({
     type: 'product_result',
     jobId,
@@ -111,6 +117,7 @@ void test('marks a session stale after a challenge or an exit address mismatch',
     ],
   });
   assert.equal((await sessions.findById(sessionId))?.snapshot.staleReason, 'challenge_required');
+
   await consumer.handle({
     type: 'session_ip_mismatch',
     jobId,
@@ -123,6 +130,7 @@ void test('marks a session stale after a challenge or an exit address mismatch',
 
 void test('keeps the refreshed cookies of a session', async (): Promise<void> => {
   const { consumer, sessions } = await setup();
+
   await consumer.handle({
     type: 'session_update',
     jobId,
@@ -144,11 +152,13 @@ void test('keeps the refreshed cookies of a session', async (): Promise<void> =>
       origins: [],
     },
   });
+
   assert.equal((await sessions.findById(sessionId))?.snapshot.storageState.cookies[0]?.value, 'v2');
 });
 
 void test('ignores session messages and rejects malformed ones for good', async (): Promise<void> => {
   const { consumer } = await setup();
+
   await consumer.handle({ type: 'job_done', jobId });
   await assert.rejects(consumer.handle({ type: 'product_result' }), UnrecoverableError);
 });

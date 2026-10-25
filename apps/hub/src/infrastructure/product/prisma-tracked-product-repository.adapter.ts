@@ -48,6 +48,7 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     const row = await this.prisma.trackedProduct.findUnique({
       where: { marketplaceExternalId: { marketplace, externalId } },
     });
+
     return row === null ? null : toEntity(row);
   }
 
@@ -60,11 +61,13 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
       }),
       this.prisma.trackedProduct.count(),
     ]);
+
     return { items: rows.map(toEntity), total };
   }
 
   async findById(id: string): Promise<TrackedProductEntity | null> {
     const row = await this.prisma.trackedProduct.findUnique({ where: { id } });
+
     return row === null ? null : toEntity(row);
   }
 

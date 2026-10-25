@@ -9,6 +9,7 @@ void test('canonicalizes the provided kind of shared product link', (): void => 
   const reference = parser.parse(
     new URL('https://www.ozon.ru/product/asus-zenbook-4775581891/?at=tracking&sh=share'),
   );
+
   assert.equal(reference?.marketplace, 'ozon');
   assert.equal(reference.id, '4775581891');
   assert.equal(reference.url, 'https://www.ozon.ru/product/4775581891/');

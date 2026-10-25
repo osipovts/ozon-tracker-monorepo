@@ -42,6 +42,7 @@ const browser = await chromium.launch(
     ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
   }),
 );
+
 let stopping = false;
 browser.on('disconnected', (): void => {
   // Let the supervisor restart the worker instead of failing every job.
@@ -58,6 +59,7 @@ const results = new Queue(queueNames.priceFetchResults, {
 results.on('error', (error): void => {
   logger.error(`Results queue error: ${error.message}`);
 });
+
 const controller = new PriceFetchController(
   new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
   (sessions, timeoutMs) =>
@@ -83,6 +85,7 @@ const worker = new Worker(
     // The queue redelivers a failed job until its attempts are used up.
     const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
     logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
+
     try {
       await controller.handle(job.data, signal ?? new AbortController().signal, willRetry);
     } catch (error: unknown) {
@@ -93,12 +96,14 @@ const worker = new Worker(
   },
   { connection, concurrency: env.jobConcurrency },
 );
+
 worker.on('error', (error): void => {
   logger.error(`Worker error: ${error.message}`);
 });
 worker.on('failed', (job, error): void => {
   logger.warn(`Queue job ${job?.id ?? '?'} failed: ${error.message}`);
 });
+
 logger.info(
   `Waiting for jobs on ${queueNames.priceFetchJobs} (redis ${env.redisUrl.replace(/\/\/[^@]*@/, '//***@')}, Chromium ${browser.version()})`,
 );
@@ -110,6 +115,7 @@ const shutdown = async (): Promise<void> => {
   await results.close();
   await browser.close();
 };
+
 process.once('SIGINT', (): void => {
   void shutdown();
 });

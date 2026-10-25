@@ -34,11 +34,13 @@ export class NestLoggerAdapter implements LoggerService {
 
   private contextual(optionalParams: unknown[]): LoggerPort {
     const context = optionalParams.at(-1);
+
     return typeof context === 'string' ? this.logger.child(context) : this.logger;
   }
 
   private format(message: unknown): string {
     if (typeof message === 'string') return message;
+
     return message instanceof Error ? message.message : JSON.stringify(message);
   }
 }

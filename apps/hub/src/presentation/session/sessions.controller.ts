@@ -38,6 +38,7 @@ import {
 
 function toSession(session: BrowserSessionEntity): SessionType {
   const { snapshot } = session;
+
   return {
     id: snapshot.id,
     marketplace: snapshot.marketplace,
@@ -94,6 +95,7 @@ export class SessionsController {
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
   ): Promise<SessionListResponseType> {
     const page = await this.listSessions.execute({ page: query.page, pageSize: query.pageSize });
+
     return {
       items: page.items.map(toSession),
       page: query.page,

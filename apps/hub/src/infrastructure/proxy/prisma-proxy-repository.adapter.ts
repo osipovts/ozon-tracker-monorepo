@@ -28,6 +28,7 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
 
   async findByServers(servers: string[]): Promise<ProxyEntity[]> {
     const rows = await this.prisma.proxy.findMany({ where: { server: { in: servers } } });
+
     return rows.map(toEntity);
   }
 
@@ -45,6 +46,7 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
           successRate: proxy.successRate,
           lastCheckedAt: proxy.lastCheckedAt,
         };
+
         return this.prisma.proxy.upsert({
           where: { server: proxy.server },
           create: { server: proxy.server, ...data },
@@ -72,6 +74,7 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
             },
           }),
     };
+
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.proxy.findMany({
         where,
@@ -85,6 +88,7 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
       }),
       this.prisma.proxy.count({ where }),
     ]);
+
     return { items: rows.map(toEntity), total };
   }
 }

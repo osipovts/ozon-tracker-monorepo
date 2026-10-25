@@ -32,6 +32,7 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
     const connection = { url: redisUrl };
     this.proxyFetchQueue = new Queue(queueNames.proxyFetchJobs, { connection });
     this.priceFetchQueue = new Queue(queueNames.priceFetchJobs, { connection });
+
     for (const queue of [this.proxyFetchQueue, this.priceFetchQueue]) {
       queue.on('error', (error): void => {
         this.logger.error(`Queue ${queue.name} error: ${error.message}`);

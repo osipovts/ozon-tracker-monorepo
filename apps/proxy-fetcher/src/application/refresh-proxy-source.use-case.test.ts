@@ -33,6 +33,7 @@ void test('limits candidates, counts alive proxies and reports checks in batches
   const batches: number[] = [];
   const announced: number[] = [];
   let alive = 0;
+
   await new RefreshProxySourceUseCase(source, probe, 3, 2).execute(
     { maxCandidates: 5, probeTimeoutMs: 1000 },
     new AbortController().signal,
@@ -50,6 +51,7 @@ void test('limits candidates, counts alive proxies and reports checks in batches
       },
     },
   );
+
   assert.equal(alive, 4);
   assert.deepEqual(announced, [5]);
   assert.equal(
@@ -69,6 +71,7 @@ void test('stops probing when the signal is aborted', async (): Promise<void> =>
         onCandidates: (): Promise<void> => Promise.resolve(),
         onChecks: (): Promise<void> => {
           controller.abort();
+
           return Promise.resolve();
         },
       },

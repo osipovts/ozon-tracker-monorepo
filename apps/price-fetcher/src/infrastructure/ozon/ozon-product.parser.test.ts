@@ -28,6 +28,7 @@ void test('reads the prices of the card and leaves customs payments out of them'
       '90\u202f000,50 ₽\nс Ozon Картой\n100 000 ₽\nбез Ozon Карты\nТаможенный платёж ~5 246 ₽',
     purchaseText: 'В корзину\nОсталось 3 штуки',
   });
+
   assert.ok(snapshot);
   assert.deepEqual(snapshot.prices, [
     { amountMinor: 9000050, currency: 'RUB' },
@@ -42,6 +43,7 @@ void test('ignores installments', (): void => {
     priceText: '100 000 ₽\n5 000 ₽ в месяц',
     purchaseText: 'В корзину. Не более 10 штук в заказе',
   });
+
   assert.ok(snapshot);
   assert.deepEqual(snapshot.prices, [{ amountMinor: 10000000, currency: 'RUB' }]);
 });
@@ -51,6 +53,7 @@ void test('preserves thousands separated by thin spaces in rendered Ozon prices'
     ...base,
     priceText: '188\u2009129\u2009₽\nС банками\n193\u2009036\u2009₽\nС другими банками',
   });
+
   assert.ok(snapshot);
   assert.deepEqual(
     snapshot.prices.map((price): number => price.amountMinor),
@@ -69,6 +72,7 @@ void test('supports JSON-LD graph and validates product identity and currency', 
       availability: 'https://schema.org/InStock',
     },
   });
+
   const snapshot = parser.parse(reference, {
     ...base,
     structuredData: [
@@ -76,9 +80,11 @@ void test('supports JSON-LD graph and validates product identity and currency', 
       JSON.stringify({ '@graph': [makeProduct(reference.id, 'RUB')] }),
     ],
   });
+
   assert.ok(snapshot);
   assert.equal(snapshot.prices[0]?.amountMinor, 1234567);
   assert.equal(snapshot.availability, 'in_stock');
+
   assert.equal(
     parser.parse(reference, {
       ...base,
@@ -119,6 +125,7 @@ void test('returns out-of-stock without inventing a zero price', (): void => {
     ...base,
     purchaseText: 'Нет в наличии. Узнать о поступлении',
   });
+
   assert.ok(snapshot);
   assert.equal(snapshot.availability, 'out_of_stock');
   assert.deepEqual(snapshot.prices, []);

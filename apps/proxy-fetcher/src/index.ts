@@ -37,6 +37,7 @@ const results = new Queue(queueNames.proxyFetchResults, {
 results.on('error', (error): void => {
   logger.error(`Results queue error: ${error.message}`);
 });
+
 const controller = new ProxyFetchController(
   {
     'github-free-proxy-list': new RefreshProxySourceUseCase(
@@ -60,6 +61,7 @@ const worker = new Worker(
     // The queue redelivers a failed job until its attempts are used up.
     const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
     logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
+
     try {
       await controller.handle(job.data, signal ?? new AbortController().signal, willRetry);
     } catch (error: unknown) {
@@ -70,12 +72,14 @@ const worker = new Worker(
   },
   { connection, concurrency: env.jobConcurrency },
 );
+
 worker.on('error', (error): void => {
   logger.error(`Worker error: ${error.message}`);
 });
 worker.on('failed', (job, error): void => {
   logger.warn(`Queue job ${job?.id ?? '?'} failed: ${error.message}`);
 });
+
 logger.info(
   `Waiting for jobs on ${queueNames.proxyFetchJobs} (redis ${env.redisUrl.replace(/\/\/[^@]*@/, '//***@')})`,
 );
@@ -85,6 +89,7 @@ const shutdown = async (): Promise<void> => {
   await worker.close();
   await results.close();
 };
+
 process.once('SIGINT', (): void => {
   void shutdown();
 });

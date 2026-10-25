@@ -62,6 +62,7 @@ export class InMemorySessionStoreAdapter implements SessionStorePort {
     const original = this.byId.get(sessionId);
     if (original === undefined || fingerprint(original.storageState) === fingerprint(storageState))
       return;
+
     this.updates.set(sessionId, storageState);
   }
 
@@ -78,6 +79,7 @@ export class InMemorySessionStoreAdapter implements SessionStorePort {
       }),
     );
     this.updates.clear();
+
     return drained;
   }
 
@@ -91,6 +93,7 @@ export class InMemorySessionStoreAdapter implements SessionStorePort {
       }),
     );
     this.mismatches.clear();
+
     return drained;
   }
 }

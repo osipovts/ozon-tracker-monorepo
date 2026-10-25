@@ -19,6 +19,7 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
         product.marketplace === reference.marketplace &&
         product.externalId === reference.externalId,
     );
+
     const product = new TrackedProductEntity(
       existing?.id ?? randomUUID(),
       reference.marketplace,
@@ -28,6 +29,7 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
       existing?.lastCheckedAt ?? null,
     );
     this.products.set(product.id, product);
+
     return Promise.resolve(product);
   }
 
@@ -44,6 +46,7 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     // A Map keeps the insertion order: the newest product is the last one.
     const all = Array.from(this.products.values()).toReversed();
     const start = (pagination.page - 1) * pagination.pageSize;
+
     return Promise.resolve({
       items: all.slice(start, start + pagination.pageSize),
       total: all.length,
@@ -68,6 +71,7 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
           checkedAt,
         ),
       );
+
     return Promise.resolve();
   }
 }

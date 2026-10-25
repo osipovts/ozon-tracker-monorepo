@@ -25,6 +25,7 @@ async function setup(): Promise<{
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
   });
+
   return {
     productId: product.id,
     record: new RecordPriceResultUseCase(products, observations),
@@ -51,8 +52,10 @@ function result(productId: string, overrides: Partial<PriceResultInterface>): Pr
 
 void test('records an observation once even if the result is delivered twice', async (): Promise<void> => {
   const { productId, record, history, products } = await setup();
+
   await record.execute(result(productId, {}));
   await record.execute(result(productId, {}));
+
   const { product, page } = await history.execute(productId, { page: 1, pageSize: 10 });
   assert.equal(product.url, 'https://www.ozon.ru/product/1/');
   assert.equal(page.total, 1);
@@ -62,7 +65,9 @@ void test('records an observation once even if the result is delivered twice', a
 
 void test('keeps failures out of the price history but remembers the status', async (): Promise<void> => {
   const { productId, record, history, products } = await setup();
+
   await record.execute(result(productId, { status: 'challenge_required', observation: null }));
+
   assert.equal((await history.execute(productId, { page: 1, pageSize: 10 })).page.total, 0);
   assert.equal((await products.findById(productId))?.lastStatus, 'challenge_required');
 });
@@ -70,12 +75,14 @@ void test('keeps failures out of the price history but remembers the status', as
 void test('ignores a result of an unknown product and rejects its history', async (): Promise<void> => {
   const { record, history } = await setup();
   const unknown = '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33';
+
   await record.execute(result(unknown, {}));
   await assert.rejects(history.execute(unknown, { page: 1, pageSize: 10 }), ProductNotFoundError);
 });
 
 void test('paginates the history, the newest first', async (): Promise<void> => {
   const { productId, record, history } = await setup();
+
   for (const [index, observedAt] of [
     '2026-10-22T12:00:00.000Z',
     '2026-10-24T12:00:00.000Z',
@@ -88,8 +95,10 @@ void test('paginates the history, the newest first', async (): Promise<void> => 
       observation: base.observation && { ...base.observation, observedAt: new Date(observedAt) },
     });
   }
+
   const first = (await history.execute(productId, { page: 1, pageSize: 2 })).page;
   const second = (await history.execute(productId, { page: 2, pageSize: 2 })).page;
+
   assert.equal(first.total, 3);
   assert.deepEqual(
     first.items.map((item): string => item.observedAt.toISOString()),

@@ -65,6 +65,7 @@ export class JobEntity {
 
   started(at: Date): JobEntity {
     if (this.finished) return this;
+
     return new JobEntity({
       ...this.snapshot,
       status: 'running',
@@ -75,6 +76,7 @@ export class JobEntity {
 
   progressed(progress: JobProgressInterface, at: Date): JobEntity {
     if (this.finished) return this;
+
     return new JobEntity({
       ...this.snapshot,
       ...progress,
@@ -85,6 +87,7 @@ export class JobEntity {
 
   completed(at: Date): JobEntity {
     if (this.finished) return this;
+
     return new JobEntity({
       ...this.snapshot,
       status: 'completed',
@@ -96,6 +99,7 @@ export class JobEntity {
 
   failed(reason: string, willRetry: boolean, at: Date): JobEntity {
     if (this.finished) return this;
+
     return new JobEntity({
       ...this.snapshot,
       status: willRetry ? 'retrying' : 'failed',

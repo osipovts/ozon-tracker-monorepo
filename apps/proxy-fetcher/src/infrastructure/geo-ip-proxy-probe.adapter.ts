@@ -34,6 +34,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
     const checkedAt = new Date().toISOString();
     const startedAt = performance.now();
     const agent = this.createAgent(proxy);
+
     try {
       const body = await this.readBody(
         agent,
@@ -44,6 +45,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
       this.logger.verbose(
         `${proxy.server} alive: ${String(latencyMs)} ms, exit ${geo.ip} ${geo.country ?? '??'}`,
       );
+
       return {
         server: proxy.server,
         alive: true,
@@ -57,6 +59,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
       this.logger.verbose(
         `${proxy.server} dead: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
+
       return {
         server: proxy.server,
         alive: false,
@@ -73,8 +76,10 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
   private createAgent(proxy: ProxyEndpointEntity): Agent {
     const url = new URL(proxy.server);
     if (url.protocol === 'socks5:') return new SocksProxyAgent(url);
+
     url.username = proxy.username;
     url.password = proxy.password;
+
     return new HttpsProxyAgent(url);
   }
 
@@ -87,8 +92,10 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
           if (response.statusCode !== 200) {
             response.resume();
             reject(new Error('Unexpected status'));
+
             return;
           }
+
           let body = '';
           response.setEncoding('utf8');
           response.on('data', (chunk: string): void => {
@@ -101,6 +108,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
           response.on('error', reject);
         },
       );
+
       outgoing.on('error', reject);
       outgoing.end();
     });

@@ -41,6 +41,7 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
     this.worker.on('error', (error): void => {
       this.logger.error(`Queue ${queueNames.priceFetchResults} error: ${error.message}`);
     });
+
     this.logger.info(`Consuming ${queueNames.priceFetchResults}`);
   }
 
@@ -57,9 +58,11 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
       );
       throw new UnrecoverableError('Malformed price fetch result');
     }
+
     const message = parsed.data;
     const at = new Date();
     this.logger.verbose(`Result ${message.type} of job ${message.jobId}`);
+
     switch (message.type) {
       case 'job_started':
         return this.recordJobEvent.execute({ type: 'started', jobId: message.jobId, at });
@@ -87,6 +90,7 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
       case 'product_result':
         await this.recordResult.execute(this.toResult(message));
         await this.recordSessionOutcomes(message, at);
+
         return;
       case 'session_update':
         return this.recordSessionEvent.execute({
@@ -99,6 +103,7 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
         this.logger.warn(
           `Session ${message.sessionId} was created at ${message.expectedIp}, but the route exits at ${message.actualIp}`,
         );
+
         return this.recordSessionEvent.execute({
           type: 'stale',
           sessionId: message.sessionId,
@@ -112,6 +117,7 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
   private async recordSessionOutcomes(message: ProductResultType, at: Date): Promise<void> {
     for (const attempt of message.attempts) {
       if (attempt.sessionId === undefined) continue;
+
       if (attempt.result.status === 'challenge_required')
         await this.recordSessionEvent.execute({
           type: 'stale',
@@ -127,7 +133,9 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
   private toResult(message: ProductResultType): PriceResultInterface {
     for (const attempt of message.attempts) {
       if (!('snapshot' in attempt.result)) continue;
+
       const { snapshot, exitIp } = attempt.result;
+
       return {
         jobId: message.jobId,
         trackedProductId: message.trackedProductId,
@@ -141,6 +149,7 @@ export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicati
         },
       };
     }
+
     return {
       jobId: message.jobId,
       trackedProductId: message.trackedProductId,

@@ -13,6 +13,7 @@ export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
 
   save(job: JobEntity): Promise<void> {
     this.jobs.set(job.snapshot.id, job);
+
     return Promise.resolve();
   }
 
@@ -32,6 +33,7 @@ export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
       )
       .toSorted((a, b): number => b.snapshot.createdAt.getTime() - a.snapshot.createdAt.getTime());
     const start = (pagination.page - 1) * pagination.pageSize;
+
     return Promise.resolve({
       items: matching.slice(start, start + pagination.pageSize),
       total: matching.length,

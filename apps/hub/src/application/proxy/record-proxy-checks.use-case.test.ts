@@ -6,6 +6,7 @@ import { InMemoryProxyRepositoryAdapter } from '../../infrastructure/proxy/in-me
 import { RecordProxyChecksUseCase } from './record-proxy-checks.use-case.js';
 
 const server = 'socks5://217.71.230.103:1080';
+
 function check(overrides: Partial<ProxyCheckInterface>): ProxyCheckInterface {
   return {
     server,
@@ -21,7 +22,9 @@ function check(overrides: Partial<ProxyCheckInterface>): ProxyCheckInterface {
 
 void test('creates a proxy from its first check', async (): Promise<void> => {
   const repository = new InMemoryProxyRepositoryAdapter();
+
   await new RecordProxyChecksUseCase(repository).execute([check({})]);
+
   const [proxy] = await repository.findByServers([server]);
   assert.equal(proxy?.alive, true);
   assert.equal(proxy.latencyMs, 300);
@@ -32,8 +35,10 @@ void test('creates a proxy from its first check', async (): Promise<void> => {
 void test('keeps the last known location and latency when a proxy dies', async (): Promise<void> => {
   const repository = new InMemoryProxyRepositoryAdapter();
   const useCase = new RecordProxyChecksUseCase(repository);
+
   await useCase.execute([check({})]);
   await useCase.execute([check({ alive: false, latencyMs: null, country: null, exitIp: null })]);
+
   const [proxy] = await repository.findByServers([server]);
   assert.equal(proxy?.alive, false);
   assert.equal(proxy.country, 'RU');
@@ -44,11 +49,13 @@ void test('keeps the last known location and latency when a proxy dies', async (
 
 void test('applies several checks of one proxy in a batch in order', async (): Promise<void> => {
   const repository = new InMemoryProxyRepositoryAdapter();
+
   await new RecordProxyChecksUseCase(repository).execute([
     check({}),
     check({ latencyMs: 100 }),
     check({ alive: false, latencyMs: null }),
   ]);
+
   const [proxy] = await repository.findByServers([server]);
   assert.equal(proxy?.checksTotal, 3);
   assert.equal(proxy.checksAlive, 2);

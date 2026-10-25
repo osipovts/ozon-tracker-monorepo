@@ -42,6 +42,7 @@ export class ProxyEndpointEntity {
         'Proxy must use HTTP(S) or SOCKS5 with a public IPv4 and port; SOCKS5 authentication is unsupported',
       );
     }
+
     this.server = `${url.protocol}//${url.hostname}:${port}`;
     this.username = decodeURIComponent(url.username);
     this.password = decodeURIComponent(url.password);

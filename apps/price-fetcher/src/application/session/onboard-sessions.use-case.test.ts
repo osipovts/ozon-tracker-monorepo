@@ -24,18 +24,22 @@ function setup(servers: string[]): {
 } {
   const uploaded: CapturedSessionInterface[] = [];
   const closed: string[] = [];
+
   const hub: HubSessionsPort = {
     listProxiesWithoutSession: (): Promise<string[]> => Promise.resolve(servers),
     uploadSession: (captured): Promise<void> => {
       if (captured.proxy === rejected) return Promise.reject(new Error('HTTP 400'));
       uploaded.push(captured);
+
       return Promise.resolve();
     },
   };
+
   const capture: SessionCapturePort = {
     open: (proxy: ProxyEndpointEntity | null): Promise<SessionCaptureInterface> => {
       const server = proxy?.server ?? 'direct';
       if (server === dead) return Promise.reject(new Error('timeout'));
+
       return Promise.resolve({
         waitUntilPassed: (): Promise<void> => Promise.resolve(),
         export: (): Promise<CapturedSessionInterface> =>
@@ -52,11 +56,13 @@ function setup(servers: string[]): {
           }),
         close: (): Promise<void> => {
           closed.push(server);
+
           return Promise.resolve();
         },
       });
     },
   };
+
   return { useCase: new OnboardSessionsUseCase(hub, capture), uploaded, closed };
 }
 
@@ -69,14 +75,17 @@ void test('uploads a session per prepared proxy and explains every skipped one',
     'socks5://127.0.0.1:1080',
   ]);
   const steps: Array<[string, number, number]> = [];
+
   const summary = await useCase.execute(
     { marketplace: 'ozon', limit: 5 },
     new AbortController().signal,
     (step: CaptureStepInterface): Promise<CaptureDecisionType> => {
       steps.push([step.server, step.index, step.total]);
+
       return Promise.resolve(step.server === skipped ? 'skip' : 'save');
     },
   );
+
   assert.deepEqual(summary.ready, [working]);
   assert.deepEqual(
     summary.skipped.map((item): string => item.server),
@@ -101,11 +110,13 @@ void test('uploads a session per prepared proxy and explains every skipped one',
 
 void test('a time-out while waiting for the check skips the proxy', async (): Promise<void> => {
   const { useCase, uploaded } = setup([working]);
+
   const summary = await useCase.execute(
     { marketplace: 'ozon', limit: 1 },
     new AbortController().signal,
     (): Promise<CaptureDecisionType> => Promise.reject(new Error('The operation timed out')),
   );
+
   assert.deepEqual(summary.ready, []);
   assert.match(summary.skipped[0]?.reason ?? '', /timed out/);
   assert.equal(uploaded.length, 0);

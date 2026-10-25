@@ -30,6 +30,10 @@ export default defineConfig(
       'object-shorthand': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-template': 'error',
+      'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: '*', next: 'return' },
+      ],
     },
   },
 

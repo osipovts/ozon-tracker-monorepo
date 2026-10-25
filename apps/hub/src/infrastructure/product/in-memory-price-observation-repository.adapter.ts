@@ -15,6 +15,7 @@ export class InMemoryPriceObservationRepositoryAdapter implements PriceObservati
         saved.trackedProductId === observation.trackedProductId,
     );
     if (!duplicate) this.observations.push(observation);
+
     return Promise.resolve();
   }
 
@@ -24,6 +25,7 @@ export class InMemoryPriceObservationRepositoryAdapter implements PriceObservati
         const [latest] = this.observations
           .filter((observation): boolean => observation.trackedProductId === id)
           .toSorted((a, b): number => b.observedAt.getTime() - a.observedAt.getTime());
+
         return latest === undefined ? [] : [latest];
       }),
     );
@@ -37,6 +39,7 @@ export class InMemoryPriceObservationRepositoryAdapter implements PriceObservati
       .filter((observation): boolean => observation.trackedProductId === trackedProductId)
       .toSorted((a, b): number => b.observedAt.getTime() - a.observedAt.getTime());
     const start = (pagination.page - 1) * pagination.pageSize;
+
     return Promise.resolve({
       items: matching.slice(start, start + pagination.pageSize),
       total: matching.length,

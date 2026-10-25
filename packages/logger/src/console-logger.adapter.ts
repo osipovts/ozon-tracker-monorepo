@@ -11,6 +11,7 @@ const severities: Record<LogLevelType, number> = {
 
 export function parseLogLevel(value: string | undefined, fallback: LogLevelType): LogLevelType {
   const normalized = value?.trim().toLowerCase();
+
   return levels.find((level): boolean => level === normalized) ?? fallback;
 }
 
@@ -47,6 +48,7 @@ export class ConsoleLoggerAdapter implements LoggerPort {
 
   private write(level: LogLevelType, message: string): void {
     if (severities[level] > severities[this.level]) return;
+
     const line = `${new Date().toISOString()} ${level.toUpperCase().padEnd(7)} [${this.context}] ${message}`;
     if (severities[level] <= severities.warn) console.error(line);
     else console.log(line);

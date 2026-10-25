@@ -8,6 +8,7 @@ export class GetJobUseCase {
   async execute(jobId: string): Promise<JobEntity> {
     const job = await this.jobs.findById(jobId);
     if (job === null) throw new JobNotFoundError(jobId);
+
     return job;
   }
 }

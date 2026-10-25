@@ -30,6 +30,7 @@ export class ImportSessionUseCase {
       await this.sessions.delete(previous.snapshot.id);
       this.logger.info(`Session ${previous.snapshot.id} of ${routeKey} is replaced`);
     }
+
     const now = new Date();
     const session = new BrowserSessionEntity({
       ...input,
@@ -42,6 +43,7 @@ export class ImportSessionUseCase {
     this.logger.info(
       `Imported session ${input.id} of ${input.marketplace} for ${routeKey}, exit ${input.exitIp}, ${String(input.storageState.cookies.length)} cookies`,
     );
+
     return session;
   }
 }

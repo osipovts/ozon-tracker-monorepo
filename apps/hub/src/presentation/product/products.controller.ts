@@ -88,6 +88,7 @@ export class ProductsController {
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
   ): Promise<ProductListResponseType> {
     const page = await this.listProducts.execute({ page: query.page, pageSize: query.pageSize });
+
     return {
       items: page.items.map(({ product, latest }) => ({
         ...toProduct(product),
@@ -115,6 +116,7 @@ export class ProductsController {
   ): Promise<ProductType> {
     const { product, created } = await this.addProduct.execute(body.url);
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
+
     return toProduct(product);
   }
 
@@ -147,6 +149,7 @@ export class ProductsController {
       page: query.page,
       pageSize: query.pageSize,
     });
+
     return {
       product: toProduct(product),
       items: page.items.map(toObservation),

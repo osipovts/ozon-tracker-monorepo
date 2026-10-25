@@ -146,6 +146,7 @@ void test('validates job progress messages of both workers', (): void => {
     { type: 'job_done', jobId: uuid },
   ])
     assert.equal(priceFetchResultSchema.safeParse(message).success, true);
+
   for (const message of [
     { type: 'job_started', jobId: uuid },
     { type: 'job_progress', jobId: uuid, processed: 0, total: 20, succeeded: 0 },
@@ -153,6 +154,7 @@ void test('validates job progress messages of both workers', (): void => {
     { type: 'job_failed', jobId: uuid, reason: 'Source down', willRetry: false },
   ])
     assert.equal(proxyFetchResultSchema.safeParse(message).success, true);
+
   assert.equal(
     proxyFetchResultSchema.safeParse({
       type: 'proxy_checks',

@@ -13,9 +13,11 @@ void test('rejects private proxy destinations and unsupported protocols', (): vo
   ]) {
     assert.throws((): ProxyEndpointEntity => new ProxyEndpointEntity(input));
   }
+
   const proxy = new ProxyEndpointEntity('http://user:secret@217.71.230.103:8080');
   assert.equal(proxy.server, 'http://217.71.230.103:8080');
   assert.equal(proxy.password, 'secret');
+
   assert.equal(
     new ProxyEndpointEntity('http://217.71.230.103:80').server,
     'http://217.71.230.103:80',

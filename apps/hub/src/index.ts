@@ -15,6 +15,7 @@ try {
   const app = await NestFactory.create<NestExpressApplication>(AppModule.register(config, logger), {
     logger: new NestLoggerAdapter(logger),
   });
+
   // A session file carries the cookies and the local storage of the browser.
   app.useBodyParser('json', { limit: '10mb' });
   app.enableShutdownHooks();
@@ -32,6 +33,7 @@ try {
       ),
     { jsonDocumentUrl: 'docs/json' },
   );
+
   await app.listen(config.port);
   logger.info(
     `Listening on http://localhost:${String(config.port)} (docs: /docs), log level ${config.logLevel}`,

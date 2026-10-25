@@ -15,6 +15,7 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     return Promise.resolve(
       servers.flatMap((server): ProxyEntity[] => {
         const proxy = this.proxies.get(server);
+
         return proxy === undefined ? [] : [proxy];
       }),
     );
@@ -22,6 +23,7 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
 
   saveMany(proxies: ProxyEntity[]): Promise<void> {
     for (const proxy of proxies) this.proxies.set(proxy.server, proxy);
+
     return Promise.resolve();
   }
 
@@ -44,6 +46,7 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
           (a.latencyMs ?? Infinity) - (b.latencyMs ?? Infinity),
       );
     const start = (pagination.page - 1) * pagination.pageSize;
+
     return Promise.resolve({
       items: matching.slice(start, start + pagination.pageSize),
       total: matching.length,

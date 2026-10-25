@@ -26,20 +26,25 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
       help: { type: 'boolean', short: 'h' },
     },
   });
+
   if (values.help === true) {
     console.log(
       'Usage: pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
     );
+
     return;
   }
+
   const hubUrl = z.url({ protocol: /^https?$/ }).parse(values.hub);
   const limit = z.coerce.number().int().min(1).max(100).parse(values.limit);
   const waitMs = z.coerce.number().int().min(10_000).max(3_600_000).parse(values['wait-ms']);
   const timeoutMs = z.coerce.number().int().min(1000).max(600_000).parse(values['timeout-ms']);
+
   const logger = new ConsoleLoggerAdapter(
     parseLogLevel(process.env['LOG_LEVEL'], 'info'),
     'session-onboard',
   );
+
   const browser = await chromium.launch(
     new ChromiumLaunchAdapter().launchOptions({
       headed: true,
@@ -61,6 +66,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     ).execute({ marketplace: 'ozon', limit }, new AbortController().signal, (step) =>
       promptCapture(terminal, step, waitMs),
     );
+
     logger.info(
       `Done: ${String(summary.ready.length)} ready, ${String(summary.skipped.length)} skipped`,
     );

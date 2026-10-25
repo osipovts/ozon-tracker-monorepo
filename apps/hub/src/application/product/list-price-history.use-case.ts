@@ -17,6 +17,7 @@ export class ListPriceHistoryUseCase {
   ): Promise<{ product: TrackedProductEntity; page: PageInterface<PriceObservationInterface> }> {
     const product = await this.products.findById(productId);
     if (product === null) throw new ProductNotFoundError(productId);
+
     return { product, page: await this.observations.listByProduct(productId, pagination) };
   }
 }

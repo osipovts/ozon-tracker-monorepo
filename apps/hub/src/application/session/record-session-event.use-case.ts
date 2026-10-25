@@ -15,8 +15,10 @@ export class RecordSessionEventUseCase {
     if (session === null) {
       // The session may have been replaced or deleted while the job was running.
       this.logger.debug(`Ignoring a ${event.type} event of the unknown session ${event.sessionId}`);
+
       return;
     }
+
     await this.sessions.save(this.apply(session, event));
     this.logger.verbose(`Session ${event.sessionId}: ${event.type}`);
     if (event.type === 'stale')

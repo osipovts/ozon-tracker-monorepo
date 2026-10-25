@@ -37,16 +37,21 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
       viewport: null,
       ...this.chromium.proxyOptions(proxy),
     });
+
     context.setDefaultNavigationTimeout(this.navigationTimeoutMs);
+
     try {
       const page = await context.newPage();
       await page.goto('https://ipinfo.io/json', { waitUntil: 'domcontentloaded' });
       const geo = geoSchema.parse(JSON.parse(await page.locator('body').innerText()));
       this.logger.debug(`Exit IP ${geo.ip} ${geo.country ?? '??'}`);
+
       // The workers only accept Russian exits through a proxy.
       if (proxy !== null && geo.country !== 'RU')
         throw new Error(`the exit ${geo.ip} is not in Russia (${geo.country ?? 'unknown'})`);
+
       await page.goto('https://www.ozon.ru/', { waitUntil: 'domcontentloaded' });
+
       return this.capture(context, page, proxy, geo.ip);
     } catch (error: unknown) {
       await context.close();
@@ -65,11 +70,14 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
         for (;;) {
           signal.throwIfAborted();
           if (page.isClosed()) throw new Error('the window was closed');
+
           if (await this.passed(page)) {
             this.logger.debug('The site shows its pages: the check is passed');
             await setTimeout(settleMs, undefined, { signal });
+
             return;
           }
+
           await setTimeout(pollIntervalMs, undefined, { signal });
         }
       },
@@ -98,6 +106,7 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
         body: window.document.body.innerText.slice(0, 4000),
         widgets: window.document.querySelectorAll('[data-widget]').length,
       }));
+
       return (
         state.widgets > 0 &&
         !this.parser.isChallenge({

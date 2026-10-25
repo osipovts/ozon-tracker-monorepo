@@ -64,6 +64,7 @@ export class PrismaPriceObservationRepositoryAdapter implements PriceObservation
       orderBy: [{ trackedProductId: 'asc' }, { observedAt: 'desc' }],
       distinct: ['trackedProductId'],
     });
+
     return rows.map(toObservation);
   }
 
@@ -80,6 +81,7 @@ export class PrismaPriceObservationRepositoryAdapter implements PriceObservation
       }),
       this.prisma.priceObservation.count({ where: { trackedProductId } }),
     ]);
+
     return { items: rows.map(toObservation), total };
   }
 }

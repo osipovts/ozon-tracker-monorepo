@@ -41,17 +41,21 @@ const products = new InMemoryTrackedProductRepositoryAdapter();
 const observations = new InMemoryPriceObservationRepositoryAdapter();
 const jobs = new InMemoryJobRepositoryAdapter();
 const sessions = new InMemoryBrowserSessionRepositoryAdapter();
+
 const queued: unknown[] = [];
 const queue: JobQueuePort = {
   enqueueProxyFetch: (request): Promise<void> => {
     queued.push(request);
+
     return Promise.resolve();
   },
   enqueuePriceFetch: (request): Promise<void> => {
     queued.push(request);
+
     return Promise.resolve();
   },
 };
+
 let app: INestApplication;
 let baseUrl: string;
 
@@ -97,10 +101,12 @@ before(async (): Promise<void> => {
       },
     ],
   }).compile();
+
   app = moduleRef.createNestApplication();
   await app.listen(0);
   baseUrl = await app.getUrl();
 });
+
 after(async (): Promise<void> => {
   await app.close();
 });
@@ -112,6 +118,7 @@ async function call(
   const response = await fetch(`${baseUrl}${path}`, init);
   const body: unknown = await response.json();
   assert.ok(typeof body === 'object' && body !== null);
+
   return { status: response.status, body: Object.fromEntries(Object.entries(body)) };
 }
 
@@ -129,12 +136,15 @@ const productUrl = 'https://www.ozon.ru/product/4775581891/';
 async function addProduct(): Promise<string> {
   const added = await call('/products', post({ url: productUrl }));
   assert.ok(added.status === 201 || added.status === 200);
+
   return String(added.body['id']);
 }
 
 void test('adds a product without proxies but refuses to read its price', async (): Promise<void> => {
   const id = await addProduct();
+
   const response = await call(`/products/${id}/prices`, post());
+
   assert.equal(response.status, 409);
   assert.equal(queued.length, 0);
 });
@@ -143,6 +153,7 @@ void test('queues a proxy source refresh with defaults, with and without a body'
   const withoutBody = await call('/proxy-sources/github-free-proxy-list/refresh', post());
   assert.equal(withoutBody.status, 202);
   assert.equal(typeof withoutBody.body['jobId'], 'string');
+
   const withBody = await call(
     '/proxy-sources/github-free-proxy-list/refresh',
     post({ maxCandidates: 10 }),
@@ -152,6 +163,7 @@ void test('queues a proxy source refresh with defaults, with and without a body'
     queued.slice(-2).map((request) => request),
     [expectRequest(withoutBody.body['jobId'], 200), expectRequest(withBody.body['jobId'], 10)],
   );
+
   assert.equal((await call('/proxy-sources/unknown/refresh', post())).status, 400);
   assert.equal(
     (await call('/proxy-sources/github-free-proxy-list/refresh', post({ maxCandidates: 0 })))
@@ -186,6 +198,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
         ),
     ),
   );
+
   const alive = await call('/proxies?pageSize=1');
   assert.equal(alive.status, 200);
   assert.equal(alive.body['total'], 2);
@@ -205,6 +218,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
       session: null,
     },
   ]);
+
   assert.equal((await call('/proxies?alive=false')).body['total'], 1);
   assert.equal((await call('/proxies?country=US')).body['total'], 0);
   assert.equal((await call('/proxies?pageSize=1000')).status, 400);
@@ -225,11 +239,14 @@ void test('tracks a product once whatever the link and lists it with its newest 
     lastStatus: null,
     lastCheckedAt: null,
   });
+
   const created = await call('/products', post({ url: 'https://ozon.ru/product/1/' }));
   assert.equal(created.status, 201);
+
   const list = await call('/products?pageSize=10');
   assert.equal(list.status, 200);
   assert.equal(list.body['total'], 2);
+
   const items: unknown = list.body['items'];
   assert.ok(Array.isArray(items));
   // The newest product comes first; nothing has been read yet.
@@ -259,6 +276,7 @@ void test('queues a read of the fresh price and serves an empty history meanwhil
     products: [{ trackedProductId: id, url: productUrl }],
     timeoutMs: 30000,
   });
+
   const history = await call(`/products/${id}/prices`);
   assert.equal(history.status, 200);
   assert.deepEqual(history.body, {
@@ -298,8 +316,10 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     '/sessions',
     '/sessions/{id}',
   ]);
+
   assert.ok(document.paths['/sessions']?.post?.requestBody);
   assert.ok(document.paths['/jobs/{id}']?.get?.responses['200']);
+
   const prices = document.paths['/products/{id}/prices']?.get;
   assert.deepEqual(
     prices?.parameters
@@ -307,6 +327,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
       .toSorted(),
     ['id', 'page', 'pageSize'],
   );
+
   const proxiesGet = document.paths['/proxies']?.get;
   assert.deepEqual(
     proxiesGet?.parameters
@@ -315,6 +336,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     ['alive', 'country', 'marketplace', 'page', 'pageSize', 'ready'],
   );
   assert.ok(proxiesGet.responses['200']);
+
   const add = document.paths['/products']?.post;
   assert.deepEqual(Object.keys(add?.responses ?? {}).toSorted(), ['200', '201', '400']);
   assert.ok(add?.requestBody);
@@ -354,10 +376,12 @@ void test('imports, lists and deletes a session without exposing its cookies', a
   assert.equal(imported.body['status'], 'active');
   assert.equal(imported.body['cookies'], 1);
   assert.equal(JSON.stringify(imported.body).includes('secret'), false);
+
   const list = await call('/sessions');
   assert.equal(list.body['total'], 1);
   assert.equal(JSON.stringify(list.body).includes('secret'), false);
   assert.equal((await call('/sessions', post({ ...sessionFile, marketplace: 'x' }))).status, 400);
+
   const id = sessionFile.session.id;
   assert.equal((await fetch(`${baseUrl}/sessions/${id}`, { method: 'DELETE' })).status, 204);
   assert.equal((await call(`/sessions/${id}`, { method: 'DELETE' })).status, 404);
@@ -368,6 +392,7 @@ void test('the queued session goes to the worker first, then the job reports its
   const productId = await addProduct();
   const queuedProduct = await call(`/products/${productId}/prices`, post());
   assert.equal(queuedProduct.status, 202);
+
   const request = queued.at(-1);
   assert.ok(typeof request === 'object' && request !== null && 'routes' in request);
   assert.ok(Array.isArray(request.routes));
@@ -375,6 +400,7 @@ void test('the queued session goes to the worker first, then the job reports its
     server: sessionFile.proxy,
     session: { ...sessionFile.session },
   });
+
   const jobId = String(queuedProduct.body['jobId']);
   const queuedJob = await call(`/jobs/${jobId}`);
   assert.equal(queuedJob.status, 200);
@@ -382,6 +408,7 @@ void test('the queued session goes to the worker first, then the job reports its
   assert.equal(queuedJob.body['percent'], 0);
   assert.equal(queuedJob.body['kind'], 'price_fetch');
   assert.equal(queuedJob.body['subject'], productId);
+
   const events = new RecordJobEventUseCase(jobs);
   await events.execute({
     type: 'progress',
@@ -390,10 +417,12 @@ void test('the queued session goes to the worker first, then the job reports its
     progress: { processed: 1, total: 1, succeeded: 1 },
   });
   await events.execute({ type: 'completed', jobId, at: new Date() });
+
   const done = await call(`/jobs/${jobId}`);
   assert.equal(done.body['status'], 'completed');
   assert.equal(done.body['percent'], 100);
   assert.equal(typeof done.body['finishedAt'], 'string');
+
   const listed = await call('/jobs?kind=price_fetch&status=completed');
   assert.equal(listed.body['total'], 1);
   assert.equal((await call('/jobs?status=unknown')).status, 400);
@@ -403,9 +432,11 @@ void test('the queued session goes to the worker first, then the job reports its
 void test('a proxy becomes ready once it has an active session', async (): Promise<void> => {
   const server = 'socks5://217.71.230.1:1080';
   const id = '1c7f2a90-34b1-4c4f-8f55-5a5f6f1e2e44';
+
   const before = await call('/proxies?ready=false');
   assert.ok(Array.isArray(before.body['items']));
   assert.ok(JSON.stringify(before.body['items']).includes(server));
+
   const imported = await call(
     '/sessions',
     post({
@@ -415,10 +446,12 @@ void test('a proxy becomes ready once it has an active session', async (): Promi
     }),
   );
   assert.equal(imported.status, 201);
+
   const notReady = await call('/proxies?ready=false');
   assert.equal(JSON.stringify(notReady.body['items']).includes(server), false);
   const ready = await call('/proxies?ready=true');
   assert.equal(ready.body['total'], 1);
+
   const items: unknown = ready.body['items'];
   assert.ok(Array.isArray(items));
   const item: unknown = items[0];

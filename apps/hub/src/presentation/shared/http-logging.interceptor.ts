@@ -25,13 +25,16 @@ export class HttpLoggingInterceptor implements NestInterceptor {
     const startedAt = performance.now();
     const label = `${request.method} ${request.originalUrl}`;
     this.logger.verbose(`--> ${label}`);
+
     const done = (status: number, error?: unknown): void => {
       const line = `<-- ${label} ${String(status)} ${String(Math.round(performance.now() - startedAt))} ms`;
+
       if (status >= 500)
         this.logger.error(`${line}: ${error instanceof Error ? error.message : 'unknown error'}`);
       else if (status >= 400) this.logger.warn(line);
       else this.logger.verbose(line);
     };
+
     return next.handle().pipe(
       tap({
         complete: (): void => {
@@ -47,6 +50,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
   private statusOf(error: unknown): number {
     if (error instanceof HttpException) return error.getStatus();
     if (error instanceof ApplicationError) return applicationErrorStatuses[error.kind];
+
     return 500;
   }
 }

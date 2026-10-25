@@ -15,6 +15,7 @@ function setup(): {
   observations: InMemoryPriceObservationRepositoryAdapter;
 } {
   const products = new InMemoryTrackedProductRepositoryAdapter();
+
   return {
     add: new AddProductUseCase(
       new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
@@ -27,10 +28,12 @@ function setup(): {
 
 void test('tracks a product once whatever the link to it', async (): Promise<void> => {
   const { add } = setup();
+
   const first = await add.execute('https://www.ozon.ru/product/asus-4775581891/?sh=share');
   assert.equal(first.created, true);
   assert.equal(first.product.url, 'https://www.ozon.ru/product/4775581891/');
   assert.equal(first.product.externalId, '4775581891');
+
   const second = await add.execute('https://ozon.ru/product/4775581891/');
   assert.equal(second.created, false);
   assert.equal(second.product.id, first.product.id);
@@ -39,6 +42,7 @@ void test('tracks a product once whatever the link to it', async (): Promise<voi
 
 void test('lists products, the newest first, with their newest observation', async (): Promise<void> => {
   const { add, products, observations } = setup();
+
   const older = (await add.execute('https://www.ozon.ru/product/1/')).product;
   const newer = (await add.execute('https://www.ozon.ru/product/2/')).product;
   for (const [day, amountMinor] of [
@@ -57,10 +61,12 @@ void test('lists products, the newest first, with their newest observation', asy
       exitIp: null,
     });
   }
+
   const page = await new ListProductsUseCase(products, observations).execute({
     page: 1,
     pageSize: 10,
   });
+
   assert.equal(page.total, 2);
   assert.deepEqual(
     page.items.map((item): [string, number | undefined] => [

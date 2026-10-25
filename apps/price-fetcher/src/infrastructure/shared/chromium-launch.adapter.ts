@@ -7,7 +7,7 @@ export interface ChromiumLaunchSettingsInterface {
   executablePath?: string;
 }
 
-/** Browser settings shared by the CLI, the worker and the session creation. */
+/** Browser settings shared by the worker and the session onboarding. */
 export class ChromiumLaunchAdapter {
   launchOptions(settings: ChromiumLaunchSettingsInterface): LaunchOptions {
     return {

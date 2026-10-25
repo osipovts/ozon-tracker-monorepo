@@ -16,6 +16,7 @@ import {
 
 function toJob(job: JobEntity): JobType {
   const { createdAt, startedAt, finishedAt, ...rest } = job.snapshot;
+
   return {
     ...rest,
     percent: job.percent,
@@ -46,6 +47,7 @@ export class JobsController {
       },
       { page: query.page, pageSize: query.pageSize },
     );
+
     return {
       items: page.items.map(toJob),
       page: query.page,

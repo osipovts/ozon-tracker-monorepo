@@ -19,7 +19,9 @@ void test('stops at a challenge instead of rotating proxies or claiming out-of-s
       return Promise.resolve({ status: 'challenge_required' });
     },
   });
+
   const result = await useCase.execute(reference, [proxy, proxy], new AbortController().signal);
+
   assert.equal(calls, 1);
   assert.equal(result.status, 'challenge_required');
 });
@@ -35,7 +37,9 @@ void test('a null route makes a direct attempt', async (): Promise<void> => {
       return Promise.resolve({ status: 'network_error' });
     },
   });
+
   const result = await useCase.execute(reference, [null], new AbortController().signal);
+
   assert.deepEqual(result.attempts, [{ proxy: null, result: { status: 'network_error' } }]);
   assert.equal(result.status, 'network_error');
 });
@@ -46,6 +50,8 @@ void test('reports no proxies without routes', async (): Promise<void> => {
       throw new Error('Must not read');
     },
   });
+
   const result = await useCase.execute(reference, [], new AbortController().signal);
+
   assert.deepEqual(result, { status: 'no_proxies', attempts: [] });
 });

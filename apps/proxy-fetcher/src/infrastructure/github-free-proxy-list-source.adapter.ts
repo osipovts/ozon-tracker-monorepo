@@ -19,9 +19,11 @@ export class GithubFreeProxyListSourceAdapter implements ProxySourcePort {
       },
     );
     if (!response.ok) throw new Error(`Proxy list returned HTTP ${String(response.status)}`);
+
     const lines = new Set(
       (await response.text()).split(/\r?\n/).map((value): string => value.trim()),
     );
+
     const candidates: ProxyEndpointEntity[] = [];
     for (const line of lines) {
       try {
@@ -30,9 +32,11 @@ export class GithubFreeProxyListSourceAdapter implements ProxySourcePort {
         continue;
       }
     }
+
     this.logger.debug(
       `Proxy list: ${String(lines.size)} unique lines, ${String(candidates.length)} usable`,
     );
+
     return candidates;
   }
 }

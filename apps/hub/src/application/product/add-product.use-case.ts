@@ -20,8 +20,10 @@ export class AddProductUseCase {
     } catch {
       throw new UnsupportedProductUrlError();
     }
+
     const existing = await this.products.findByExternalId(reference.marketplace, reference.id);
     if (existing !== null) return { product: existing, created: false };
+
     const product = await this.products.upsert({
       marketplace: reference.marketplace,
       externalId: reference.id,
@@ -30,6 +32,7 @@ export class AddProductUseCase {
     this.logger.info(
       `Tracking ${reference.marketplace} ${reference.id} as product ${product.id}: ${product.url}`,
     );
+
     return { product, created: true };
   }
 }

@@ -39,10 +39,12 @@ export class OzonProductParser {
     let title = page.heading;
     const prices: PriceObservationInterface[] = [];
     let availability: ProductSnapshotInterface['availability'] = 'unknown';
+
     for (const text of page.structuredData) {
       for (const value of this.readStructuredData(text)) {
         const product = productSchema.safeParse(value);
         if (!product.success) continue;
+
         if (product.data.sku !== undefined) {
           if (String(product.data.sku) !== reference.id) continue;
         } else {
@@ -56,6 +58,7 @@ export class OzonProductParser {
             continue;
           }
         }
+
         title ||= product.data.name;
         const offers =
           product.data.offers === undefined
@@ -63,16 +66,19 @@ export class OzonProductParser {
             : Array.isArray(product.data.offers)
               ? product.data.offers
               : [product.data.offers];
+
         // Multiple offers may refer to other sellers: do not select their minimum.
         if (offers.length !== 1) continue;
         const offer = offers[0];
         if (offer === undefined) continue;
+
         const amount = this.parseAmount(String(offer.price));
         if (amount !== null) prices.push({ amountMinor: amount, currency: 'RUB' });
         if (offer.availability?.endsWith('/InStock') === true) availability = 'in_stock';
         if (offer.availability?.endsWith('/OutOfStock') === true) availability = 'out_of_stock';
       }
     }
+
     const widgetPrices: PriceObservationInterface[] = [];
     let previousEnd = 0;
     for (const match of page.priceText.matchAll(moneyPattern)) {
@@ -80,21 +86,27 @@ export class OzonProductParser {
       const preceding = page.priceText.slice(previousEnd, match.index);
       previousEnd = match.index + match[0].length;
       const following = page.priceText.slice(match.index + match[0].length).trimStart();
+
       if (
         amount === null ||
         /тамож|пошлин|доставк|бонус|кешбэк/i.test(preceding) ||
         /^(?:\/\s*мес|в месяц|за месяц)/i.test(following)
       )
         continue;
+
       widgetPrices.push({ amountMinor: amount, currency: 'RUB' });
     }
+
     // Prefer rendered prices over possibly stale structured markup.
     if (widgetPrices.length > 0) prices.splice(0, prices.length, ...widgetPrices);
+
     const purchase = page.purchaseText;
     if (/нет в наличии|товар закончился|узнать о поступлении/i.test(purchase))
       availability = 'out_of_stock';
     else if (/в корзину|купить сейчас/i.test(purchase)) availability = 'in_stock';
+
     if (title === '' || (prices.length === 0 && availability !== 'out_of_stock')) return null;
+
     return {
       title,
       observedAt: new Date().toISOString(),
@@ -106,7 +118,9 @@ export class OzonProductParser {
   private parseAmount(input: string): number | null {
     const normalized = input.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
     if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+
     const amount = Math.round(Number(normalized) * 100);
+
     return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
   }
 
@@ -114,7 +128,9 @@ export class OzonProductParser {
     try {
       const value: unknown = JSON.parse(text);
       if (Array.isArray(value)) return z.array(z.unknown()).parse(value);
+
       const graph = graphSchema.safeParse(value);
+
       return graph.success ? graph.data['@graph'] : [value];
     } catch {
       return [];

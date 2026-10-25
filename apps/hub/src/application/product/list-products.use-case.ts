@@ -30,6 +30,7 @@ export class ListProductsUseCase {
         observation,
       ]),
     );
+
     return {
       items: page.items.map((product): ProductWithLatestInterface => ({
         product,

@@ -43,11 +43,14 @@ void test('reports the progress of a job from start to finish', async (): Promis
       },
     ]);
   }, published);
+
   await controller.handle(job, new AbortController().signal);
+
   assert.deepEqual(
     published.map((message): string => message.type),
     ['job_started', 'job_progress', 'proxy_checks', 'job_progress', 'job_done'],
   );
+
   assert.deepEqual(published[1], {
     type: 'job_progress',
     jobId,
@@ -69,7 +72,9 @@ void test('reports a failing source as a failed job and tells whether it is retr
   const controller = createController((): Promise<void> => {
     throw new Error('source down');
   }, published);
+
   await assert.rejects(controller.handle(job, new AbortController().signal, true));
+
   const failure = published.at(-1);
   assert.ok(failure?.type === 'job_failed');
   assert.equal(failure.reason, 'source down');
@@ -78,6 +83,7 @@ void test('reports a failing source as a failed job and tells whether it is retr
 
 void test('rejects a malformed job', async (): Promise<void> => {
   const controller = createController((): Promise<void> => Promise.resolve(), []);
+
   await assert.rejects(
     controller.handle({ jobId: 'nope' }, new AbortController().signal),
     InvalidProxyFetchJobError,

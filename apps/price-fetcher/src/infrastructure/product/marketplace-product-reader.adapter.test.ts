@@ -12,10 +12,12 @@ void test('delegates reading to the reader of the reference marketplace', async 
       read: (): Promise<ReadProductResultType> => Promise.resolve({ status: 'parse_error' }),
     },
   });
+
   const result = await reader.read(
     new ProductReferenceEntity('ozon', '1', 'https://www.ozon.ru/product/1/'),
     null,
     new AbortController().signal,
   );
+
   assert.equal(result.status, 'parse_error');
 });

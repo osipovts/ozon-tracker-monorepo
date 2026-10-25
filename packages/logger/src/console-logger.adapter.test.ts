@@ -8,18 +8,21 @@ function capture(run: () => void): { out: string[]; err: string[] } {
   const err: string[] = [];
   const log = console.log;
   const error = console.error;
+
   console.log = (line: string): void => {
     out.push(line);
   };
   console.error = (line: string): void => {
     err.push(line);
   };
+
   try {
     run();
   } finally {
     console.log = log;
     console.error = error;
   }
+
   return { out, err };
 }
 
@@ -32,6 +35,7 @@ void test('writes messages up to the level and routes errors to stderr', (): voi
     logger.debug('d');
     logger.verbose('hidden');
   });
+
   assert.equal(err.length, 2);
   assert.equal(out.length, 2);
   assert.match(out[0] ?? '', /^\d{4}-\d\d-\d\dT[\d:.]+Z INFO\s+\[app:queue\] i$/);

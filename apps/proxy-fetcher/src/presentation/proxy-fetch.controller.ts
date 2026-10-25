@@ -80,6 +80,7 @@ export class ProxyFetchController {
     let succeeded = 0;
     const reportProgress = (): Promise<void> =>
       this.publish({ type: 'job_progress', jobId: job.jobId, processed, total, succeeded });
+
     const listener: RefreshProxySourceListenerInterface = {
       onCandidates: async (candidates): Promise<void> => {
         total = candidates;

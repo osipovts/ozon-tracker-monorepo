@@ -40,6 +40,7 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
       routeKey: session.routeKey,
       storageState: storageStateSchema.parse(storageState),
     };
+
     await this.prisma.browserSession.upsert({
       where: { id },
       create: { id, ...data },
@@ -49,6 +50,7 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
 
   async findById(id: string): Promise<BrowserSessionEntity | null> {
     const row = await this.prisma.browserSession.findUnique({ where: { id } });
+
     return row === null ? null : toEntity(row);
   }
 
@@ -56,11 +58,13 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
     const row = await this.prisma.browserSession.findUnique({
       where: { marketplaceRouteKey: { marketplace, routeKey } },
     });
+
     return row === null ? null : toEntity(row);
   }
 
   async listByMarketplace(marketplace: string): Promise<BrowserSessionEntity[]> {
     const rows = await this.prisma.browserSession.findMany({ where: { marketplace } });
+
     return rows.map(toEntity);
   }
 
@@ -69,6 +73,7 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
       where: { marketplace, status: 'active' },
       orderBy: { updatedAt: 'desc' },
     });
+
     return rows.map(toEntity);
   }
 
@@ -81,11 +86,13 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
       }),
       this.prisma.browserSession.count(),
     ]);
+
     return { items: rows.map(toEntity), total };
   }
 
   async delete(id: string): Promise<boolean> {
     const { count } = await this.prisma.browserSession.deleteMany({ where: { id } });
+
     return count > 0;
   }
 }

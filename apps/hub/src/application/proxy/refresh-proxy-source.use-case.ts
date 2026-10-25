@@ -26,15 +26,18 @@ export class RefreshProxySourceUseCase {
     const jobId = randomUUID();
     const job = JobEntity.queued(jobId, 'proxy_fetch', source, null, new Date());
     await this.jobs.save(job);
+
     try {
       await this.queue.enqueueProxyFetch({ jobId, source, ...options });
     } catch (error: unknown) {
       await this.jobs.save(job.failed('Could not be queued', false, new Date()));
       throw error;
     }
+
     this.logger.info(
       `Queued proxy refresh ${jobId}: ${source}, up to ${String(options.maxCandidates)} candidates`,
     );
+
     return { jobId };
   }
 }

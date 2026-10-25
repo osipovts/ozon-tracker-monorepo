@@ -33,6 +33,7 @@ export class ProxiesController {
       },
       { page: query.page, pageSize: query.pageSize },
     );
+
     return {
       items: page.items.map(({ proxy, session, ready }) => ({
         server: proxy.server,

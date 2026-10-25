@@ -32,11 +32,14 @@ export class RequestPriceObservationUseCase {
   async execute(productId: string): Promise<{ jobId: string }> {
     const product = await this.products.findById(productId);
     if (product === null) throw new ProductNotFoundError(productId);
+
     const routes = await this.chooseRoutes(product.marketplace);
     if (routes.length === 0) throw new NoProxiesAvailableError();
+
     const jobId = randomUUID();
     const job = JobEntity.queued(jobId, 'price_fetch', product.id, 1, new Date());
     await this.jobs.save(job);
+
     try {
       await this.queue.enqueuePriceFetch({
         jobId,
@@ -48,6 +51,7 @@ export class RequestPriceObservationUseCase {
       await this.jobs.save(job.failed('Could not be queued', false, new Date()));
       throw error;
     }
+
     this.logger.info(
       `Queued price observation ${jobId} of ${product.marketplace} ${product.externalId} (product ${product.id}) via ${String(routes.length)} routes: ${routes
         .map(
@@ -56,6 +60,7 @@ export class RequestPriceObservationUseCase {
         )
         .join(', ')}`,
     );
+
     return { jobId };
   }
 
@@ -72,15 +77,18 @@ export class RequestPriceObservationUseCase {
         },
       }),
     );
+
     const taken = new Set(routes.map((route): string | null => route.server));
     // The workers accept Russian exits only: other proxies would be rejected anyway.
     const best = await this.proxies.list(
       { alive: true, country: 'RU' },
       { page: 1, pageSize: this.settings.proxyCount },
     );
+
     for (const proxy of best.items) {
       if (!taken.has(proxy.server)) routes.push({ server: proxy.server, session: null });
     }
+
     return routes;
   }
 }

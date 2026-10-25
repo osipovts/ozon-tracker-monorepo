@@ -20,6 +20,7 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   logLevel: 'error',
 };
+
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 
 void test('stores the checks of a source and ignores its completion message', async (): Promise<void> => {
@@ -30,6 +31,7 @@ void test('stores the checks of a source and ignores its completion message', as
     config,
     silentLogger,
   );
+
   await consumer.handle({
     type: 'proxy_checks',
     jobId,
@@ -53,6 +55,7 @@ void test('stores the checks of a source and ignores its completion message', as
       },
     ],
   });
+
   const page = await repository.list({}, { page: 1, pageSize: 10 });
   assert.deepEqual(
     page.items.map((proxy): [string, boolean] => [proxy.server, proxy.alive]),
@@ -70,6 +73,7 @@ void test('rejects a malformed message for good', async (): Promise<void> => {
     config,
     silentLogger,
   );
+
   await assert.rejects(consumer.handle({ type: 'proxy_checks', checks: 1 }), UnrecoverableError);
 });
 
@@ -84,6 +88,7 @@ void test('tracks the progress of a proxy job until it is done', async (): Promi
     config,
     silentLogger,
   );
+
   await consumer.handle({ type: 'job_started', jobId });
   await consumer.handle({
     type: 'job_progress',
@@ -92,13 +97,16 @@ void test('tracks the progress of a proxy job until it is done', async (): Promi
     total: 20,
     succeeded: 2,
   });
+
   const running = await jobs.findById(jobId);
   assert.deepEqual(
     running && [running.snapshot.status, running.percent, running.snapshot.succeeded],
     ['running', 25, 2],
   );
+
   await consumer.handle({ type: 'job_failed', jobId, reason: 'Source down', willRetry: true });
   assert.equal((await jobs.findById(jobId))?.snapshot.status, 'retrying');
+
   await consumer.handle({ type: 'job_done', jobId });
   const done = await jobs.findById(jobId);
   assert.deepEqual(done && [done.snapshot.status, done.percent], ['completed', 100]);

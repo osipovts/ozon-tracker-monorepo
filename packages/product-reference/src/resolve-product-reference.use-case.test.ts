@@ -17,12 +17,14 @@ void test('returns the reference from the first parser that recognizes the link'
   const reference = new ResolveProductReferenceUseCase([ozonParser]).execute(
     'https://www.ozon.ru/product/1/',
   );
+
   assert.equal(reference.marketplace, 'ozon');
   assert.equal(reference.id, '1');
 });
 
 void test('rejects malformed and unsupported links', (): void => {
   const useCase = new ResolveProductReferenceUseCase([ozonParser]);
+
   assert.throws((): ProductReferenceEntity => useCase.execute('not a url'));
   assert.throws((): ProductReferenceEntity => useCase.execute('https://example.com/product/1/'));
 });

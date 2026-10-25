@@ -10,6 +10,7 @@ export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRe
 
   save(session: BrowserSessionEntity): Promise<void> {
     this.sessions.set(session.snapshot.id, session);
+
     return Promise.resolve();
   }
 
@@ -51,6 +52,7 @@ export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRe
       (a, b): number => b.snapshot.createdAt.getTime() - a.snapshot.createdAt.getTime(),
     );
     const start = (pagination.page - 1) * pagination.pageSize;
+
     return Promise.resolve({
       items: all.slice(start, start + pagination.pageSize),
       total: all.length,

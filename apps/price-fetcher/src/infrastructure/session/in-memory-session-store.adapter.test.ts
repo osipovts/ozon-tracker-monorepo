@@ -28,6 +28,7 @@ void test('finds a session by route, including the direct one', (): void => {
   const store = new InMemorySessionStoreAdapter([{ proxy, session }]);
   assert.equal(store.find(proxy), session);
   assert.equal(store.find(null), null);
+
   const direct = new InMemorySessionStoreAdapter([{ proxy: null, session }]);
   assert.equal(direct.find(null), session);
   assert.equal(direct.find(proxy), null);
@@ -38,17 +39,22 @@ void test('reports only changed states, ignoring the order of cookies', (): void
   const store = new InMemorySessionStoreAdapter([
     { proxy, session: { ...session, storageState: { cookies: [cookie, other], origins: [] } } },
   ]);
+
   store.update(session.id, { cookies: [other, cookie], origins: [] });
   assert.deepEqual(store.drainUpdates(), []);
+
   const changed = { cookies: [{ ...cookie, value: 'v2' }, other], origins: [] };
   store.update(session.id, changed);
+
   assert.deepEqual(store.drainUpdates(), [{ sessionId: session.id, storageState: changed }]);
   assert.deepEqual(store.drainUpdates(), []);
 });
 
 void test('reports an exit address mismatch once', (): void => {
   const store = new InMemorySessionStoreAdapter([{ proxy, session }]);
+
   store.reject(session.id, '198.51.100.7');
+
   assert.deepEqual(store.drainMismatches(), [
     { sessionId: session.id, expectedIp: '217.71.230.103', actualIp: '198.51.100.7' },
   ]);

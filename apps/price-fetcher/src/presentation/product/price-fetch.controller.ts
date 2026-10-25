@@ -45,12 +45,14 @@ export class PriceFetchController {
       );
       throw new InvalidPriceFetchJobError('Malformed price fetch job');
     }
+
     const job = parsed.data;
     const startedAt = performance.now();
     this.logger.info(
       `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes (${String(job.proxies.filter((route): boolean => route.session !== undefined).length)} with a session), timeout ${String(job.timeoutMs)} ms`,
     );
     await this.publish({ type: 'job_started', jobId: job.jobId });
+
     try {
       await this.process(job, signal, startedAt);
     } catch (error: unknown) {
@@ -91,6 +93,7 @@ export class PriceFetchController {
       candidates.push(proxy);
       if (route.session !== undefined) sessionRoutes.push({ proxy, session: route.session });
     }
+
     const sessions = new InMemorySessionStoreAdapter(sessionRoutes);
     const useCase = new GetProductSnapshotUseCase(
       this.createReader(sessions, job.timeoutMs),
@@ -108,8 +111,10 @@ export class PriceFetchController {
         succeeded,
       });
     await reportProgress();
+
     for (const product of job.products) {
       signal.throwIfAborted();
+
       let reference: ProductReferenceEntity;
       try {
         reference = this.resolveReference.execute(product.url);
@@ -120,6 +125,7 @@ export class PriceFetchController {
         await reportProgress();
         continue;
       }
+
       this.logger.info(
         `Product ${product.trackedProductId} (${reference.marketplace} ${reference.id}): reading`,
       );
@@ -127,6 +133,7 @@ export class PriceFetchController {
       this.logger.info(
         `Product ${product.trackedProductId}: ${result.status} after ${String(result.attempts.length)} attempts`,
       );
+
       await this.publish({
         type: 'product_result',
         jobId: job.jobId,
@@ -142,6 +149,7 @@ export class PriceFetchController {
           };
         }),
       });
+
       processed += 1;
       if (result.status === 'success' || result.status === 'partial') succeeded += 1;
       await reportProgress();
@@ -152,12 +160,14 @@ export class PriceFetchController {
       this.logger.info(`Session ${update.sessionId}: refreshed state is reported`);
       await this.publish({ type: 'session_update', jobId: job.jobId, observedAt, ...update });
     }
+
     for (const mismatch of sessions.drainMismatches()) {
       this.logger.warn(
         `Session ${mismatch.sessionId}: exit IP ${mismatch.actualIp} differs from ${mismatch.expectedIp}, the session was not used`,
       );
       await this.publish({ type: 'session_ip_mismatch', jobId: job.jobId, ...mismatch });
     }
+
     this.logger.info(
       `Job ${job.jobId} done in ${String(Math.round(performance.now() - startedAt))} ms`,
     );

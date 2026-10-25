@@ -51,6 +51,7 @@ export class RefreshProxySourceUseCase {
         `Source ${this.source.name}: ${String(checked)}/${String(total)} checked, ${String(alive)} alive`,
       );
     };
+
     // The workers take the candidates one by one from the shared queue.
     const run = async (): Promise<void> => {
       for (let proxy = candidates.shift(); proxy !== undefined; proxy = candidates.shift()) {

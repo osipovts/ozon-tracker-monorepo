@@ -21,6 +21,7 @@ export class GetProductSnapshotUseCase {
   ): Promise<TrackingResultInterface> {
     const output: TrackingResultInterface = { status: 'no_proxies', attempts: [] };
     this.logger.debug(`${String(candidates.length)} routes to try`);
+
     for (const proxy of candidates) {
       signal.throwIfAborted();
       if (output.attempts.length > 0) await setTimeout(1000, undefined, { signal });
@@ -34,6 +35,7 @@ export class GetProductSnapshotUseCase {
       );
       output.attempts.push({ proxy: proxy?.server ?? null, result });
       output.status = result.status;
+
       // A challenge is a site decision, not a dead proxy: do not rotate to evade it.
       if (
         ['success', 'partial', 'challenge_required', 'parse_error', 'http_error'].includes(

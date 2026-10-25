@@ -11,10 +11,12 @@ export class ResolveProductReferenceUseCase {
     } catch {
       throw new Error('Expected a product URL');
     }
+
     for (const parser of this.parsers) {
       const reference = parser.parse(url);
       if (reference !== null) return reference;
     }
+
     throw new Error('Unsupported marketplace or product URL');
   }
 }

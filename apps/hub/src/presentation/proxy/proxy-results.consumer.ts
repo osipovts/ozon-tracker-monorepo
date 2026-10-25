@@ -35,6 +35,7 @@ export class ProxyResultsConsumer implements OnApplicationBootstrap, OnApplicati
     this.worker.on('error', (error): void => {
       this.logger.error(`Queue ${queueNames.proxyFetchResults} error: ${error.message}`);
     });
+
     this.logger.info(`Consuming ${queueNames.proxyFetchResults}`);
   }
 
@@ -51,9 +52,11 @@ export class ProxyResultsConsumer implements OnApplicationBootstrap, OnApplicati
       );
       throw new UnrecoverableError('Malformed proxy fetch result');
     }
+
     const message = parsed.data;
     const at = new Date();
     this.logger.verbose(`Result ${message.type} of job ${message.jobId}`);
+
     switch (message.type) {
       case 'job_started':
         return this.recordJobEvent.execute({ type: 'started', jobId: message.jobId, at });

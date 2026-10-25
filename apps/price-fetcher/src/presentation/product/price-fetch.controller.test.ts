@@ -93,6 +93,7 @@ function isType<TypeName extends PriceFetchResultType['type']>(
 void test('reads products through the given routes and reports progress, sessions and completion', async (): Promise<void> => {
   const published: PriceFetchResultType[] = [];
   await createController(published).handle(job, new AbortController().signal);
+
   assert.deepEqual(
     published.map((message): string => message.type),
     [
@@ -116,6 +117,7 @@ void test('reads products through the given routes and reports progress, session
       [2, 2, 1],
     ],
   );
+
   const [first, second] = published.filter(isType('product_result'));
   assert.deepEqual(first, {
     type: 'product_result',
@@ -125,6 +127,7 @@ void test('reads products through the given routes and reports progress, session
     attempts: [{ proxy: 'socks5://217.71.230.103:1080', sessionId, result: success }],
   });
   assert.equal(second?.status, 'invalid_url');
+
   const [update] = published.filter(isType('session_update'));
   assert.equal(update?.sessionId, sessionId);
   assert.equal(update.storageState.cookies[0]?.value, 'v2');
@@ -140,6 +143,7 @@ void test('reports no proxies when every route is unsafe', async (): Promise<voi
     },
     new AbortController().signal,
   );
+
   const [first] = published.filter(isType('product_result'));
   assert.equal(first?.status, 'no_proxies');
 });
@@ -148,7 +152,9 @@ void test('reports a failed job and tells whether it is retried', async (): Prom
   const published: PriceFetchResultType[] = [];
   const abort = new AbortController();
   abort.abort();
+
   await assert.rejects(createController(published).handle(job, abort.signal, true));
+
   const [failure] = published.filter(isType('job_failed'));
   assert.equal(failure?.willRetry, true);
   assert.equal(published.some(isType('job_done')), false);

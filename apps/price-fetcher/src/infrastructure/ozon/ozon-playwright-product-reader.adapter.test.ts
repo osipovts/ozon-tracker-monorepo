@@ -20,6 +20,7 @@ let browser: Browser;
 before(async (): Promise<void> => {
   browser = await chromium.launch({ headless: true });
 });
+
 after(async (): Promise<void> => {
   await browser.close();
 });
@@ -43,6 +44,7 @@ function createReader(
       newContext: async (options?: BrowserContextOptions): Promise<BrowserContext> => {
         inspectOptions?.(options);
         const context = await browser.newContext(options);
+
         await context.route('**/*', async (route: Route): Promise<void> => {
           if (route.request().url().startsWith('https://ipinfo.io/')) {
             await route.fulfill({ json: { ip: '217.71.230.103', country } });
@@ -52,6 +54,7 @@ function createReader(
             await route.abort();
           }
         });
+
         return context;
       },
     },
@@ -70,7 +73,9 @@ void test('headless reader waits for rendered prices and excludes hidden and str
       document.body.insertAdjacentHTML('beforeend', '<div data-widget="webPrice"><span>90\u2009000 ₽</span><span>с Ozon Картой</span><del>120 000 ₽</del><span class="old-price">817\u2009949 ₽</span><span style="display:none">150 000 ₽</span><span>100 000 ₽</span><span>без Ozon Карты</span></div><div data-widget="webAddToCart">В корзину. Осталось 2 штуки</div><div data-widget="webCustoms">Таможенный платёж ~5 000 ₽</div>');
     }, 25);
   </script>`);
+
   const result = await reader.read(reference, proxy, new AbortController().signal);
+
   assert.equal(result.status, 'success');
   assert.ok('snapshot' in result);
   assert.deepEqual(
@@ -87,6 +92,7 @@ void test('headless reader reports an HTTP 403 challenge without parsing fake pr
     'RU',
     403,
   );
+
   assert.deepEqual(await reader.read(reference, proxy, new AbortController().signal), {
     status: 'challenge_required',
   });
@@ -98,6 +104,7 @@ void test('reader accepts the final document after a JavaScript challenge redire
     {
       newContext: async (options?: BrowserContextOptions): Promise<BrowserContext> => {
         const context = await browser.newContext(options);
+
         await context.route('**/*', async (route: Route): Promise<void> => {
           if (route.request().url() === reference.url) {
             await route.fulfill({
@@ -112,13 +119,16 @@ void test('reader accepts the final document after a JavaScript challenge redire
             });
           }
         });
+
         return context;
       },
     },
     new OzonProductParser(),
     1000,
   );
+
   const result = await reader.read(reference, null, new AbortController().signal);
+
   assert.equal(result.status, 'success');
   assert.ok('snapshot' in result);
   assert.equal(result.snapshot.prices[0]?.amountMinor, 10000000);
@@ -127,6 +137,7 @@ void test('reader accepts the final document after a JavaScript challenge redire
 
 void test('headless reader rejects a non-Russian exit before loading the product', async (): Promise<void> => {
   const reader = createReader('<h1>Must not be read</h1>', 'US');
+
   assert.deepEqual(await reader.read(reference, proxy, new AbortController().signal), {
     status: 'proxy_rejected',
   });
@@ -136,7 +147,9 @@ void test('headless reader keeps an unavailable product distinct from a parsing 
   const reader = createReader(
     '<h1>Notebook</h1><div data-widget="webOutOfStock">Нет в наличии</div>',
   );
+
   const result = await reader.read(reference, proxy, new AbortController().signal);
+
   assert.ok('snapshot' in result);
   assert.equal(result.snapshot.availability, 'out_of_stock');
   assert.deepEqual(result.snapshot.prices, []);
@@ -151,7 +164,9 @@ void test('direct reader omits proxy configuration and skips GeoIP even for a no
       assert.equal(options?.proxy, undefined);
     },
   );
+
   const result = await reader.read(reference, null, new AbortController().signal);
+
   assert.equal(result.status, 'success');
   assert.ok('snapshot' in result);
   assert.equal(result.exitIp, null);
@@ -189,6 +204,7 @@ function createSessionSpy(found: BrowserSessionInterface | null): {
 } {
   const updates: string[] = [];
   const rejections: string[] = [];
+
   return {
     updates,
     rejections,
@@ -216,8 +232,10 @@ void test('reader applies a session and stores the refreshed state after a succe
     },
     spy.store,
   );
+
   const result = await reader.read(reference, proxy, new AbortController().signal);
   assert.equal(result.status, 'success');
+
   const options = received[0];
   assert.equal(options?.userAgent, session.userAgent);
   assert.equal(options.timezoneId, 'Europe/Moscow');
@@ -229,7 +247,9 @@ void test('reader applies a session and stores the refreshed state after a succe
 void test('reader ignores a session created with another exit address', async (): Promise<void> => {
   const spy = createSessionSpy({ ...session, exitIp: '198.51.100.7' });
   const reader = createReader(widgetHtml, 'RU', 200, undefined, spy.store);
+
   const result = await reader.read(reference, proxy, new AbortController().signal);
+
   assert.equal(result.status, 'success');
   assert.deepEqual(spy.rejections, [`${session.id}@217.71.230.103`]);
   assert.deepEqual(spy.updates, []);
@@ -244,6 +264,7 @@ void test('reader does not store a session after a challenge', async (): Promise
     undefined,
     spy.store,
   );
+
   assert.deepEqual(await reader.read(reference, proxy, new AbortController().signal), {
     status: 'challenge_required',
   });

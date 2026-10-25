@@ -44,6 +44,7 @@ export class PrismaJobRepositoryAdapter implements JobRepositoryPort {
 
   async findById(id: string): Promise<JobEntity | null> {
     const row = await this.prisma.jobRecord.findUnique({ where: { id } });
+
     return row === null ? null : toEntity(row);
   }
 
@@ -55,6 +56,7 @@ export class PrismaJobRepositoryAdapter implements JobRepositoryPort {
       ...(filter.kind === undefined ? {} : { kind: filter.kind }),
       ...(filter.status === undefined ? {} : { status: filter.status }),
     };
+
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.jobRecord.findMany({
         where,
@@ -64,6 +66,7 @@ export class PrismaJobRepositoryAdapter implements JobRepositoryPort {
       }),
       this.prisma.jobRecord.count({ where }),
     ]);
+
     return { items: rows.map(toEntity), total };
   }
 }

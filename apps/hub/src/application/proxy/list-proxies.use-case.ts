@@ -41,6 +41,7 @@ export class ListProxiesUseCase {
       .flatMap((session): string[] =>
         session.snapshot.proxyServer === null ? [] : [session.snapshot.proxyServer],
       );
+
     const page = await this.proxies.list(
       {
         ...(filter.alive === undefined ? {} : { alive: filter.alive }),
@@ -53,9 +54,11 @@ export class ListProxiesUseCase {
       },
       pagination,
     );
+
     return {
       items: page.items.map((proxy): ProxyWithSessionInterface => {
         const session = sessions.get(proxy.server) ?? null;
+
         return { proxy, session, ready: session?.active ?? false };
       }),
       total: page.total,

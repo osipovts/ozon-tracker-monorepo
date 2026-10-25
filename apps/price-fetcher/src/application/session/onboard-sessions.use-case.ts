@@ -34,6 +34,7 @@ export class OnboardSessionsUseCase {
   ): Promise<OnboardSummaryInterface> {
     const servers = await this.hub.listProxiesWithoutSession(params.marketplace, params.limit);
     this.logger.info(`${String(servers.length)} proxies need a session`);
+
     const summary: OnboardSummaryInterface = { ready: [], skipped: [] };
     for (const [index, server] of servers.entries()) {
       signal.throwIfAborted();
@@ -41,6 +42,7 @@ export class OnboardSessionsUseCase {
       if (reason === null) summary.ready.push(server);
       else summary.skipped.push({ server, reason });
     }
+
     return summary;
   }
 
@@ -57,6 +59,7 @@ export class OnboardSessionsUseCase {
     } catch {
       return 'unsupported proxy address';
     }
+
     let capture: SessionCaptureInterface;
     try {
       this.logger.info(`[${String(index + 1)}/${String(total)}] Opening a window via ${server}`);
@@ -64,20 +67,25 @@ export class OnboardSessionsUseCase {
     } catch (error: unknown) {
       const reason = `the route does not work: ${error instanceof Error ? error.message : 'unknown error'}`;
       this.logger.warn(`${server}: ${reason}`);
+
       return reason;
     }
+
     try {
       if ((await decide({ capture, server, index, total })) === 'skip')
         return 'skipped by the person';
+
       const captured = await capture.export();
       await this.hub.uploadSession(captured);
       this.logger.info(
         `${server} is ready: session ${captured.session.id} uploaded, exit ${captured.session.exitIp}`,
       );
+
       return null;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`${server}: ${reason}`);
+
       return reason;
     } finally {
       await capture.close();

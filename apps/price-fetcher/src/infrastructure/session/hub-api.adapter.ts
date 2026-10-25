@@ -20,9 +20,11 @@ export class HubApiAdapter implements HubSessionsPort {
       marketplace,
       pageSize: String(limit),
     }).toString();
+
     const response = await this.request(url, { signal: AbortSignal.timeout(requestTimeoutMs) });
     if (!response.ok)
       throw new Error(`The hub answered HTTP ${String(response.status)} to the proxy list`);
+
     return proxyListSchema.parse(await response.json()).items.map((item): string => item.server);
   }
 
@@ -33,6 +35,7 @@ export class HubApiAdapter implements HubSessionsPort {
       body: JSON.stringify(sessionExportFileSchema.parse(captured)),
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
+
     if (response.status !== 201)
       throw new Error(
         `The hub rejected the session: HTTP ${String(response.status)} ${(await response.text()).slice(0, 200)}`,
@@ -54,6 +57,7 @@ export class HubApiAdapter implements HubSessionsPort {
           : error instanceof Error
             ? error.message
             : 'unknown error';
+
       throw new Error(`Cannot reach the hub at ${this.baseUrl} (${code}); is it running?`, {
         cause: error,
       });
