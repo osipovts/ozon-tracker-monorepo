@@ -1,4 +1,4 @@
-import { runTrackerCli } from './presentation/tracker.cli.js';
+import { runTrackerCli } from './presentation/product/tracker.cli.js';
 
 try {
   await runTrackerCli();

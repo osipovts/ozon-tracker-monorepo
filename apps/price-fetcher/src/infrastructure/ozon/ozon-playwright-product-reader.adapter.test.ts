@@ -11,8 +11,8 @@ import {
 import { ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { SessionStorePort } from '../../application/session-store.port.js';
-import type { BrowserSessionInterface } from '../../domain/browser-session.interface.js';
+import type { SessionStorePort } from '../../application/session/session-store.port.js';
+import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
 import { OzonPlaywrightProductReaderAdapter } from './ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './ozon-product.parser.js';
 

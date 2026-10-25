@@ -5,9 +5,9 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConsoleLoggerAdapter } from 'logger';
 
-import { AppConfigParser } from './infrastructure/app-config.parser.js';
-import { NestLoggerAdapter } from './infrastructure/nest-logger.adapter.js';
-import { AppModule } from './presentation/app.module.js';
+import { AppConfigParser } from './infrastructure/shared/app-config.parser.js';
+import { NestLoggerAdapter } from './infrastructure/shared/nest-logger.adapter.js';
+import { AppModule } from './presentation/shared/app.module.js';
 
 try {
   const config = new AppConfigParser().parse(process.env);

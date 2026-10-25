@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type {
   PriceObservationInterface,
   ProductSnapshotInterface,
-} from '../../domain/product-snapshot.interface.js';
+} from '../../domain/product/product-snapshot.interface.js';
 import type { OzonPageInterface } from './ozon-page.interface.js';
 
 const offerSchema = z.object({

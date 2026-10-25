@@ -9,9 +9,9 @@ import { z } from 'zod';
 import type {
   SessionCaptureInterface,
   SessionCapturePort,
-} from '../../application/session-capture.port.js';
-import type { CapturedSessionInterface } from '../../domain/captured-session.interface.js';
-import { ChromiumLaunchAdapter } from '../chromium-launch.adapter.js';
+} from '../../application/session/session-capture.port.js';
+import type { CapturedSessionInterface } from '../../domain/session/captured-session.interface.js';
+import { ChromiumLaunchAdapter } from '../shared/chromium-launch.adapter.js';
 import type { OzonProductParser } from './ozon-product.parser.js';
 
 const geoSchema = z.object({ ip: z.ipv4(), country: z.string().optional() });

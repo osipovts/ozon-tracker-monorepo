@@ -5,11 +5,11 @@ import { OzonReferenceParser } from 'product-reference';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 import { z } from 'zod';
 
-import type { ProductReaderPort } from '../../application/product-reader.port.js';
-import type { SessionStorePort } from '../../application/session-store.port.js';
-import type { BrowserSessionInterface } from '../../domain/browser-session.interface.js';
-import type { ReadProductResultType } from '../../domain/product-snapshot.interface.js';
-import { ChromiumLaunchAdapter } from '../chromium-launch.adapter.js';
+import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
+import type { SessionStorePort } from '../../application/session/session-store.port.js';
+import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
+import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
+import { ChromiumLaunchAdapter } from '../shared/chromium-launch.adapter.js';
 import type { OzonPageInterface } from './ozon-page.interface.js';
 import type { OzonProductParser } from './ozon-product.parser.js';
 

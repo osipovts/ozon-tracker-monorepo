@@ -1,4 +1,4 @@
-import { runSessionOnboardCli } from './presentation/session-onboard.cli.js';
+import { runSessionOnboardCli } from './presentation/session/session-onboard.cli.js';
 
 try {
   await runSessionOnboardCli();

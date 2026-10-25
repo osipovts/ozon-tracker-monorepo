@@ -1,4 +1,4 @@
-import { runSessionCreateCli } from './presentation/session-create.cli.js';
+import { runSessionCreateCli } from './presentation/session/session-create.cli.js';
 
 try {
   await runSessionCreateCli();

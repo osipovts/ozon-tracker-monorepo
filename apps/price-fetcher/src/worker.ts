@@ -6,14 +6,14 @@ import { OzonReferenceParser } from 'product-reference';
 import { queueNames } from 'queue-contract';
 import { z } from 'zod';
 
-import { ChromiumLaunchAdapter } from './infrastructure/chromium-launch.adapter.js';
-import { MarketplaceProductReaderAdapter } from './infrastructure/marketplace-product-reader.adapter.js';
 import { OzonPlaywrightProductReaderAdapter } from './infrastructure/ozon/ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './infrastructure/ozon/ozon-product.parser.js';
+import { MarketplaceProductReaderAdapter } from './infrastructure/product/marketplace-product-reader.adapter.js';
+import { ChromiumLaunchAdapter } from './infrastructure/shared/chromium-launch.adapter.js';
 import {
   InvalidPriceFetchJobError,
   PriceFetchController,
-} from './presentation/price-fetch.controller.js';
+} from './presentation/product/price-fetch.controller.js';
 
 const env = z
   .object({
