@@ -33,7 +33,26 @@
 docker compose up -d --build
 ```
 
+Порты на хосте задаются переменными `HUB_PORT`, `POSTGRES_PORT` и `REDIS_PORT` (по умолчанию 3000, 5432
+и 6379). Воркеров price-fetcher можно запустить несколько: `docker compose up -d --scale price-fetcher-worker=3`.
+
 Далее см. [Swagger](http://localhost:3000/docs).
+
+#### Разработка в Docker
+
+Контейнеры запускают исходники с этой машины в `tsx watch` и перезапускаются при любой правке, включая
+`packages/*`. Используются `node_modules` этой машины, поэтому сначала нужен `pnpm install`.
+
+```sh
+pnpm install
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+После изменения зависимостей повторите `pnpm install` и `--build`: образ price-fetcher ставит Chromium
+под версию Playwright из lockfile.
+
+Контейнеры работают от `1000:1000`, чтобы созданные ими файлы принадлежали вам. Для rootless Docker
+задайте `DEV_USER=0:0` (например, в `.env` в корне), для другого uid - `DEV_USER=<uid>:<gid>`.
 
 ### 1 (b). Запуск приложения без Docker (pnpm)
 

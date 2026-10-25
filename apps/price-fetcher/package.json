@@ -8,11 +8,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "start:worker": "node dist/worker.js",
-    "dev:worker": "tsx watch src/worker.ts",
+    "dev:worker": "tsx watch --conditions=source src/worker.ts",
     "session:onboard": "node dist/session-onboard.js"
   },
   "keywords": [],

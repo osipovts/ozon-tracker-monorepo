@@ -11,11 +11,11 @@
   ],
   "scripts": {
     "generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://localhost:5432/hub}\" prisma generate",
-    "build": "pnpm generate && tsc",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
     "typecheck": "pnpm generate && tsc --noEmit",
-    "test": "pnpm build && node --test \"dist/**/*.test.js\"",
+    "test": "pnpm generate && tsc && node --test \"dist/**/*.test.js\"",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --conditions=source src/index.ts",
     "migrate:deploy": "prisma migrate deploy"
   },
   "keywords": [],

@@ -1,105 +1,119 @@
-x-price-fetcher: &price-fetcher
+x-app: &app
   init: true
-  env_file:
-    - path: apps/price-fetcher/.env
-      required: false
-  build:
-    context: .
-    dockerfile: apps/price-fetcher/Dockerfile
-    target: prod
-    args:
-      APP_NAME: price-fetcher
+  restart: unless-stopped
+
+x-app-env: &app-env
+  REDIS_URL: redis://redis:6379
+  LOG_LEVEL: ${LOG_LEVEL:-verbose}
+
+x-hub-env: &hub-env
+  <<: *app-env
+  DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
+
+x-depends-on-redis: &depends-on-redis
+  redis:
+    condition: service_healthy
 
 services:
-  hub:
-    container_name: price-tracker-hub
-    image: hub:prod
-    init: true
+  # Applies the pending migrations once; the hub starts after it succeeds.
+  migrate:
+    <<: *app
+    image: price-tracker/hub:prod
+    restart: on-failure
     build:
       context: .
-      dockerfile: apps/hub/Dockerfile
-      target: prod
-    environment:
-      DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
-      REDIS_URL: redis://redis:6379
-      LOG_LEVEL: ${LOG_LEVEL:-verbose}
-    # The API has no authentication yet: it is reachable from this machine only.
-    ports:
-      - '127.0.0.1:3000:3000'
+      target: hub-prod
+      args:
+        APP_NAME: hub
+    command: ['node', 'node_modules/prisma/build/index.js', 'migrate', 'deploy']
+    environment: *hub-env
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
+
+  hub:
+    <<: *app
+    image: price-tracker/hub:prod
+    build:
+      context: .
+      target: hub-prod
+      args:
+        APP_NAME: hub
+    environment: *hub-env
+    # The API has no authentication yet: it is reachable from this machine only.
+    ports:
+      - '127.0.0.1:${HUB_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/docs/json').then((response) => process.exit(response.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      <<: *depends-on-redis
+      migrate:
+        condition: service_completed_successfully
 
   proxy-fetcher:
-    container_name: price-tracker-proxy-fetcher
-    image: proxy-fetcher:prod
-    init: true
+    <<: *app
+    image: price-tracker/proxy-fetcher:prod
     build:
       context: .
-      dockerfile: apps/proxy-fetcher/Dockerfile
-      target: prod
-    environment:
-      REDIS_URL: redis://redis:6379
-      LOG_LEVEL: ${LOG_LEVEL:-verbose}
-    depends_on:
-      - redis
-    restart: unless-stopped
+      target: proxy-fetcher-prod
+      args:
+        APP_NAME: proxy-fetcher
+    environment: *app-env
+    depends_on: *depends-on-redis
 
+  # Scales with `docker compose up -d --scale price-fetcher-worker=<count>`.
   price-fetcher-worker:
-    <<: *price-fetcher
-    container_name: price-tracker-price-fetcher-worker
-    image: price-fetcher:prod
-    command: ['node', 'dist/worker.js']
-    environment:
-      REDIS_URL: redis://redis:6379
-      LOG_LEVEL: ${LOG_LEVEL:-verbose}
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  price-fetcher-dev:
-    <<: *price-fetcher
-    container_name: price-tracker-price-fetcher-dev
-    image: price-fetcher:dev
-    profiles: ['dev']
+    <<: *app
+    image: price-tracker/price-fetcher:prod
     build:
       context: .
-      dockerfile: apps/price-fetcher/Dockerfile
-      target: dev
+      target: price-fetcher-prod
       args:
         APP_NAME: price-fetcher
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - price_fetcher_node_modules:/app/apps/price-fetcher/node_modules
-      - pnpm_store:/pnpm-store
-    environment:
-      REDIS_URL: redis://redis:6379
+    env_file:
+      - path: apps/price-fetcher/.env
+        required: false
+    environment: *app-env
+    # Chromium runs out of the default 64 MB of /dev/shm on heavy pages.
+    shm_size: 1gb
+    # Lets the job in progress finish: a price fetch takes up to PRICE_TIMEOUT_MS of the hub.
+    stop_grace_period: 70s
+    depends_on: *depends-on-redis
 
   redis:
     image: redis:7-alpine
-    container_name: price-tracker-redis
     # Persistence keeps queued jobs across restarts. The port is reachable from this
     # machine only, for the apps started with pnpm; never publish it on a public address.
     command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '127.0.0.1:6379:6379'
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
 
   postgres:
     image: postgres:17-alpine
-    container_name: price-tracker-postgres
     environment:
       POSTGRES_USER: hub
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hub}
       POSTGRES_DB: hub
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -112,6 +126,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  node_modules:
-  price_fetcher_node_modules:
-  pnpm_store:

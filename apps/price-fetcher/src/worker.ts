@@ -40,13 +40,16 @@ const logger = new ConsoleLoggerAdapter(
 
 const options = new ChromiumOptionsFactory();
 logger.info(`Launching Chromium (${env.headed ? 'with a window' : 'headless'})`);
-const browser = await chromium.launch(
-  options.launch({
+const browser = await chromium.launch({
+  ...options.launch({
     headed: env.headed,
     timeoutMs: 30_000,
     ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
   }),
-);
+  // The runner closes the browser on a signal, after the job in progress.
+  handleSIGINT: false,
+  handleSIGTERM: false,
+});
 logger.info(`Chromium ${browser.version()} is running`);
 
 let stopping = false;

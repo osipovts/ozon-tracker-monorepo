@@ -1,0 +1,47 @@
+# Development: the apps run the mounted sources of this machine with `tsx watch` and restart on
+# every change, the workspace packages included (the "source" export condition).
+# Requires `pnpm install` on this machine first: the containers use its node_modules.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# The files the apps write (the generated Prisma client) belong to the user of this machine.
+# Rootless Docker maps that user to root of the container: set DEV_USER=0:0 there.
+x-dev: &dev
+  user: '${DEV_USER:-1000:1000}'
+  volumes:
+    - .:/app
+  environment:
+    HOME: /tmp
+    NODE_ENV: development
+    # The container sees other pnpm settings (the store) than this machine and would reinstall
+    # node_modules of this machine; the dependencies are installed here only.
+    pnpm_config_verify_deps_before_run: 'false'
+
+services:
+  migrate:
+    <<: *dev
+    image: price-tracker/hub:dev
+    build:
+      target: dev
+    command: ['pnpm', '--filter', 'hub', 'migrate:deploy']
+
+  hub:
+    <<: *dev
+    image: price-tracker/hub:dev
+    build:
+      target: dev
+    command: ['sh', '-c', 'pnpm --filter hub generate && exec pnpm --filter hub dev']
+
+  proxy-fetcher:
+    <<: *dev
+    image: price-tracker/proxy-fetcher:dev
+    build:
+      target: dev
+    command: ['pnpm', '--filter', 'proxy-fetcher', 'dev']
+
+  price-fetcher-worker:
+    <<: *dev
+    image: price-tracker/price-fetcher:dev
+    build:
+      target: price-fetcher-dev
+    command: ['pnpm', '--filter', 'price-fetcher', 'dev:worker']
+    # tsx watch restarts the worker at once.
+    stop_grace_period: 10s
