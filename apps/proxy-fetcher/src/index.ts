@@ -1,15 +1,12 @@
-import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
-import { queueNames } from 'queue-contract';
+import { type ProxyFetchResultType, queueNames } from 'queue-contract';
+import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
 import { RefreshProxySourceUseCase } from './application/refresh-proxy-source.use-case.js';
 import { GeoIpProxyProbeAdapter } from './infrastructure/geo-ip-proxy-probe.adapter.js';
 import { GithubFreeProxyListSourceAdapter } from './infrastructure/github-free-proxy-list-source.adapter.js';
-import {
-  InvalidProxyFetchJobError,
-  ProxyFetchController,
-} from './presentation/proxy-fetch.controller.js';
+import { ProxyFetchController } from './presentation/proxy-fetch.controller.js';
 
 const env = z
   .object({
@@ -29,14 +26,16 @@ const logger = new ConsoleLoggerAdapter(
   'proxy-fetcher',
 );
 
-const connection = { url: env.redisUrl };
-const results = new Queue(queueNames.proxyFetchResults, {
-  connection,
-  defaultJobOptions: { removeOnComplete: { age: 3600 }, removeOnFail: { age: 86400 } },
-});
-results.on('error', (error): void => {
-  logger.error(`Results queue error: ${error.message}`);
-});
+const runner = new QueueWorkerRunner<ProxyFetchResultType>(
+  {
+    redisUrl: env.redisUrl,
+    jobsQueue: queueNames.proxyFetchJobs,
+    resultsQueue: queueNames.proxyFetchResults,
+    concurrency: env.jobConcurrency,
+  },
+  logger,
+);
+const publish = (message: ProxyFetchResultType): Promise<void> => runner.publish(message);
 
 const controller = new ProxyFetchController(
   {
@@ -48,51 +47,13 @@ const controller = new ProxyFetchController(
       logger.child('refresh'),
     ),
   },
-  async (message): Promise<void> => {
-    logger.verbose(`Publishing ${message.type} of job ${message.jobId}`);
-    await results.add(message.type, message);
-  },
+  new QueueMessageParser(logger.child('controller')),
+  new JobLifecycleReporter(publish, logger.child('controller')),
+  publish,
   logger.child('controller'),
 );
 
-const worker = new Worker(
-  queueNames.proxyFetchJobs,
-  async (job, _token, signal): Promise<void> => {
-    // The queue redelivers a failed job until its attempts are used up.
-    const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
-    logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
-
-    try {
-      await controller.handle(job.data, signal ?? new AbortController().signal, willRetry);
-    } catch (error: unknown) {
-      // Retrying a malformed message cannot fix it.
-      if (error instanceof InvalidProxyFetchJobError) throw new UnrecoverableError(error.message);
-      throw error;
-    }
-  },
-  { connection, concurrency: env.jobConcurrency },
+runner.start((data, signal, willRetry): Promise<void> =>
+  controller.handle(data, signal, willRetry),
 );
-
-worker.on('error', (error): void => {
-  logger.error(`Worker error: ${error.message}`);
-});
-worker.on('failed', (job, error): void => {
-  logger.warn(`Queue job ${job?.id ?? '?'} failed: ${error.message}`);
-});
-
-logger.info(
-  `Waiting for jobs on ${queueNames.proxyFetchJobs} (redis ${env.redisUrl.replace(/\/\/[^@]*@/, '//***@')})`,
-);
-
-const shutdown = async (): Promise<void> => {
-  logger.info('Shutting down');
-  await worker.close();
-  await results.close();
-};
-
-process.once('SIGINT', (): void => {
-  void shutdown();
-});
-process.once('SIGTERM', (): void => {
-  void shutdown();
-});
+runner.stopOnSignals();

@@ -1,43 +1,18 @@
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { SessionStorePort } from '../../application/session/session-store.port.js';
+import type {
+  JobSessionStorePort,
+  SessionMismatchInterface,
+  SessionRouteInterface,
+  SessionUpdateInterface,
+} from '../../application/session/job-session-store.port.js';
 import type {
   BrowserSessionInterface,
   StorageStateInterface,
 } from '../../domain/session/browser-session.interface.js';
 
-export interface SessionRouteInterface {
-  proxy: ProxyEndpointEntity | null;
-  session: BrowserSessionInterface;
-}
-
-export interface SessionUpdateInterface {
-  sessionId: string;
-  storageState: StorageStateInterface;
-}
-
-export interface SessionMismatchInterface {
-  sessionId: string;
-  expectedIp: string;
-  actualIp: string;
-}
-
-function fingerprint(state: StorageStateInterface): string {
-  return JSON.stringify({
-    cookies: state.cookies.toSorted((a, b): number =>
-      `${a.domain}|${a.path}|${a.name}`.localeCompare(`${b.domain}|${b.path}|${b.name}`),
-    ),
-    origins: state.origins
-      .map((origin): StorageStateInterface['origins'][number] => ({
-        origin: origin.origin,
-        localStorage: origin.localStorage.toSorted((a, b): number => a.name.localeCompare(b.name)),
-      }))
-      .toSorted((a, b): number => a.origin.localeCompare(b.origin)),
-  });
-}
-
 /** Holds the sessions of one job and collects what has to be reported back. */
-export class InMemorySessionStoreAdapter implements SessionStorePort {
+export class InMemorySessionStoreAdapter implements JobSessionStorePort {
   private readonly byServer = new Map<string | null, BrowserSessionInterface>();
   private readonly byId = new Map<string, BrowserSessionInterface>();
   private readonly updates = new Map<string, StorageStateInterface>();
@@ -59,11 +34,7 @@ export class InMemorySessionStoreAdapter implements SessionStorePort {
   }
 
   update(sessionId: string, storageState: StorageStateInterface): void {
-    const original = this.byId.get(sessionId);
-    if (original === undefined || fingerprint(original.storageState) === fingerprint(storageState))
-      return;
-
-    this.updates.set(sessionId, storageState);
+    if (this.byId.has(sessionId)) this.updates.set(sessionId, storageState);
   }
 
   reject(sessionId: string, actualIp: string): void {

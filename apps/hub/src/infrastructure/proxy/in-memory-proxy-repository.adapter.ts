@@ -2,9 +2,10 @@ import type {
   ProxyFilterInterface,
   ProxyRepositoryPort,
 } from '../../application/proxy/proxy-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOf,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import type { ProxyEntity } from '../../domain/proxy/proxy.entity.js';
 
@@ -22,7 +23,7 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
   }
 
   saveMany(proxies: ProxyEntity[]): Promise<void> {
-    for (const proxy of proxies) this.proxies.set(proxy.server, proxy);
+    for (const proxy of proxies) this.proxies.set(proxy.snapshot.server, proxy);
 
     return Promise.resolve();
   }
@@ -33,23 +34,19 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
   ): Promise<PageInterface<ProxyEntity>> {
     const matching = Array.from(this.proxies.values())
       .filter(
-        (proxy): boolean =>
-          (filter.alive === undefined || proxy.alive === filter.alive) &&
-          (filter.country === undefined || proxy.country === filter.country) &&
-          (filter.servers === undefined || filter.servers.includes(proxy.server)) &&
-          filter.excludedServers?.includes(proxy.server) !== true,
+        ({ snapshot }): boolean =>
+          (filter.alive === undefined || snapshot.alive === filter.alive) &&
+          (filter.country === undefined || snapshot.country === filter.country) &&
+          (filter.servers === undefined || filter.servers.includes(snapshot.server)) &&
+          filter.excludedServers?.includes(snapshot.server) !== true,
       )
       .toSorted(
         (a, b): number =>
-          Number(b.alive) - Number(a.alive) ||
+          Number(b.snapshot.alive) - Number(a.snapshot.alive) ||
           b.successRate - a.successRate ||
-          (a.latencyMs ?? Infinity) - (b.latencyMs ?? Infinity),
+          (a.snapshot.latencyMs ?? Infinity) - (b.snapshot.latencyMs ?? Infinity),
       );
-    const start = (pagination.page - 1) * pagination.pageSize;
 
-    return Promise.resolve({
-      items: matching.slice(start, start + pagination.pageSize),
-      total: matching.length,
-    });
+    return Promise.resolve(pageOf(matching, pagination));
   }
 }

@@ -27,6 +27,7 @@ import type { BrowserSessionEntity } from '../../domain/session/browser-session.
 import {
   paginationQuerySchema,
   type PaginationQueryType,
+  toPageResponse,
 } from '../shared/pagination-query.type.js';
 import {
   sessionIdParamSchema,
@@ -94,14 +95,7 @@ export class SessionsController {
   async list(
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
   ): Promise<SessionListResponseType> {
-    const page = await this.listSessions.execute({ page: query.page, pageSize: query.pageSize });
-
-    return {
-      items: page.items.map(toSession),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: page.total,
-    };
+    return toPageResponse(await this.listSessions.execute(query), query, toSession);
   }
 
   @Delete(':id')

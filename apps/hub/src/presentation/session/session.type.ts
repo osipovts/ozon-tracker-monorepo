@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { sessionStatuses } from '../../domain/session/browser-session.entity.js';
+import { pageResponseSchema } from '../shared/pagination-query.type.js';
+
 export const sessionIdParamSchema = z.uuid();
 
 /** A session without its cookies: they are never returned. */
@@ -11,7 +14,7 @@ export const sessionSchema = z.object({
   exitIp: z.string(),
   userAgent: z.string(),
   /** A stale session is not given to the workers any more. */
-  status: z.enum(['active', 'stale']),
+  status: z.enum(sessionStatuses),
   staleReason: z.string().nullable(),
   cookies: z.number().int(),
   createdAt: z.iso.datetime(),
@@ -21,11 +24,6 @@ export const sessionSchema = z.object({
 
 export type SessionType = z.infer<typeof sessionSchema>;
 
-export const sessionListResponseSchema = z.object({
-  items: z.array(sessionSchema),
-  page: z.number().int(),
-  pageSize: z.number().int(),
-  total: z.number().int(),
-});
+export const sessionListResponseSchema = pageResponseSchema(sessionSchema);
 
 export type SessionListResponseType = z.infer<typeof sessionListResponseSchema>;

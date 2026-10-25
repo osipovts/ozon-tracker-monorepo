@@ -8,10 +8,8 @@ export interface BrowserSessionRepositoryPort {
   save(session: BrowserSessionEntity): Promise<void>;
   findById(id: string): Promise<BrowserSessionEntity | null>;
   findByRoute(marketplace: string, routeKey: string): Promise<BrowserSessionEntity | null>;
-  /** Sessions of every status of a marketplace. */
+  /** Sessions of every status of a marketplace, the most recently updated first. */
   listByMarketplace(marketplace: string): Promise<BrowserSessionEntity[]>;
-  /** Sessions that are fit to be used, the most recently updated first. */
-  listActive(marketplace: string): Promise<BrowserSessionEntity[]>;
   /** Newest first. */
   list(pagination: PaginationInterface): Promise<PageInterface<BrowserSessionEntity>>;
   /** Returns false if there was no such session. */

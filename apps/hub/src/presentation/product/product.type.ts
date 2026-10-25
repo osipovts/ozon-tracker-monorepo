@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { pageResponseSchema } from '../shared/pagination-query.type.js';
 import { priceObservationSchema } from './price-observation.type.js';
 
 export const productIdParamSchema = z.uuid();
@@ -30,11 +31,6 @@ export const productListItemSchema = productSchema.extend({
   latest: priceObservationSchema.nullable(),
 });
 
-export const productListResponseSchema = z.object({
-  items: z.array(productListItemSchema),
-  page: z.number().int(),
-  pageSize: z.number().int(),
-  total: z.number().int(),
-});
+export const productListResponseSchema = pageResponseSchema(productListItemSchema);
 
 export type ProductListResponseType = z.infer<typeof productListResponseSchema>;

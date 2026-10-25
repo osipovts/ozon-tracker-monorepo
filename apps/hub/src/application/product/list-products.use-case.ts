@@ -23,7 +23,7 @@ export class ListProductsUseCase {
     const latest = new Map(
       (
         await this.observations.findLatestByProducts(
-          page.items.map((product): string => product.id),
+          page.items.map((product): string => product.snapshot.id),
         )
       ).map((observation): [string, PriceObservationInterface] => [
         observation.trackedProductId,
@@ -34,7 +34,7 @@ export class ListProductsUseCase {
     return {
       items: page.items.map((product): ProductWithLatestInterface => ({
         product,
-        latest: latest.get(product.id) ?? null,
+        latest: latest.get(product.snapshot.id) ?? null,
       })),
       total: page.total,
     };

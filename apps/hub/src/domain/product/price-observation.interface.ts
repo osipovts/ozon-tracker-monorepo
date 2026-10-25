@@ -1,3 +1,7 @@
+export const availabilities = ['in_stock', 'out_of_stock', 'unknown'] as const;
+
+export type AvailabilityType = (typeof availabilities)[number];
+
 export interface PriceInterface {
   amountMinor: number;
   currency: 'RUB';
@@ -10,7 +14,7 @@ export interface PriceObservationInterface {
   jobId: string;
   title: string;
   observedAt: Date;
-  availability: 'in_stock' | 'out_of_stock' | 'unknown';
+  availability: AvailabilityType;
   prices: PriceInterface[];
   exitIp: string | null;
 }

@@ -2,25 +2,26 @@ import type {
   ProxyFilterInterface,
   ProxyRepositoryPort,
 } from '../../application/proxy/proxy-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOffset,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import { ProxyEntity } from '../../domain/proxy/proxy.entity.js';
 import type { PrismaClient, Proxy as ProxyRow } from '../../generated/prisma/client.js';
 
 function toEntity(row: ProxyRow): ProxyEntity {
-  return new ProxyEntity(
-    row.server,
-    row.source,
-    row.country,
-    row.exitIp,
-    row.alive,
-    row.latencyMs,
-    row.checksTotal,
-    row.checksAlive,
-    row.lastCheckedAt,
-  );
+  return new ProxyEntity({
+    server: row.server,
+    source: row.source,
+    country: row.country,
+    exitIp: row.exitIp,
+    alive: row.alive,
+    latencyMs: row.latencyMs,
+    checksTotal: row.checksTotal,
+    checksAlive: row.checksAlive,
+    lastCheckedAt: row.lastCheckedAt,
+  });
 }
 
 export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
@@ -35,21 +36,12 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
   async saveMany(proxies: ProxyEntity[]): Promise<void> {
     await this.prisma.$transaction(
       proxies.map((proxy) => {
-        const data = {
-          source: proxy.source,
-          country: proxy.country,
-          exitIp: proxy.exitIp,
-          alive: proxy.alive,
-          latencyMs: proxy.latencyMs,
-          checksTotal: proxy.checksTotal,
-          checksAlive: proxy.checksAlive,
-          successRate: proxy.successRate,
-          lastCheckedAt: proxy.lastCheckedAt,
-        };
+        const { server, ...rest } = proxy.snapshot;
+        const data = { ...rest, successRate: proxy.successRate };
 
         return this.prisma.proxy.upsert({
-          where: { server: proxy.server },
-          create: { server: proxy.server, ...data },
+          where: { server },
+          create: { server, ...data },
           update: data,
         });
       }),
@@ -83,7 +75,7 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
           { successRate: 'desc' },
           { latencyMs: { sort: 'asc', nulls: 'last' } },
         ],
-        skip: (pagination.page - 1) * pagination.pageSize,
+        skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
       this.prisma.proxy.count({ where }),

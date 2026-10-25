@@ -1,19 +1,23 @@
-import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
 import { chromium } from 'playwright';
-import { ResolveProductReferenceUseCase } from 'product-reference';
-import { OzonReferenceParser } from 'product-reference';
-import { queueNames } from 'queue-contract';
+import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import { type PriceFetchResultType, queueNames } from 'queue-contract';
+import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
-import { OzonPlaywrightProductReaderAdapter } from './infrastructure/ozon/ozon-playwright-product-reader.adapter.js';
+import { FetchPricesUseCase } from './application/product/fetch-prices.use-case.js';
+import { OzonChallengeParser } from './infrastructure/ozon/ozon-challenge.parser.js';
+import { OzonPageParser } from './infrastructure/ozon/ozon-page.parser.js';
+import {
+  OzonPlaywrightProductReaderAdapter,
+  type OzonReaderParsersInterface,
+} from './infrastructure/ozon/ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './infrastructure/ozon/ozon-product.parser.js';
 import { MarketplaceProductReaderAdapter } from './infrastructure/product/marketplace-product-reader.adapter.js';
-import { ChromiumLaunchAdapter } from './infrastructure/shared/chromium-launch.adapter.js';
-import {
-  InvalidPriceFetchJobError,
-  PriceFetchController,
-} from './presentation/product/price-fetch.controller.js';
+import { InMemorySessionStoreAdapter } from './infrastructure/session/in-memory-session-store.adapter.js';
+import { ChromiumOptionsFactory } from './infrastructure/shared/chromium-options.factory.js';
+import { GeoIpPageParser } from './infrastructure/shared/geo-ip-page.parser.js';
+import { PriceFetchController } from './presentation/product/price-fetch.controller.js';
 
 const env = z
   .object({
@@ -34,91 +38,71 @@ const logger = new ConsoleLoggerAdapter(
   'price-fetcher',
 );
 
+const options = new ChromiumOptionsFactory();
 logger.info(`Launching Chromium (${env.headed ? 'with a window' : 'headless'})`);
 const browser = await chromium.launch(
-  new ChromiumLaunchAdapter().launchOptions({
+  options.launch({
     headed: env.headed,
     timeoutMs: 30_000,
     ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
   }),
 );
+logger.info(`Chromium ${browser.version()} is running`);
 
 let stopping = false;
 browser.on('disconnected', (): void => {
   // Let the supervisor restart the worker instead of failing every job.
   if (stopping) return;
+
   logger.error('The browser disconnected; exiting');
   process.exit(1);
 });
 
-const connection = { url: env.redisUrl };
-const results = new Queue(queueNames.priceFetchResults, {
-  connection,
-  defaultJobOptions: { removeOnComplete: { age: 3600 }, removeOnFail: { age: 86400 } },
-});
-results.on('error', (error): void => {
-  logger.error(`Results queue error: ${error.message}`);
-});
-
-const controller = new PriceFetchController(
-  new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
-  (sessions, timeoutMs) =>
-    new MarketplaceProductReaderAdapter({
-      ozon: new OzonPlaywrightProductReaderAdapter(
-        browser,
-        new OzonProductParser(),
-        timeoutMs,
-        sessions,
-        logger.child('ozon'),
-      ),
-    }),
-  async (message): Promise<void> => {
-    logger.verbose(`Publishing ${message.type} of job ${message.jobId}`);
-    await results.add(message.type, message);
+const runner = new QueueWorkerRunner<PriceFetchResultType>(
+  {
+    redisUrl: env.redisUrl,
+    jobsQueue: queueNames.priceFetchJobs,
+    resultsQueue: queueNames.priceFetchResults,
+    concurrency: env.jobConcurrency,
   },
+  logger,
+);
+const publish = (message: PriceFetchResultType): Promise<void> => runner.publish(message);
+
+const references = new OzonReferenceParser();
+const parsers: OzonReaderParsersInterface = {
+  geoIp: new GeoIpPageParser(),
+  pages: new OzonPageParser(),
+  challenges: new OzonChallengeParser(),
+  products: new OzonProductParser(references),
+};
+const controller = new PriceFetchController(
+  new FetchPricesUseCase(
+    new ResolveProductReferenceUseCase([references]),
+    (routes) => new InMemorySessionStoreAdapter(routes),
+    (sessions, timeoutMs) =>
+      new MarketplaceProductReaderAdapter({
+        ozon: new OzonPlaywrightProductReaderAdapter(
+          browser,
+          options,
+          parsers,
+          timeoutMs,
+          sessions,
+          logger.child('ozon'),
+        ),
+      }),
+    logger.child('prices'),
+  ),
+  new QueueMessageParser(logger.child('controller')),
+  new JobLifecycleReporter(publish, logger.child('controller')),
+  publish,
   logger.child('controller'),
 );
 
-const worker = new Worker(
-  queueNames.priceFetchJobs,
-  async (job, _token, signal): Promise<void> => {
-    // The queue redelivers a failed job until its attempts are used up.
-    const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
-    logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
-
-    try {
-      await controller.handle(job.data, signal ?? new AbortController().signal, willRetry);
-    } catch (error: unknown) {
-      // Retrying a malformed message cannot fix it.
-      if (error instanceof InvalidPriceFetchJobError) throw new UnrecoverableError(error.message);
-      throw error;
-    }
-  },
-  { connection, concurrency: env.jobConcurrency },
+runner.start((data, signal, willRetry): Promise<void> =>
+  controller.handle(data, signal, willRetry),
 );
-
-worker.on('error', (error): void => {
-  logger.error(`Worker error: ${error.message}`);
-});
-worker.on('failed', (job, error): void => {
-  logger.warn(`Queue job ${job?.id ?? '?'} failed: ${error.message}`);
-});
-
-logger.info(
-  `Waiting for jobs on ${queueNames.priceFetchJobs} (redis ${env.redisUrl.replace(/\/\/[^@]*@/, '//***@')}, Chromium ${browser.version()})`,
-);
-
-const shutdown = async (): Promise<void> => {
-  logger.info('Shutting down');
+runner.stopOnSignals(async (): Promise<void> => {
   stopping = true;
-  await worker.close();
-  await results.close();
   await browser.close();
-};
-
-process.once('SIGINT', (): void => {
-  void shutdown();
-});
-process.once('SIGTERM', (): void => {
-  void shutdown();
 });

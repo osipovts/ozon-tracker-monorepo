@@ -1,25 +1,15 @@
 import { z } from 'zod';
 
+import { jobDoneSchema, jobFailedSchema, jobStartedSchema } from './job-lifecycle.type.js';
 import { jobProgressSchema } from './job-progress.type.js';
 import { proxyServerSchema } from './proxy-server.type.js';
 import { proxySourceSchema } from './proxy-source.type.js';
 
 export const proxyFetchResultSchema = z.discriminatedUnion('type', [
+  jobStartedSchema,
   jobProgressSchema,
-  z.object({
-    type: z.literal('job_started'),
-    jobId: z.uuid(),
-  }),
-  z.object({
-    type: z.literal('job_done'),
-    jobId: z.uuid(),
-  }),
-  z.object({
-    type: z.literal('job_failed'),
-    jobId: z.uuid(),
-    reason: z.string(),
-    willRetry: z.boolean(),
-  }),
+  jobFailedSchema,
+  jobDoneSchema,
   z.object({
     type: z.literal('proxy_checks'),
     jobId: z.uuid(),

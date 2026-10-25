@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-import { paginationQuerySchema } from '../shared/pagination-query.type.js';
+import { jobKinds, jobStatuses } from '../../domain/job/job.entity.js';
+import { pageResponseSchema, paginationQuerySchema } from '../shared/pagination-query.type.js';
 
 export const jobIdParamSchema = z.uuid();
 
-const kindSchema = z.enum(['proxy_fetch', 'price_fetch']);
-const statusSchema = z.enum(['queued', 'running', 'retrying', 'completed', 'failed']);
+const kindSchema = z.enum(jobKinds);
+const statusSchema = z.enum(jobStatuses);
 
 export const jobListQuerySchema = paginationQuerySchema.extend({
   kind: kindSchema.optional(),
@@ -35,11 +36,6 @@ export const jobSchema = z.object({
 
 export type JobType = z.infer<typeof jobSchema>;
 
-export const jobListResponseSchema = z.object({
-  items: z.array(jobSchema),
-  page: z.number().int(),
-  pageSize: z.number().int(),
-  total: z.number().int(),
-});
+export const jobListResponseSchema = pageResponseSchema(jobSchema);
 
 export type JobListResponseType = z.infer<typeof jobListResponseSchema>;

@@ -6,10 +6,11 @@ import { chromium } from 'playwright';
 import { z } from 'zod';
 
 import { OnboardSessionsUseCase } from '../../application/session/onboard-sessions.use-case.js';
-import { OzonProductParser } from '../../infrastructure/ozon/ozon-product.parser.js';
+import { OzonChallengeParser } from '../../infrastructure/ozon/ozon-challenge.parser.js';
 import { OzonSessionCaptureAdapter } from '../../infrastructure/ozon/ozon-session-capture.adapter.js';
 import { HubApiAdapter } from '../../infrastructure/session/hub-api.adapter.js';
-import { ChromiumLaunchAdapter } from '../../infrastructure/shared/chromium-launch.adapter.js';
+import { ChromiumOptionsFactory } from '../../infrastructure/shared/chromium-options.factory.js';
+import { GeoIpPageParser } from '../../infrastructure/shared/geo-ip-page.parser.js';
 import { promptCapture } from './capture-prompt.cli.js';
 
 /** Takes the hub proxies without a session, lets the person pass the check through each and uploads the sessions. */
@@ -45,8 +46,9 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     'session-onboard',
   );
 
+  const options = new ChromiumOptionsFactory();
   const browser = await chromium.launch(
-    new ChromiumLaunchAdapter().launchOptions({
+    options.launch({
       headed: true,
       timeoutMs,
       ...(values['browser-path'] === undefined ? {} : { executablePath: values['browser-path'] }),
@@ -58,14 +60,14 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
       new HubApiAdapter(hubUrl),
       new OzonSessionCaptureAdapter(
         browser,
-        new OzonProductParser(),
+        options,
+        new GeoIpPageParser(),
+        new OzonChallengeParser(),
         timeoutMs,
         logger.child('capture'),
       ),
       logger,
-    ).execute({ marketplace: 'ozon', limit }, new AbortController().signal, (step) =>
-      promptCapture(terminal, step, waitMs),
-    );
+    ).execute(limit, new AbortController().signal, (step) => promptCapture(terminal, step, waitMs));
 
     logger.info(
       `Done: ${String(summary.ready.length)} ready, ${String(summary.skipped.length)} skipped`,

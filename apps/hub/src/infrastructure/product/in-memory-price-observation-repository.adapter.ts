@@ -1,7 +1,8 @@
 import type { PriceObservationRepositoryPort } from '../../application/product/price-observation-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOf,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import type { PriceObservationInterface } from '../../domain/product/price-observation.interface.js';
 
@@ -38,11 +39,7 @@ export class InMemoryPriceObservationRepositoryAdapter implements PriceObservati
     const matching = this.observations
       .filter((observation): boolean => observation.trackedProductId === trackedProductId)
       .toSorted((a, b): number => b.observedAt.getTime() - a.observedAt.getTime());
-    const start = (pagination.page - 1) * pagination.pageSize;
 
-    return Promise.resolve({
-      items: matching.slice(start, start + pagination.pageSize),
-      total: matching.length,
-    });
+    return Promise.resolve(pageOf(matching, pagination));
   }
 }

@@ -13,7 +13,7 @@ export class RecordProxyChecksUseCase {
   async execute(checks: ProxyCheckInterface[]): Promise<void> {
     const known = new Map(
       (await this.proxies.findByServers(checks.map((check): string => check.server))).map(
-        (proxy): [string, ProxyEntity] => [proxy.server, proxy],
+        (proxy): [string, ProxyEntity] => [proxy.snapshot.server, proxy],
       ),
     );
 

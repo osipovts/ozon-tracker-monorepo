@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ResolveProductReferenceUseCase } from 'product-reference';
-import { OzonReferenceParser } from 'product-reference';
+import { silentLogger } from 'logger';
+import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 import type { PriceFetchResultType } from 'queue-contract';
+import { JobLifecycleReporter, QueueMessageParser } from 'queue-worker';
 
+import { FetchPricesUseCase } from '../../application/product/fetch-prices.use-case.js';
 import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
 import type { SessionStorePort } from '../../application/session/session-store.port.js';
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import { InvalidPriceFetchJobError, PriceFetchController } from './price-fetch.controller.js';
+import { InMemorySessionStoreAdapter } from '../../infrastructure/session/in-memory-session-store.adapter.js';
+import { PriceFetchController } from './price-fetch.controller.js';
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 const sessionId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
@@ -61,25 +64,32 @@ const success: ReadProductResultType = {
 };
 
 function createController(published: PriceFetchResultType[]): PriceFetchController {
+  const publish = (message: PriceFetchResultType): Promise<void> => {
+    published.push(message);
+
+    return Promise.resolve();
+  };
+
   return new PriceFetchController(
-    new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
-    (sessions: SessionStorePort): ProductReaderPort => ({
-      read: (_reference, proxy): Promise<ReadProductResultType> => {
-        const session = sessions.find(proxy);
-        if (session !== null)
-          sessions.update(session.id, {
-            cookies: [{ ...storageState.cookies[0], value: 'v2' }],
-            origins: [],
-          });
+    new FetchPricesUseCase(
+      new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
+      (routes) => new InMemorySessionStoreAdapter(routes),
+      (sessions: SessionStorePort): ProductReaderPort => ({
+        read: (_reference, proxy): Promise<ReadProductResultType> => {
+          const session = sessions.find(proxy);
+          if (session !== null)
+            sessions.update(session.id, {
+              cookies: [{ ...storageState.cookies[0], value: 'v2' }],
+              origins: [],
+            });
 
-        return Promise.resolve(success);
-      },
-    }),
-    (message): Promise<void> => {
-      published.push(message);
-
-      return Promise.resolve();
-    },
+          return Promise.resolve(success);
+        },
+      }),
+    ),
+    new QueueMessageParser(silentLogger),
+    new JobLifecycleReporter(publish, silentLogger),
+    publish,
   );
 }
 
@@ -163,6 +173,6 @@ void test('reports a failed job and tells whether it is retried', async (): Prom
 void test('rejects a malformed job', async (): Promise<void> => {
   await assert.rejects(
     createController([]).handle({ jobId: 'nope' }, new AbortController().signal),
-    InvalidPriceFetchJobError,
+    { name: 'UnrecoverableError' },
   );
 });

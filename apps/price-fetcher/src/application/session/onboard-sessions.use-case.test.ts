@@ -36,6 +36,7 @@ function setup(servers: string[]): {
   };
 
   const capture: SessionCapturePort = {
+    marketplace: 'ozon',
     open: (proxy: ProxyEndpointEntity | null): Promise<SessionCaptureInterface> => {
       const server = proxy?.server ?? 'direct';
       if (server === dead) return Promise.reject(new Error('timeout'));
@@ -77,7 +78,7 @@ void test('uploads a session per prepared proxy and explains every skipped one',
   const steps: Array<[string, number, number]> = [];
 
   const summary = await useCase.execute(
-    { marketplace: 'ozon', limit: 5 },
+    5,
     new AbortController().signal,
     (step: CaptureStepInterface): Promise<CaptureDecisionType> => {
       steps.push([step.server, step.index, step.total]);
@@ -112,7 +113,7 @@ void test('a time-out while waiting for the check skips the proxy', async (): Pr
   const { useCase, uploaded } = setup([working]);
 
   const summary = await useCase.execute(
-    { marketplace: 'ozon', limit: 1 },
+    1,
     new AbortController().signal,
     (): Promise<CaptureDecisionType> => Promise.reject(new Error('The operation timed out')),
   );

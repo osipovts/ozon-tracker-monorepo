@@ -4,15 +4,16 @@ import type {
   JobFilterInterface,
   JobRepositoryPort,
 } from '../../application/job/job-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOffset,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
-import { JobEntity } from '../../domain/job/job.entity.js';
+import { JobEntity, jobKinds, jobStatuses } from '../../domain/job/job.entity.js';
 import type { JobRecord as JobRow, PrismaClient } from '../../generated/prisma/client.js';
 
-const kindSchema = z.enum(['proxy_fetch', 'price_fetch']);
-const statusSchema = z.enum(['queued', 'running', 'retrying', 'completed', 'failed']);
+const kindSchema = z.enum(jobKinds);
+const statusSchema = z.enum(jobStatuses);
 
 function toEntity(row: JobRow): JobEntity {
   return new JobEntity({
@@ -61,7 +62,7 @@ export class PrismaJobRepositoryAdapter implements JobRepositoryPort {
       this.prisma.jobRecord.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (pagination.page - 1) * pagination.pageSize,
+        skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
       this.prisma.jobRecord.count({ where }),

@@ -4,6 +4,7 @@ import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nest
 import { GetJobUseCase } from '../../application/job/get-job.use-case.js';
 import { ListJobsUseCase } from '../../application/job/list-jobs.use-case.js';
 import type { JobEntity } from '../../domain/job/job.entity.js';
+import { toPageResponse } from '../shared/pagination-query.type.js';
 import {
   jobIdParamSchema,
   jobListQuerySchema,
@@ -45,15 +46,10 @@ export class JobsController {
         ...(query.kind === undefined ? {} : { kind: query.kind }),
         ...(query.status === undefined ? {} : { status: query.status }),
       },
-      { page: query.page, pageSize: query.pageSize },
+      query,
     );
 
-    return {
-      items: page.items.map(toJob),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: page.total,
-    };
+    return toPageResponse(page, query, toJob);
   }
 
   @Get(':id')

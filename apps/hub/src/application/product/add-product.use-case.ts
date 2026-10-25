@@ -21,18 +21,16 @@ export class AddProductUseCase {
       throw new UnsupportedProductUrlError();
     }
 
-    const existing = await this.products.findByExternalId(reference.marketplace, reference.id);
-    if (existing !== null) return { product: existing, created: false };
-
-    const product = await this.products.upsert({
+    const added = await this.products.add({
       marketplace: reference.marketplace,
       externalId: reference.id,
       url: reference.url,
     });
-    this.logger.info(
-      `Tracking ${reference.marketplace} ${reference.id} as product ${product.id}: ${product.url}`,
-    );
+    if (added.created)
+      this.logger.info(
+        `Tracking ${reference.marketplace} ${reference.id} as product ${added.product.snapshot.id}: ${reference.url}`,
+      );
 
-    return { product, created: true };
+    return added;
   }
 }

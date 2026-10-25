@@ -1,7 +1,8 @@
 import { marketplaceSchema } from 'queue-contract';
 import { z } from 'zod';
 
-import { paginationQuerySchema } from '../shared/pagination-query.type.js';
+import { sessionStatuses } from '../../domain/session/browser-session.entity.js';
+import { pageResponseSchema, paginationQuerySchema } from '../shared/pagination-query.type.js';
 
 export const proxyListQuerySchema = paginationQuerySchema.extend({
   /** Only alive proxies by default. */
@@ -37,18 +38,13 @@ export const proxyItemSchema = z.object({
   session: z
     .object({
       id: z.uuid(),
-      status: z.enum(['active', 'stale']),
+      status: z.enum(sessionStatuses),
       staleReason: z.string().nullable(),
       updatedAt: z.iso.datetime(),
     })
     .nullable(),
 });
 
-export const proxyListResponseSchema = z.object({
-  items: z.array(proxyItemSchema),
-  page: z.number().int(),
-  pageSize: z.number().int(),
-  total: z.number().int(),
-});
+export const proxyListResponseSchema = pageResponseSchema(proxyItemSchema);
 
 export type ProxyListResponseType = z.infer<typeof proxyListResponseSchema>;

@@ -10,3 +10,5 @@ export const jobProgressSchema = z.object({
   /** Units finished successfully: products read or proxies alive. */
   succeeded: z.number().int().nonnegative(),
 });
+
+export type JobProgressType = z.infer<typeof jobProgressSchema>;

@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
+import { availabilities } from '../../domain/product/price-observation.interface.js';
+
 export const priceObservationSchema = z.object({
   id: z.uuid(),
   observedAt: z.iso.datetime(),
   title: z.string(),
-  availability: z.enum(['in_stock', 'out_of_stock', 'unknown']),
+  availability: z.enum(availabilities),
   /** Amounts are in kopecks. */
   prices: z.array(
     z.object({

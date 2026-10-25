@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { type LoggerPort, silentLogger } from 'logger';
+import { marketplaceExitCountries, type MarketplaceType } from 'product-reference';
 
 import { JobEntity } from '../../domain/job/job.entity.js';
 import type { JobQueuePort, RouteInterface } from '../job/job-queue.port.js';
@@ -30,8 +31,10 @@ export class RequestPriceObservationUseCase {
   ) {}
 
   async execute(productId: string): Promise<{ jobId: string }> {
-    const product = await this.products.findById(productId);
-    if (product === null) throw new ProductNotFoundError(productId);
+    const found = await this.products.findById(productId);
+    if (found === null) throw new ProductNotFoundError(productId);
+
+    const product = found.snapshot;
 
     const routes = await this.chooseRoutes(product.marketplace);
     if (routes.length === 0) throw new NoProxiesAvailableError();
@@ -65,9 +68,11 @@ export class RequestPriceObservationUseCase {
   }
 
   /** Routes with a session come first: they are the ones the site lets through. */
-  private async chooseRoutes(marketplace: string): Promise<RouteInterface[]> {
-    const routes: RouteInterface[] = (await this.sessions.listActive(marketplace)).map(
-      (session): RouteInterface => ({
+  private async chooseRoutes(marketplace: MarketplaceType): Promise<RouteInterface[]> {
+    const sessions = await this.sessions.listByMarketplace(marketplace);
+    const routes: RouteInterface[] = sessions
+      .filter((session): boolean => session.active)
+      .map((session): RouteInterface => ({
         server: session.snapshot.proxyServer,
         session: {
           id: session.snapshot.id,
@@ -75,18 +80,18 @@ export class RequestPriceObservationUseCase {
           userAgent: session.snapshot.userAgent,
           storageState: session.snapshot.storageState,
         },
-      }),
-    );
+      }));
 
     const taken = new Set(routes.map((route): string | null => route.server));
-    // The workers accept Russian exits only: other proxies would be rejected anyway.
+    // The workers accept exits in the country of the marketplace only: others would be rejected anyway.
     const best = await this.proxies.list(
-      { alive: true, country: 'RU' },
+      { alive: true, country: marketplaceExitCountries[marketplace] },
       { page: 1, pageSize: this.settings.proxyCount },
     );
 
     for (const proxy of best.items) {
-      if (!taken.has(proxy.server)) routes.push({ server: proxy.server, session: null });
+      if (!taken.has(proxy.snapshot.server))
+        routes.push({ server: proxy.snapshot.server, session: null });
     }
 
     return routes;

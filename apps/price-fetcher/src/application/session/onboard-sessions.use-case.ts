@@ -1,5 +1,4 @@
-import { type LoggerPort, silentLogger } from 'logger';
-import type { MarketplaceType } from 'product-reference';
+import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { HubSessionsPort } from './hub-sessions.port.js';
@@ -28,11 +27,11 @@ export class OnboardSessionsUseCase {
   ) {}
 
   async execute(
-    params: { marketplace: MarketplaceType; limit: number },
+    limit: number,
     signal: AbortSignal,
     decide: (step: CaptureStepInterface) => Promise<CaptureDecisionType>,
   ): Promise<OnboardSummaryInterface> {
-    const servers = await this.hub.listProxiesWithoutSession(params.marketplace, params.limit);
+    const servers = await this.hub.listProxiesWithoutSession(this.capture.marketplace, limit);
     this.logger.info(`${String(servers.length)} proxies need a session`);
 
     const summary: OnboardSummaryInterface = { ready: [], skipped: [] };
@@ -65,7 +64,7 @@ export class OnboardSessionsUseCase {
       this.logger.info(`[${String(index + 1)}/${String(total)}] Opening a window via ${server}`);
       capture = await this.capture.open(proxy);
     } catch (error: unknown) {
-      const reason = `the route does not work: ${error instanceof Error ? error.message : 'unknown error'}`;
+      const reason = `the route does not work: ${errorMessage(error)}`;
       this.logger.warn(`${server}: ${reason}`);
 
       return reason;
@@ -83,7 +82,7 @@ export class OnboardSessionsUseCase {
 
       return null;
     } catch (error: unknown) {
-      const reason = error instanceof Error ? error.message : 'unknown error';
+      const reason = errorMessage(error);
       this.logger.warn(`${server}: ${reason}`);
 
       return reason;

@@ -19,25 +19,35 @@ RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
 ################################
 # Dependencies
 ################################
-FROM base AS deps
+FROM base AS fetch
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY .npmrc* ./
-COPY apps/hub/package.json ./apps/hub/package.json
-# Manifests of the workspace packages the app depends on (needed for a frozen install).
-COPY packages/logger/package.json ./packages/logger/package.json
-COPY packages/product-reference/package.json ./packages/product-reference/package.json
-COPY packages/queue-contract/package.json ./packages/queue-contract/package.json
+# Downloads the packages of the whole lockfile into the store: the layer depends on the lockfile
+# only. pnpm has verified the lockfile when it wrote it; --trust-lockfile skips verifying it again,
+# which would request the metadata of every package from the registry.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
-    pnpm install --frozen-lockfile
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile fetch --frozen-lockfile
+
+################################
+# Installation
+################################
+FROM fetch AS install
+COPY . .
+# Links the app and the workspace packages it depends on from the store, without the registry.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter hub...
 
 ################################
 # Build
 ################################
-FROM deps AS build
-COPY . .
+FROM install AS build
 # The trailing "..." builds the workspace packages first; the hub build generates the Prisma client.
-RUN pnpm --filter hub... build && \
-    pnpm --filter hub deploy --legacy --prod /deploy
+RUN pnpm --filter hub... build
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile --offline --filter hub deploy --prod /deploy
 
 ################################
 # Production

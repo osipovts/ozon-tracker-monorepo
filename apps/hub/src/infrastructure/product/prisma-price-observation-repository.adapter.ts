@@ -1,11 +1,15 @@
 import { z } from 'zod';
 
 import type { PriceObservationRepositoryPort } from '../../application/product/price-observation-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOffset,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
-import type { PriceObservationInterface } from '../../domain/product/price-observation.interface.js';
+import {
+  availabilities,
+  type PriceObservationInterface,
+} from '../../domain/product/price-observation.interface.js';
 import type {
   PriceObservation as PriceObservationRow,
   PrismaClient,
@@ -17,7 +21,7 @@ const pricesSchema = z.array(
     currency: z.literal('RUB'),
   }),
 );
-const availabilitySchema = z.enum(['in_stock', 'out_of_stock', 'unknown']);
+const availabilitySchema = z.enum(availabilities);
 
 function toObservation(row: PriceObservationRow): PriceObservationInterface {
   return {
@@ -76,7 +80,7 @@ export class PrismaPriceObservationRepositoryAdapter implements PriceObservation
       this.prisma.priceObservation.findMany({
         where: { trackedProductId },
         orderBy: { observedAt: 'desc' },
-        skip: (pagination.page - 1) * pagination.pageSize,
+        skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
       this.prisma.priceObservation.count({ where: { trackedProductId } }),

@@ -83,6 +83,8 @@ export default defineConfig(
         },
       ],
       '@typescript-eslint/strict-boolean-expressions': 'error',
+      // Nest modules are empty classes configured by their decorator.
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
     },
   },
 

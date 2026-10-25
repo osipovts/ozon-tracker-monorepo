@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ListProxiesUseCase } from '../../application/proxy/list-proxies.use-case.js';
+import { toPageResponse } from '../shared/pagination-query.type.js';
 import {
   proxyListQuerySchema,
   type ProxyListQueryType,
@@ -31,34 +32,29 @@ export class ProxiesController {
         marketplace: query.marketplace,
         ...(query.ready === undefined ? {} : { ready: query.ready === 'true' }),
       },
-      { page: query.page, pageSize: query.pageSize },
+      query,
     );
 
-    return {
-      items: page.items.map(({ proxy, session, ready }) => ({
-        server: proxy.server,
-        source: proxy.source,
-        country: proxy.country,
-        exitIp: proxy.exitIp,
-        alive: proxy.alive,
-        latencyMs: proxy.latencyMs,
-        successRate: proxy.successRate,
-        checksTotal: proxy.checksTotal,
-        lastCheckedAt: proxy.lastCheckedAt.toISOString(),
-        ready,
-        session:
-          session === null
-            ? null
-            : {
-                id: session.snapshot.id,
-                status: session.snapshot.status,
-                staleReason: session.snapshot.staleReason,
-                updatedAt: session.snapshot.updatedAt.toISOString(),
-              },
-      })),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: page.total,
-    };
+    return toPageResponse(page, query, ({ proxy, session, ready }) => ({
+      server: proxy.snapshot.server,
+      source: proxy.snapshot.source,
+      country: proxy.snapshot.country,
+      exitIp: proxy.snapshot.exitIp,
+      alive: proxy.snapshot.alive,
+      latencyMs: proxy.snapshot.latencyMs,
+      successRate: proxy.successRate,
+      checksTotal: proxy.snapshot.checksTotal,
+      lastCheckedAt: proxy.snapshot.lastCheckedAt.toISOString(),
+      ready,
+      session:
+        session === null
+          ? null
+          : {
+              id: session.snapshot.id,
+              status: session.snapshot.status,
+              staleReason: session.snapshot.staleReason,
+              updatedAt: session.snapshot.updatedAt.toISOString(),
+            },
+    }));
   }
 }

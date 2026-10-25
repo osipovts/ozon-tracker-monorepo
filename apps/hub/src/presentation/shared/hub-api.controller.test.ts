@@ -185,17 +185,17 @@ void test('lists proxies with pagination and validates the query', async (): Pro
   await proxies.saveMany(
     [1, 2, 3].map(
       (index) =>
-        new ProxyEntity(
-          `socks5://217.71.230.${String(index)}:1080`,
-          'github-free-proxy-list',
-          'RU',
-          null,
-          index !== 3,
-          100 * index,
-          1,
-          index !== 3 ? 1 : 0,
-          new Date('2026-10-24T12:00:00.000Z'),
-        ),
+        new ProxyEntity({
+          server: `socks5://217.71.230.${String(index)}:1080`,
+          source: 'github-free-proxy-list',
+          country: 'RU',
+          exitIp: null,
+          alive: index !== 3,
+          latencyMs: 100 * index,
+          checksTotal: 1,
+          checksAlive: index !== 3 ? 1 : 0,
+          lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+        }),
     ),
   );
 

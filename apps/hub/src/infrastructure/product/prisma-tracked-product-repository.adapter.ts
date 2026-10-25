@@ -1,10 +1,14 @@
+import { marketplaces } from 'product-reference';
+import { z } from 'zod';
+
 import type {
   TrackedProductReferenceInterface,
   TrackedProductRepositoryPort,
 } from '../../application/product/tracked-product-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOffset,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import { TrackedProductEntity } from '../../domain/product/tracked-product.entity.js';
 import type {
@@ -12,51 +16,47 @@ import type {
   TrackedProduct as TrackedProductRow,
 } from '../../generated/prisma/client.js';
 
+const marketplaceSchema = z.enum(marketplaces);
+
 function toEntity(row: TrackedProductRow): TrackedProductEntity {
-  return new TrackedProductEntity(
-    row.id,
-    row.marketplace,
-    row.externalId,
-    row.url,
-    row.lastStatus,
-    row.lastCheckedAt,
-  );
+  return new TrackedProductEntity({
+    id: row.id,
+    marketplace: marketplaceSchema.parse(row.marketplace),
+    externalId: row.externalId,
+    url: row.url,
+    lastStatus: row.lastStatus,
+    lastCheckedAt: row.lastCheckedAt,
+  });
 }
 
 export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepositoryPort {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async upsert(reference: TrackedProductReferenceInterface): Promise<TrackedProductEntity> {
-    return toEntity(
-      await this.prisma.trackedProduct.upsert({
-        where: {
-          marketplaceExternalId: {
-            marketplace: reference.marketplace,
-            externalId: reference.externalId,
-          },
+  async add(
+    reference: TrackedProductReferenceInterface,
+  ): Promise<{ product: TrackedProductEntity; created: boolean }> {
+    // Skipping a duplicate instead of reading first keeps concurrent adds of a product apart.
+    const { count } = await this.prisma.trackedProduct.createMany({
+      data: [reference],
+      skipDuplicates: true,
+    });
+    const row = await this.prisma.trackedProduct.findUniqueOrThrow({
+      where: {
+        marketplaceExternalId: {
+          marketplace: reference.marketplace,
+          externalId: reference.externalId,
         },
-        create: reference,
-        update: { url: reference.url },
-      }),
-    );
-  }
-
-  async findByExternalId(
-    marketplace: string,
-    externalId: string,
-  ): Promise<TrackedProductEntity | null> {
-    const row = await this.prisma.trackedProduct.findUnique({
-      where: { marketplaceExternalId: { marketplace, externalId } },
+      },
     });
 
-    return row === null ? null : toEntity(row);
+    return { product: toEntity(row), created: count > 0 };
   }
 
   async list(pagination: PaginationInterface): Promise<PageInterface<TrackedProductEntity>> {
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.trackedProduct.findMany({
         orderBy: { createdAt: 'desc' },
-        skip: (pagination.page - 1) * pagination.pageSize,
+        skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
       this.prisma.trackedProduct.count(),

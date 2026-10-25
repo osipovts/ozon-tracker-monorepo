@@ -2,17 +2,21 @@ import { storageStateSchema } from 'queue-contract';
 import { z } from 'zod';
 
 import type { BrowserSessionRepositoryPort } from '../../application/session/browser-session-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOffset,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
-import { BrowserSessionEntity } from '../../domain/session/browser-session.entity.js';
+import {
+  BrowserSessionEntity,
+  sessionStatuses,
+} from '../../domain/session/browser-session.entity.js';
 import type {
   BrowserSession as BrowserSessionRow,
   PrismaClient,
 } from '../../generated/prisma/client.js';
 
-const statusSchema = z.enum(['active', 'stale']);
+const statusSchema = z.enum(sessionStatuses);
 
 function toEntity(row: BrowserSessionRow): BrowserSessionEntity {
   return new BrowserSessionEntity({
@@ -63,14 +67,8 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
   }
 
   async listByMarketplace(marketplace: string): Promise<BrowserSessionEntity[]> {
-    const rows = await this.prisma.browserSession.findMany({ where: { marketplace } });
-
-    return rows.map(toEntity);
-  }
-
-  async listActive(marketplace: string): Promise<BrowserSessionEntity[]> {
     const rows = await this.prisma.browserSession.findMany({
-      where: { marketplace, status: 'active' },
+      where: { marketplace },
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -81,7 +79,7 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.browserSession.findMany({
         orderBy: { createdAt: 'desc' },
-        skip: (pagination.page - 1) * pagination.pageSize,
+        skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
       this.prisma.browserSession.count(),

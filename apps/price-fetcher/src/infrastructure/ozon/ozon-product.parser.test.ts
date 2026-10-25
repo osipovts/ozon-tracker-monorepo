@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ProductReferenceEntity } from 'product-reference';
+import { OzonReferenceParser, ProductReferenceEntity } from 'product-reference';
 
 import type { OzonPageInterface } from './ozon-page.interface.js';
 import { OzonProductParser } from './ozon-product.parser.js';
@@ -11,8 +11,9 @@ const reference = new ProductReferenceEntity(
   '4775581891',
   'https://www.ozon.ru/product/4775581891/',
 );
-const parser = new OzonProductParser();
+const parser = new OzonProductParser(new OzonReferenceParser());
 const base: OzonPageInterface = {
+  url: reference.url,
   title: 'Notebook',
   heading: 'Notebook',
   body: '',
@@ -101,10 +102,16 @@ void test('supports JSON-LD graph and validates product identity and currency', 
   );
 });
 
-void test('does not infer a price from recommendations or a challenge page', (): void => {
+void test('does not infer a price from recommendations or another page', (): void => {
   assert.equal(parser.parse(reference, { ...base, body: 'Похожие товары 1 000 ₽' }), null);
-  assert.equal(parser.isChallenge({ ...base, title: 'Antibot Captcha' }), true);
-  assert.equal(parser.isChallenge({ ...base, body: 'Подтвердите, что вы человек' }), true);
+  assert.equal(
+    parser.parse(reference, {
+      ...base,
+      url: 'https://www.ozon.ru/product/1/',
+      priceText: '100 000 ₽',
+    }),
+    null,
+  );
   assert.equal(
     parser.parse(reference, {
       ...base,

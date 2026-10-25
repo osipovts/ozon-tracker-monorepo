@@ -13,17 +13,17 @@ import { ProductNotFoundError } from './product-not-found.error.js';
 import { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
 
 function proxy(server: string, alive: boolean, checksAlive: number): ProxyEntity {
-  return new ProxyEntity(
+  return new ProxyEntity({
     server,
-    'github-free-proxy-list',
-    'RU',
-    null,
+    source: 'github-free-proxy-list',
+    country: 'RU',
+    exitIp: null,
     alive,
-    200,
-    4,
+    latencyMs: 200,
+    checksTotal: 4,
     checksAlive,
-    new Date('2026-10-24T12:00:00.000Z'),
-  );
+    lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+  });
 }
 
 function session(proxyServer: string | null, status: 'active' | 'stale'): BrowserSessionEntity {
@@ -64,7 +64,7 @@ async function createUseCase(
   for (const item of sessions) await sessionRepository.save(item);
 
   const products = new InMemoryTrackedProductRepositoryAdapter();
-  const product = await products.upsert({
+  const { product } = await products.add({
     marketplace: 'ozon',
     externalId: '4775581891',
     url: productUrl,
@@ -93,7 +93,7 @@ async function createUseCase(
     ),
     requests,
     jobs,
-    productId: product.id,
+    productId: product.snapshot.id,
   };
 }
 

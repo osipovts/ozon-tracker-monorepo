@@ -2,9 +2,10 @@ import type {
   JobFilterInterface,
   JobRepositoryPort,
 } from '../../application/job/job-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOf,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import type { JobEntity } from '../../domain/job/job.entity.js';
 
@@ -32,11 +33,7 @@ export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
           (filter.status === undefined || job.snapshot.status === filter.status),
       )
       .toSorted((a, b): number => b.snapshot.createdAt.getTime() - a.snapshot.createdAt.getTime());
-    const start = (pagination.page - 1) * pagination.pageSize;
 
-    return Promise.resolve({
-      items: matching.slice(start, start + pagination.pageSize),
-      total: matching.length,
-    });
+    return Promise.resolve(pageOf(matching, pagination));
   }
 }

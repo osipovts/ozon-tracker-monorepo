@@ -8,8 +8,8 @@ export interface ChromiumLaunchSettingsInterface {
 }
 
 /** Browser settings shared by the worker and the session onboarding. */
-export class ChromiumLaunchAdapter {
-  launchOptions(settings: ChromiumLaunchSettingsInterface): LaunchOptions {
+export class ChromiumOptionsFactory {
+  launch(settings: ChromiumLaunchSettingsInterface): LaunchOptions {
     return {
       channel: 'chromium',
       headless: !settings.headed,
@@ -20,16 +20,21 @@ export class ChromiumLaunchAdapter {
     };
   }
 
-  proxyOptions(proxy: ProxyEndpointEntity | null): Pick<BrowserContextOptions, 'proxy'> {
-    return proxy === null
-      ? {}
-      : {
-          proxy: {
-            server: proxy.server,
-            ...(proxy.username === ''
-              ? {}
-              : { username: proxy.username, password: proxy.password }),
-          },
-        };
+  /** A Russian visitor coming through the route; a null proxy is a direct connection. */
+  context(proxy: ProxyEndpointEntity | null): BrowserContextOptions {
+    return {
+      locale: 'ru-RU',
+      timezoneId: 'Europe/Moscow',
+      ...(proxy === null
+        ? {}
+        : {
+            proxy: {
+              server: proxy.server,
+              ...(proxy.username === ''
+                ? {}
+                : { username: proxy.username, password: proxy.password }),
+            },
+          }),
+    };
   }
 }

@@ -8,12 +8,19 @@ import {
   chromium,
   type Route,
 } from 'playwright';
-import { ProductReferenceEntity } from 'product-reference';
+import { OzonReferenceParser, ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { SessionStorePort } from '../../application/session/session-store.port.js';
 import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
-import { OzonPlaywrightProductReaderAdapter } from './ozon-playwright-product-reader.adapter.js';
+import { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
+import { OzonChallengeParser } from './ozon-challenge.parser.js';
+import { OzonPageParser } from './ozon-page.parser.js';
+import {
+  OzonPlaywrightProductReaderAdapter,
+  type OzonReaderParsersInterface,
+} from './ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './ozon-product.parser.js';
 
 let browser: Browser;
@@ -31,6 +38,12 @@ const reference = new ProductReferenceEntity(
   'https://www.ozon.ru/product/4775581891/',
 );
 const proxy = new ProxyEndpointEntity('socks5://217.71.230.103:1080');
+const parsers: OzonReaderParsersInterface = {
+  geoIp: new GeoIpPageParser(),
+  pages: new OzonPageParser(),
+  challenges: new OzonChallengeParser(),
+  products: new OzonProductParser(new OzonReferenceParser()),
+};
 
 function createReader(
   html: string,
@@ -58,7 +71,8 @@ function createReader(
         return context;
       },
     },
-    new OzonProductParser(),
+    new ChromiumOptionsFactory(),
+    parsers,
     1000,
     sessions,
   );
@@ -123,7 +137,8 @@ void test('reader accepts the final document after a JavaScript challenge redire
         return context;
       },
     },
-    new OzonProductParser(),
+    new ChromiumOptionsFactory(),
+    parsers,
     1000,
   );
 

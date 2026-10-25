@@ -26,9 +26,9 @@ void test('creates a proxy from its first check', async (): Promise<void> => {
   await new RecordProxyChecksUseCase(repository).execute([check({})]);
 
   const [proxy] = await repository.findByServers([server]);
-  assert.equal(proxy?.alive, true);
-  assert.equal(proxy.latencyMs, 300);
-  assert.equal(proxy.checksTotal, 1);
+  assert.equal(proxy?.snapshot.alive, true);
+  assert.equal(proxy.snapshot.latencyMs, 300);
+  assert.equal(proxy.snapshot.checksTotal, 1);
   assert.equal(proxy.successRate, 1);
 });
 
@@ -40,10 +40,10 @@ void test('keeps the last known location and latency when a proxy dies', async (
   await useCase.execute([check({ alive: false, latencyMs: null, country: null, exitIp: null })]);
 
   const [proxy] = await repository.findByServers([server]);
-  assert.equal(proxy?.alive, false);
-  assert.equal(proxy.country, 'RU');
-  assert.equal(proxy.latencyMs, 300);
-  assert.equal(proxy.checksTotal, 2);
+  assert.equal(proxy?.snapshot.alive, false);
+  assert.equal(proxy.snapshot.country, 'RU');
+  assert.equal(proxy.snapshot.latencyMs, 300);
+  assert.equal(proxy.snapshot.checksTotal, 2);
   assert.equal(proxy.successRate, 0.5);
 });
 
@@ -57,8 +57,8 @@ void test('applies several checks of one proxy in a batch in order', async (): P
   ]);
 
   const [proxy] = await repository.findByServers([server]);
-  assert.equal(proxy?.checksTotal, 3);
-  assert.equal(proxy.checksAlive, 2);
-  assert.equal(proxy.alive, false);
-  assert.equal(proxy.latencyMs, 100);
+  assert.equal(proxy?.snapshot.checksTotal, 3);
+  assert.equal(proxy.snapshot.checksAlive, 2);
+  assert.equal(proxy.snapshot.alive, false);
+  assert.equal(proxy.snapshot.latencyMs, 100);
 });

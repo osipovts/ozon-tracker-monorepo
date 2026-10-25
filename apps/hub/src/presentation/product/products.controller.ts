@@ -35,6 +35,7 @@ import {
 import {
   paginationQuerySchema,
   type PaginationQueryType,
+  toPageResponse,
 } from '../shared/pagination-query.type.js';
 import { priceHistoryResponseSchema, type PriceHistoryResponseType } from './price-history.type.js';
 import type { PriceObservationType } from './price-observation.type.js';
@@ -48,15 +49,8 @@ import {
   type ProductType,
 } from './product.type.js';
 
-function toProduct(product: TrackedProductEntity): ProductType {
-  return {
-    id: product.id,
-    marketplace: product.marketplace,
-    externalId: product.externalId,
-    url: product.url,
-    lastStatus: product.lastStatus,
-    lastCheckedAt: product.lastCheckedAt?.toISOString() ?? null,
-  };
+function toProduct({ snapshot }: TrackedProductEntity): ProductType {
+  return { ...snapshot, lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null };
 }
 
 function toObservation(observation: PriceObservationInterface): PriceObservationType {
@@ -87,17 +81,12 @@ export class ProductsController {
   async list(
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
   ): Promise<ProductListResponseType> {
-    const page = await this.listProducts.execute({ page: query.page, pageSize: query.pageSize });
+    const page = await this.listProducts.execute(query);
 
-    return {
-      items: page.items.map(({ product, latest }) => ({
-        ...toProduct(product),
-        latest: latest === null ? null : toObservation(latest),
-      })),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: page.total,
-    };
+    return toPageResponse(page, query, ({ product, latest }) => ({
+      ...toProduct(product),
+      latest: latest === null ? null : toObservation(latest),
+    }));
   }
 
   @Post()
@@ -145,17 +134,8 @@ export class ProductsController {
     @Param('id', { schema: productIdParamSchema }) id: string,
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
   ): Promise<PriceHistoryResponseType> {
-    const { product, page } = await this.listHistory.execute(id, {
-      page: query.page,
-      pageSize: query.pageSize,
-    });
+    const { product, page } = await this.listHistory.execute(id, query);
 
-    return {
-      product: toProduct(product),
-      items: page.items.map(toObservation),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: page.total,
-    };
+    return { product: toProduct(product), ...toPageResponse(page, query, toObservation) };
   }
 }

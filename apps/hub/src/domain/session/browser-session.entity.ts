@@ -15,7 +15,9 @@ export interface StorageStateInterface {
   }>;
 }
 
-export type SessionStatusType = 'active' | 'stale';
+export const sessionStatuses = ['active', 'stale'] as const;
+
+export type SessionStatusType = (typeof sessionStatuses)[number];
 
 export interface BrowserSessionInterface {
   id: string;

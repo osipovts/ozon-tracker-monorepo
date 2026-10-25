@@ -57,7 +57,7 @@ export class ListProxiesUseCase {
 
     return {
       items: page.items.map((proxy): ProxyWithSessionInterface => {
-        const session = sessions.get(proxy.server) ?? null;
+        const session = sessions.get(proxy.snapshot.server) ?? null;
 
         return { proxy, session, ready: session?.active ?? false };
       }),

@@ -23,11 +23,11 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "bullmq": "^6.4.0",
     "https-proxy-agent": "^9.1.0",
     "logger": "workspace:*",
     "proxy-endpoint": "workspace:*",
     "queue-contract": "workspace:*",
+    "queue-worker": "workspace:*",
     "socks-proxy-agent": "^10.1.0",
     "zod": "^4.6.7"
   }

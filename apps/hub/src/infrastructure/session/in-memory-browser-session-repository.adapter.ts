@@ -1,7 +1,8 @@
 import type { BrowserSessionRepositoryPort } from '../../application/session/browser-session-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOf,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import type { BrowserSessionEntity } from '../../domain/session/browser-session.entity.js';
 
@@ -29,18 +30,8 @@ export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRe
 
   listByMarketplace(marketplace: string): Promise<BrowserSessionEntity[]> {
     return Promise.resolve(
-      Array.from(this.sessions.values()).filter(
-        (session): boolean => session.snapshot.marketplace === marketplace,
-      ),
-    );
-  }
-
-  listActive(marketplace: string): Promise<BrowserSessionEntity[]> {
-    return Promise.resolve(
       Array.from(this.sessions.values())
-        .filter(
-          (session): boolean => session.snapshot.marketplace === marketplace && session.active,
-        )
+        .filter((session): boolean => session.snapshot.marketplace === marketplace)
         .toSorted(
           (a, b): number => b.snapshot.updatedAt.getTime() - a.snapshot.updatedAt.getTime(),
         ),
@@ -51,12 +42,8 @@ export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRe
     const all = Array.from(this.sessions.values()).toSorted(
       (a, b): number => b.snapshot.createdAt.getTime() - a.snapshot.createdAt.getTime(),
     );
-    const start = (pagination.page - 1) * pagination.pageSize;
 
-    return Promise.resolve({
-      items: all.slice(start, start + pagination.pageSize),
-      total: all.length,
-    });
+    return Promise.resolve(pageOf(all, pagination));
   }
 
   delete(id: string): Promise<boolean> {

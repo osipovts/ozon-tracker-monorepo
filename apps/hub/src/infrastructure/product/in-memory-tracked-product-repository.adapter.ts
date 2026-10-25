@@ -4,53 +4,42 @@ import type {
   TrackedProductReferenceInterface,
   TrackedProductRepositoryPort,
 } from '../../application/product/tracked-product-repository.port.js';
-import type {
-  PageInterface,
-  PaginationInterface,
+import {
+  type PageInterface,
+  pageOf,
+  type PaginationInterface,
 } from '../../application/shared/page.interface.js';
 import { TrackedProductEntity } from '../../domain/product/tracked-product.entity.js';
+
+function keyOf(reference: TrackedProductReferenceInterface): string {
+  return `${reference.marketplace}/${reference.externalId}`;
+}
 
 export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRepositoryPort {
   private readonly products = new Map<string, TrackedProductEntity>();
 
-  upsert(reference: TrackedProductReferenceInterface): Promise<TrackedProductEntity> {
+  add(
+    reference: TrackedProductReferenceInterface,
+  ): Promise<{ product: TrackedProductEntity; created: boolean }> {
     const existing = Array.from(this.products.values()).find(
-      (product): boolean =>
-        product.marketplace === reference.marketplace &&
-        product.externalId === reference.externalId,
+      (product): boolean => keyOf(product.snapshot) === keyOf(reference),
     );
+    if (existing !== undefined) return Promise.resolve({ product: existing, created: false });
 
-    const product = new TrackedProductEntity(
-      existing?.id ?? randomUUID(),
-      reference.marketplace,
-      reference.externalId,
-      reference.url,
-      existing?.lastStatus ?? null,
-      existing?.lastCheckedAt ?? null,
-    );
-    this.products.set(product.id, product);
+    const product = new TrackedProductEntity({
+      id: randomUUID(),
+      ...reference,
+      lastStatus: null,
+      lastCheckedAt: null,
+    });
+    this.products.set(product.snapshot.id, product);
 
-    return Promise.resolve(product);
-  }
-
-  findByExternalId(marketplace: string, externalId: string): Promise<TrackedProductEntity | null> {
-    return Promise.resolve(
-      Array.from(this.products.values()).find(
-        (product): boolean =>
-          product.marketplace === marketplace && product.externalId === externalId,
-      ) ?? null,
-    );
+    return Promise.resolve({ product, created: true });
   }
 
   list(pagination: PaginationInterface): Promise<PageInterface<TrackedProductEntity>> {
     // A Map keeps the insertion order: the newest product is the last one.
-    const all = Array.from(this.products.values()).toReversed();
-    const start = (pagination.page - 1) * pagination.pageSize;
-
-    return Promise.resolve({
-      items: all.slice(start, start + pagination.pageSize),
-      total: all.length,
-    });
+    return Promise.resolve(pageOf(Array.from(this.products.values()).toReversed(), pagination));
   }
 
   findById(id: string): Promise<TrackedProductEntity | null> {
@@ -62,14 +51,11 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     if (product !== undefined)
       this.products.set(
         id,
-        new TrackedProductEntity(
-          id,
-          product.marketplace,
-          product.externalId,
-          product.url,
-          status,
-          checkedAt,
-        ),
+        new TrackedProductEntity({
+          ...product.snapshot,
+          lastStatus: status,
+          lastCheckedAt: checkedAt,
+        }),
       );
 
     return Promise.resolve();

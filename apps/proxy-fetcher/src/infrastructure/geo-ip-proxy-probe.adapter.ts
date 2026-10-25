@@ -2,7 +2,7 @@ import type { Agent } from 'node:http';
 import { request } from 'node:https';
 
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { type LoggerPort, silentLogger } from 'logger';
+import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { z } from 'zod';
@@ -56,9 +56,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
       };
     } catch (error: unknown) {
       signal.throwIfAborted();
-      this.logger.verbose(
-        `${proxy.server} dead: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
+      this.logger.verbose(`${proxy.server} dead: ${errorMessage(error)}`);
 
       return {
         server: proxy.server,

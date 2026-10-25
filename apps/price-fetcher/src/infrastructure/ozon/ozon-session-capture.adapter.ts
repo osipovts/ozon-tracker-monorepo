@@ -3,56 +3,56 @@ import { setTimeout } from 'node:timers/promises';
 
 import { type LoggerPort, silentLogger } from 'logger';
 import type { Browser, BrowserContext, Page } from 'playwright';
+import { marketplaceExitCountries, type MarketplaceType } from 'product-reference';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
-import { z } from 'zod';
 
 import type {
   SessionCaptureInterface,
   SessionCapturePort,
 } from '../../application/session/session-capture.port.js';
 import type { CapturedSessionInterface } from '../../domain/session/captured-session.interface.js';
-import { ChromiumLaunchAdapter } from '../shared/chromium-launch.adapter.js';
-import type { OzonProductParser } from './ozon-product.parser.js';
+import type { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import type { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
+import type { OzonChallengeParser } from './ozon-challenge.parser.js';
 
-const geoSchema = z.object({ ip: z.ipv4(), country: z.string().optional() });
 const pollIntervalMs = 1000;
 /** Lets the site finish setting its cookies after the check. */
 const settleMs = 2000;
 
 /** Opens Ozon in a window and recognizes when the person has passed the site check. */
 export class OzonSessionCaptureAdapter implements SessionCapturePort {
-  private readonly chromium = new ChromiumLaunchAdapter();
+  readonly marketplace: MarketplaceType = 'ozon';
 
   constructor(
     private readonly browser: Pick<Browser, 'newContext'>,
-    private readonly parser: OzonProductParser,
+    private readonly options: ChromiumOptionsFactory,
+    private readonly geoIp: GeoIpPageParser,
+    private readonly challenges: OzonChallengeParser,
     private readonly navigationTimeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
   async open(proxy: ProxyEndpointEntity | null): Promise<SessionCaptureInterface> {
     const context = await this.browser.newContext({
-      locale: 'ru-RU',
-      timezoneId: 'Europe/Moscow',
+      ...this.options.context(proxy),
       viewport: null,
-      ...this.chromium.proxyOptions(proxy),
     });
-
     context.setDefaultNavigationTimeout(this.navigationTimeoutMs);
 
     try {
       const page = await context.newPage();
-      await page.goto('https://ipinfo.io/json', { waitUntil: 'domcontentloaded' });
-      const geo = geoSchema.parse(JSON.parse(await page.locator('body').innerText()));
-      this.logger.debug(`Exit IP ${geo.ip} ${geo.country ?? '??'}`);
+      const exit = await this.geoIp.parse(page);
+      if (exit === null) throw new Error('the GeoIP service did not tell the exit address');
 
-      // The workers only accept Russian exits through a proxy.
-      if (proxy !== null && geo.country !== 'RU')
-        throw new Error(`the exit ${geo.ip} is not in Russia (${geo.country ?? 'unknown'})`);
+      this.logger.debug(`Exit IP ${exit.ip} ${exit.country ?? '??'}`);
+      // The workers only accept exits in the country of the marketplace through a proxy.
+      const country = marketplaceExitCountries[this.marketplace];
+      if (proxy !== null && exit.country !== country)
+        throw new Error(`the exit ${exit.ip} is not in ${country} (${exit.country ?? 'unknown'})`);
 
       await page.goto('https://www.ozon.ru/', { waitUntil: 'domcontentloaded' });
 
-      return this.capture(context, page, proxy, geo.ip);
+      return this.capture(context, page, proxy, exit.ip);
     } catch (error: unknown) {
       await context.close();
       throw error;
@@ -82,7 +82,7 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
         }
       },
       export: async (): Promise<CapturedSessionInterface> => ({
-        marketplace: 'ozon',
+        marketplace: this.marketplace,
         proxy: proxy?.server ?? null,
         session: {
           id: randomUUID(),
@@ -107,17 +107,7 @@ export class OzonSessionCaptureAdapter implements SessionCapturePort {
         widgets: window.document.querySelectorAll('[data-widget]').length,
       }));
 
-      return (
-        state.widgets > 0 &&
-        !this.parser.isChallenge({
-          title: state.title,
-          heading: '',
-          body: state.body,
-          priceText: '',
-          purchaseText: '',
-          structuredData: [],
-        })
-      );
+      return state.widgets > 0 && !this.challenges.isChallenge(state.title, state.body);
     } catch {
       // The page is navigating: look again on the next poll.
       return false;

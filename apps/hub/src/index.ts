@@ -3,18 +3,26 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ConsoleLoggerAdapter } from 'logger';
+import { errorMessage } from 'logger';
 
-import { AppConfigParser } from './infrastructure/shared/app-config.parser.js';
+import { LOGGER, type LoggerPort } from './application/shared/logger.port.js';
+import { AppModule } from './composition/app.module.js';
+import {
+  APP_CONFIG,
+  type AppConfigInterface,
+} from './infrastructure/shared/app-config.interface.js';
 import { NestLoggerAdapter } from './infrastructure/shared/nest-logger.adapter.js';
-import { AppModule } from './presentation/shared/app.module.js';
 
 try {
-  const config = new AppConfigParser().parse(process.env);
-  const logger = new ConsoleLoggerAdapter(config.logLevel, 'hub');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.register(config, logger), {
-    logger: new NestLoggerAdapter(logger),
+  // The logger of the application is a provider: Nest holds its own messages until it is ready.
+  // A failed start throws here instead of ending the process inside Nest.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    abortOnError: false,
   });
+  app.useLogger(app.get(NestLoggerAdapter));
+  const config = app.get<AppConfigInterface>(APP_CONFIG);
+  const logger = app.get<LoggerPort>(LOGGER);
 
   // A session file carries the cookies and the local storage of the browser.
   app.useBodyParser('json', { limit: '10mb' });
@@ -39,6 +47,6 @@ try {
     `Listening on http://localhost:${String(config.port)} (docs: /docs), log level ${config.logLevel}`,
   );
 } catch (error: unknown) {
-  console.error('Hub failed to start:', error instanceof Error ? error.message : 'unknown error');
+  console.error('Hub failed to start:', errorMessage(error));
   process.exitCode = 1;
 }

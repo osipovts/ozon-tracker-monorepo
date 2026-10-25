@@ -1,11 +1,6 @@
-import {
-  Inject,
-  Injectable,
-  type OnApplicationBootstrap,
-  type OnApplicationShutdown,
-} from '@nestjs/common';
-import { UnrecoverableError, Worker } from 'bullmq';
+import { Inject, Injectable } from '@nestjs/common';
 import { priceFetchResultSchema, type PriceFetchResultType, queueNames } from 'queue-contract';
+import { QueueMessageParser } from 'queue-worker';
 
 import { RecordJobEventUseCase } from '../../application/job/record-job-event.use-case.js';
 import {
@@ -18,75 +13,41 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../infrastructure/shared/app-config.interface.js';
+import { ResultsConsumer } from '../shared/results.consumer.js';
 
 type ProductResultType = Extract<PriceFetchResultType, { type: 'product_result' }>;
 
 @Injectable()
-export class PriceResultsConsumer implements OnApplicationBootstrap, OnApplicationShutdown {
-  private worker: Worker | null = null;
-
+export class PriceResultsConsumer extends ResultsConsumer<PriceFetchResultType> {
   constructor(
     @Inject(RecordPriceResultUseCase) private readonly recordResult: RecordPriceResultUseCase,
-    @Inject(RecordJobEventUseCase) private readonly recordJobEvent: RecordJobEventUseCase,
+    @Inject(RecordJobEventUseCase) recordJobEvent: RecordJobEventUseCase,
     @Inject(RecordSessionEventUseCase)
     private readonly recordSessionEvent: RecordSessionEventUseCase,
-    @Inject(APP_CONFIG) private readonly config: AppConfigInterface,
-    @Inject(LOGGER) private readonly logger: LoggerPort,
-  ) {}
-
-  onApplicationBootstrap(): void {
-    this.worker = new Worker(queueNames.priceFetchResults, (job) => this.handle(job.data), {
-      connection: { url: this.config.redisUrl },
-    });
-    this.worker.on('error', (error): void => {
-      this.logger.error(`Queue ${queueNames.priceFetchResults} error: ${error.message}`);
-    });
-
-    this.logger.info(`Consuming ${queueNames.priceFetchResults}`);
+    @Inject(QueueMessageParser) messages: QueueMessageParser,
+    @Inject(APP_CONFIG) config: AppConfigInterface,
+    @Inject(LOGGER) logger: LoggerPort,
+  ) {
+    super(
+      {
+        name: queueNames.priceFetchResults,
+        schema: priceFetchResultSchema,
+        description: 'price fetch result',
+      },
+      recordJobEvent,
+      messages,
+      config,
+      logger,
+    );
   }
 
-  async onApplicationShutdown(): Promise<void> {
-    await this.worker?.close();
-  }
-
-  async handle(data: unknown): Promise<void> {
-    const parsed = priceFetchResultSchema.safeParse(data);
-    // Redelivering a malformed message cannot fix it.
-    if (!parsed.success) {
-      this.logger.warn(
-        `Dropping a malformed price fetch result: ${parsed.error.message.slice(0, 200)}`,
-      );
-      throw new UnrecoverableError('Malformed price fetch result');
-    }
-
-    const message = parsed.data;
-    const at = new Date();
-    this.logger.verbose(`Result ${message.type} of job ${message.jobId}`);
-
+  protected override async record(message: PriceFetchResultType, at: Date): Promise<void> {
     switch (message.type) {
       case 'job_started':
-        return this.recordJobEvent.execute({ type: 'started', jobId: message.jobId, at });
       case 'job_progress':
-        return this.recordJobEvent.execute({
-          type: 'progress',
-          jobId: message.jobId,
-          at,
-          progress: {
-            processed: message.processed,
-            total: message.total,
-            succeeded: message.succeeded,
-          },
-        });
       case 'job_done':
-        return this.recordJobEvent.execute({ type: 'completed', jobId: message.jobId, at });
       case 'job_failed':
-        return this.recordJobEvent.execute({
-          type: 'failed',
-          jobId: message.jobId,
-          at,
-          reason: message.reason,
-          willRetry: message.willRetry,
-        });
+        return this.recordJobMessage(message, at);
       case 'product_result':
         await this.recordResult.execute(this.toResult(message));
         await this.recordSessionOutcomes(message, at);

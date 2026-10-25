@@ -4,6 +4,7 @@ import {
   type ProxyFetchJobType,
   type ProxyFetchResultType,
 } from 'queue-contract';
+import type { JobLifecycleReporter, QueueMessageParser } from 'queue-worker';
 
 import type {
   RefreshProxySourceListenerInterface,
@@ -17,61 +18,23 @@ type SourceUseCasesType = Record<
   { execute: RefreshProxySourceUseCase['execute'] }
 >;
 
-export class InvalidProxyFetchJobError extends Error {}
-
-const maxReasonLength = 200;
-
 export class ProxyFetchController {
   constructor(
     private readonly useCases: SourceUseCasesType,
+    private readonly messages: QueueMessageParser,
+    private readonly lifecycle: JobLifecycleReporter,
     private readonly publish: (message: ProxyFetchResultType) => Promise<void>,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
-  /**
-   * Handles a raw queue message; throws InvalidProxyFetchJobError for a malformed one.
-   * `willRetry` tells whether the queue is going to deliver the job again after a failure.
-   */
+  /** `willRetry` tells whether the queue is going to deliver the job again after a failure. */
   async handle(data: unknown, signal: AbortSignal, willRetry = false): Promise<void> {
-    const parsed = proxyFetchJobSchema.safeParse(data);
-    if (!parsed.success) {
-      this.logger.warn(
-        `Dropping a malformed job: ${parsed.error.message.slice(0, maxReasonLength)}`,
-      );
-      throw new InvalidProxyFetchJobError('Malformed proxy fetch job');
-    }
-
-    const job = parsed.data;
-    const startedAt = performance.now();
+    const job = this.messages.parse(proxyFetchJobSchema, data, 'proxy fetch job');
     this.logger.info(
       `Job ${job.jobId} started: ${job.source}, up to ${String(job.maxCandidates)} candidates, probe timeout ${String(job.probeTimeoutMs)} ms`,
     );
-    await this.publish({ type: 'job_started', jobId: job.jobId });
 
-    try {
-      await this.refresh(job, signal);
-    } catch (error: unknown) {
-      const reason = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        `Job ${job.jobId} failed (${willRetry ? 'will retry' : 'final'}): ${reason}`,
-      );
-      await this.publish({
-        type: 'job_failed',
-        jobId: job.jobId,
-        reason: reason.slice(0, maxReasonLength),
-        willRetry,
-      }).catch((publishError: unknown): void => {
-        this.logger.error(
-          `Could not report the failure of job ${job.jobId}: ${publishError instanceof Error ? publishError.message : 'unknown error'}`,
-        );
-      });
-      throw error;
-    }
-
-    this.logger.info(
-      `Job ${job.jobId} done in ${String(Math.round(performance.now() - startedAt))} ms`,
-    );
-    await this.publish({ type: 'job_done', jobId: job.jobId });
+    await this.lifecycle.run(job.jobId, willRetry, (): Promise<void> => this.refresh(job, signal));
   }
 
   private async refresh(job: ProxyFetchJobType, signal: AbortSignal): Promise<void> {

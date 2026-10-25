@@ -20,14 +20,14 @@ async function setup(): Promise<{
 }> {
   const products = new InMemoryTrackedProductRepositoryAdapter();
   const observations = new InMemoryPriceObservationRepositoryAdapter();
-  const product = await products.upsert({
+  const { product } = await products.add({
     marketplace: 'ozon',
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
   });
 
   return {
-    productId: product.id,
+    productId: product.snapshot.id,
     record: new RecordPriceResultUseCase(products, observations),
     history: new ListPriceHistoryUseCase(products, observations),
     products,
@@ -57,10 +57,10 @@ void test('records an observation once even if the result is delivered twice', a
   await record.execute(result(productId, {}));
 
   const { product, page } = await history.execute(productId, { page: 1, pageSize: 10 });
-  assert.equal(product.url, 'https://www.ozon.ru/product/1/');
+  assert.equal(product.snapshot.url, 'https://www.ozon.ru/product/1/');
   assert.equal(page.total, 1);
   assert.equal(page.items[0]?.prices.length, 1);
-  assert.equal((await products.findById(productId))?.lastStatus, 'success');
+  assert.equal((await products.findById(productId))?.snapshot.lastStatus, 'success');
 });
 
 void test('keeps failures out of the price history but remembers the status', async (): Promise<void> => {
@@ -69,7 +69,7 @@ void test('keeps failures out of the price history but remembers the status', as
   await record.execute(result(productId, { status: 'challenge_required', observation: null }));
 
   assert.equal((await history.execute(productId, { page: 1, pageSize: 10 })).page.total, 0);
-  assert.equal((await products.findById(productId))?.lastStatus, 'challenge_required');
+  assert.equal((await products.findById(productId))?.snapshot.lastStatus, 'challenge_required');
 });
 
 void test('ignores a result of an unknown product and rejects its history', async (): Promise<void> => {

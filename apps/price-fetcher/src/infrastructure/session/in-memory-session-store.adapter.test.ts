@@ -34,17 +34,13 @@ void test('finds a session by route, including the direct one', (): void => {
   assert.equal(direct.find(proxy), null);
 });
 
-void test('reports only changed states, ignoring the order of cookies', (): void => {
-  const other = { ...cookie, name: 'other' };
-  const store = new InMemorySessionStoreAdapter([
-    { proxy, session: { ...session, storageState: { cookies: [cookie, other], origins: [] } } },
-  ]);
+void test('reports the last state of every known session once', (): void => {
+  const store = new InMemorySessionStoreAdapter([{ proxy, session }]);
+  const changed = { cookies: [{ ...cookie, value: 'v2' }], origins: [] };
 
-  store.update(session.id, { cookies: [other, cookie], origins: [] });
-  assert.deepEqual(store.drainUpdates(), []);
-
-  const changed = { cookies: [{ ...cookie, value: 'v2' }, other], origins: [] };
+  store.update(session.id, { cookies: [], origins: [] });
   store.update(session.id, changed);
+  store.update('6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22', changed);
 
   assert.deepEqual(store.drainUpdates(), [{ sessionId: session.id, storageState: changed }]);
   assert.deepEqual(store.drainUpdates(), []);

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { UnrecoverableError } from 'bullmq';
 import { silentLogger } from 'logger';
+import { QueueMessageParser } from 'queue-worker';
 
 import { RecordJobEventUseCase } from '../../application/job/record-job-event.use-case.js';
 import { ListPriceHistoryUseCase } from '../../application/product/list-price-history.use-case.js';
@@ -36,7 +37,7 @@ async function setup(): Promise<{
 }> {
   const products = new InMemoryTrackedProductRepositoryAdapter();
   const observations = new InMemoryPriceObservationRepositoryAdapter();
-  const product = await products.upsert({
+  const { product } = await products.add({
     marketplace: 'ozon',
     externalId: '4775581891',
     url: 'https://www.ozon.ru/product/4775581891/',
@@ -58,12 +59,13 @@ async function setup(): Promise<{
       new RecordPriceResultUseCase(products, observations),
       new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
       new RecordSessionEventUseCase(sessions),
+      new QueueMessageParser(silentLogger),
       config,
       silentLogger,
     ),
     history: new ListPriceHistoryUseCase(products, observations),
     sessions,
-    productId: product.id,
+    productId: product.snapshot.id,
   };
 }
 

@@ -1,23 +1,15 @@
 import { z } from 'zod';
 
+import { jobDoneSchema, jobFailedSchema, jobStartedSchema } from './job-lifecycle.type.js';
 import { jobProgressSchema } from './job-progress.type.js';
 import { readProductResultSchema } from './read-product-result.type.js';
 import { storageStateSchema } from './storage-state.type.js';
 
 export const priceFetchResultSchema = z.discriminatedUnion('type', [
+  jobStartedSchema,
   jobProgressSchema,
-  z.object({
-    type: z.literal('job_started'),
-    jobId: z.uuid(),
-  }),
-  z.object({
-    type: z.literal('job_failed'),
-    jobId: z.uuid(),
-    /** A short description without credentials. */
-    reason: z.string(),
-    /** True if the queue is going to deliver the job again. */
-    willRetry: z.boolean(),
-  }),
+  jobFailedSchema,
+  jobDoneSchema,
   z.object({
     type: z.literal('product_result'),
     jobId: z.uuid(),
@@ -55,10 +47,6 @@ export const priceFetchResultSchema = z.discriminatedUnion('type', [
     sessionId: z.uuid(),
     expectedIp: z.ipv4(),
     actualIp: z.ipv4(),
-  }),
-  z.object({
-    type: z.literal('job_done'),
-    jobId: z.uuid(),
   }),
 ]);
 

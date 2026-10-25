@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { UnrecoverableError } from 'bullmq';
 import { silentLogger } from 'logger';
+import { QueueMessageParser } from 'queue-worker';
 
 import { RecordJobEventUseCase } from '../../application/job/record-job-event.use-case.js';
 import { RecordProxyChecksUseCase } from '../../application/proxy/record-proxy-checks.use-case.js';
@@ -28,6 +29,7 @@ void test('stores the checks of a source and ignores its completion message', as
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(repository),
     new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
+    new QueueMessageParser(silentLogger),
     config,
     silentLogger,
   );
@@ -58,7 +60,7 @@ void test('stores the checks of a source and ignores its completion message', as
 
   const page = await repository.list({}, { page: 1, pageSize: 10 });
   assert.deepEqual(
-    page.items.map((proxy): [string, boolean] => [proxy.server, proxy.alive]),
+    page.items.map((proxy): [string, boolean] => [proxy.snapshot.server, proxy.snapshot.alive]),
     [
       ['socks5://217.71.230.1:1080', true],
       ['http://217.71.230.2:8080', false],
@@ -70,6 +72,7 @@ void test('rejects a malformed message for good', async (): Promise<void> => {
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(new InMemoryProxyRepositoryAdapter()),
     new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
+    new QueueMessageParser(silentLogger),
     config,
     silentLogger,
   );
@@ -85,6 +88,7 @@ void test('tracks the progress of a proxy job until it is done', async (): Promi
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(new InMemoryProxyRepositoryAdapter()),
     new RecordJobEventUseCase(jobs),
+    new QueueMessageParser(silentLogger),
     config,
     silentLogger,
   );

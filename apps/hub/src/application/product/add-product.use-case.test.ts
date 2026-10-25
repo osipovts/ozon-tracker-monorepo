@@ -31,12 +31,12 @@ void test('tracks a product once whatever the link to it', async (): Promise<voi
 
   const first = await add.execute('https://www.ozon.ru/product/asus-4775581891/?sh=share');
   assert.equal(first.created, true);
-  assert.equal(first.product.url, 'https://www.ozon.ru/product/4775581891/');
-  assert.equal(first.product.externalId, '4775581891');
+  assert.equal(first.product.snapshot.url, 'https://www.ozon.ru/product/4775581891/');
+  assert.equal(first.product.snapshot.externalId, '4775581891');
 
   const second = await add.execute('https://ozon.ru/product/4775581891/');
   assert.equal(second.created, false);
-  assert.equal(second.product.id, first.product.id);
+  assert.equal(second.product.snapshot.id, first.product.snapshot.id);
   await assert.rejects(add.execute('https://example.com/item/1'), UnsupportedProductUrlError);
 });
 
@@ -52,7 +52,7 @@ void test('lists products, the newest first, with their newest observation', asy
   ] as const) {
     await observations.saveIfAbsent({
       id: `3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a${String(day)}`,
-      trackedProductId: older.id,
+      trackedProductId: older.snapshot.id,
       jobId: `3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a${String(day)}`,
       title: 'Notebook',
       observedAt: new Date(Date.UTC(2026, 9, day)),
@@ -70,12 +70,12 @@ void test('lists products, the newest first, with their newest observation', asy
   assert.equal(page.total, 2);
   assert.deepEqual(
     page.items.map((item): [string, number | undefined] => [
-      item.product.id,
+      item.product.snapshot.id,
       item.latest?.prices[0]?.amountMinor,
     ]),
     [
-      [newer.id, undefined],
-      [older.id, 300],
+      [newer.snapshot.id, undefined],
+      [older.snapshot.id, 300],
     ],
   );
 });

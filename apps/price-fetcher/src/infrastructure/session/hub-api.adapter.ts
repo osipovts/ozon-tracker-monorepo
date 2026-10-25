@@ -1,4 +1,5 @@
-import type { MarketplaceType } from 'product-reference';
+import { errorMessage } from 'logger';
+import { marketplaceExitCountries, type MarketplaceType } from 'product-reference';
 import { sessionExportFileSchema } from 'queue-contract';
 import { z } from 'zod';
 
@@ -15,7 +16,7 @@ export class HubApiAdapter implements HubSessionsPort {
     const url = new URL('/proxies', this.baseUrl);
     url.search = new URLSearchParams({
       alive: 'true',
-      country: 'RU',
+      country: marketplaceExitCountries[marketplace],
       ready: 'false',
       marketplace,
       pageSize: String(limit),
@@ -54,9 +55,7 @@ export class HubApiAdapter implements HubSessionsPort {
         'code' in cause &&
         typeof cause.code === 'string'
           ? cause.code
-          : error instanceof Error
-            ? error.message
-            : 'unknown error';
+          : errorMessage(error);
 
       throw new Error(`Cannot reach the hub at ${this.baseUrl} (${code}); is it running?`, {
         cause: error,

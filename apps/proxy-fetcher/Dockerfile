@@ -15,25 +15,35 @@ RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
 ################################
 # Dependencies
 ################################
-FROM base AS deps
+FROM base AS fetch
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY .npmrc* ./
-COPY apps/proxy-fetcher/package.json ./apps/proxy-fetcher/package.json
-# Manifests of the workspace packages the app depends on (needed for a frozen install).
-COPY packages/logger/package.json ./packages/logger/package.json
-COPY packages/proxy-endpoint/package.json ./packages/proxy-endpoint/package.json
-COPY packages/queue-contract/package.json ./packages/queue-contract/package.json
+# Downloads the packages of the whole lockfile into the store: the layer depends on the lockfile
+# only. pnpm has verified the lockfile when it wrote it; --trust-lockfile skips verifying it again,
+# which would request the metadata of every package from the registry.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
-    pnpm install --frozen-lockfile
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile fetch --frozen-lockfile
+
+################################
+# Installation
+################################
+FROM fetch AS install
+COPY . .
+# Links the app and the workspace packages it depends on from the store, without the registry.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter proxy-fetcher...
 
 ################################
 # Build
 ################################
-FROM deps AS build
-COPY . .
+FROM install AS build
 # The trailing "..." builds the workspace packages the app depends on first.
-RUN pnpm --filter proxy-fetcher... build && \
-    pnpm --filter proxy-fetcher deploy --legacy --prod /deploy
+RUN pnpm --filter proxy-fetcher... build
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile --offline --filter proxy-fetcher deploy --prod /deploy
 
 ################################
 # Production

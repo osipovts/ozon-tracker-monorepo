@@ -7,6 +7,7 @@ import {
   type NestInterceptor,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { errorMessage } from 'logger';
 import { type Observable, tap } from 'rxjs';
 
 import { ApplicationError } from '../../application/shared/application.error.js';
@@ -29,8 +30,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
     const done = (status: number, error?: unknown): void => {
       const line = `<-- ${label} ${String(status)} ${String(Math.round(performance.now() - startedAt))} ms`;
 
-      if (status >= 500)
-        this.logger.error(`${line}: ${error instanceof Error ? error.message : 'unknown error'}`);
+      if (status >= 500) this.logger.error(`${line}: ${errorMessage(error)}`);
       else if (status >= 400) this.logger.warn(line);
       else this.logger.verbose(line);
     };

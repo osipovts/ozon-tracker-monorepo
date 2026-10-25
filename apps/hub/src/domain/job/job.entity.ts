@@ -1,6 +1,10 @@
-export type JobKindType = 'proxy_fetch' | 'price_fetch';
+export const jobKinds = ['proxy_fetch', 'price_fetch'] as const;
 
-export type JobStatusType = 'queued' | 'running' | 'retrying' | 'completed' | 'failed';
+export type JobKindType = (typeof jobKinds)[number];
+
+export const jobStatuses = ['queued', 'running', 'retrying', 'completed', 'failed'] as const;
+
+export type JobStatusType = (typeof jobStatuses)[number];
 
 export interface JobInterface {
   id: string;

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { silentLogger } from 'logger';
 import type { ProxyFetchResultType } from 'queue-contract';
+import { JobLifecycleReporter, QueueMessageParser } from 'queue-worker';
 
 import type { RefreshProxySourceUseCase } from '../application/refresh-proxy-source.use-case.js';
-import { InvalidProxyFetchJobError, ProxyFetchController } from './proxy-fetch.controller.js';
+import { ProxyFetchController } from './proxy-fetch.controller.js';
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 const job = {
@@ -18,13 +20,17 @@ function createController(
   execute: RefreshProxySourceUseCase['execute'],
   published: ProxyFetchResultType[],
 ): ProxyFetchController {
+  const publish = (message: ProxyFetchResultType): Promise<void> => {
+    published.push(message);
+
+    return Promise.resolve();
+  };
+
   return new ProxyFetchController(
     { 'github-free-proxy-list': { execute } },
-    (message): Promise<void> => {
-      published.push(message);
-
-      return Promise.resolve();
-    },
+    new QueueMessageParser(silentLogger),
+    new JobLifecycleReporter(publish, silentLogger),
+    publish,
   );
 }
 
@@ -84,8 +90,7 @@ void test('reports a failing source as a failed job and tells whether it is retr
 void test('rejects a malformed job', async (): Promise<void> => {
   const controller = createController((): Promise<void> => Promise.resolve(), []);
 
-  await assert.rejects(
-    controller.handle({ jobId: 'nope' }, new AbortController().signal),
-    InvalidProxyFetchJobError,
-  );
+  await assert.rejects(controller.handle({ jobId: 'nope' }, new AbortController().signal), {
+    name: 'UnrecoverableError',
+  });
 });
