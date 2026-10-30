@@ -14,6 +14,16 @@ export class UserEntity {
     return email.trim().toLowerCase();
   }
 
+  /** A user whose email a provider has vouched for. */
+  static registerVerified(id: string, email: string, createdAt: Date): UserEntity {
+    return new UserEntity({
+      id,
+      email: UserEntity.normalizeEmail(email),
+      emailVerifiedAt: createdAt,
+      createdAt,
+    });
+  }
+
   static register(id: string, email: string, createdAt: Date): UserEntity {
     return new UserEntity({
       id,

@@ -53,6 +53,10 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     authSessionIdleTtlMs: 60_000,
     authSessionAbsoluteTtlMs: 120_000,
     authCookieSecure: false,
+    publicUrl: 'http://localhost:3000',
+    authSuccessRedirect: '/auth/me',
+    googleOauth: null,
+    githubOauth: null,
     operatorApiKey,
     logLevel: 'error',
   };

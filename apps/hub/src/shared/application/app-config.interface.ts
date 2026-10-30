@@ -2,6 +2,11 @@ import type { LogLevelType } from 'logger';
 
 export const APP_CONFIG = Symbol('AppConfig');
 
+export interface OauthClientConfigInterface {
+  clientId: string;
+  clientSecret: string;
+}
+
 export interface AppConfigInterface {
   databaseUrl: string;
   redisUrl: string;
@@ -15,6 +20,13 @@ export interface AppConfigInterface {
   authSessionAbsoluteTtlMs: number;
   /** Whether the session cookie goes over HTTPS only. */
   authCookieSecure: boolean;
+  /** Where the hub is reached from outside: the providers send the user back here. */
+  publicUrl: string;
+  /** Where the user lands after a login through a provider: a path of the hub. */
+  authSuccessRedirect: string;
+  /** The OAuth app of Google; the login through it is off without one. */
+  googleOauth: OauthClientConfigInterface | null;
+  githubOauth: OauthClientConfigInterface | null;
   /** The key of the operator routes; without one they stay closed. */
   operatorApiKey: string | null;
   /** error, warn, info, debug or verbose. */

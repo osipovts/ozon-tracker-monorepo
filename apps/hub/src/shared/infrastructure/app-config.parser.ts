@@ -3,6 +3,26 @@ import { z } from 'zod';
 
 import type { AppConfigInterface } from '../application/app-config.interface.js';
 
+/** Both the id and the secret of the OAuth app, or neither: half of them is a mistake to report. */
+const oauthClientSchema = z
+  .object({ clientId: z.string().min(1), clientSecret: z.string().min(1) })
+  .nullable();
+
+function oauthClient(
+  env: NodeJS.ProcessEnv,
+  idName: string,
+  secretName: string,
+): { clientId?: string; clientSecret?: string } | null {
+  const clientId = env[idName];
+  const clientSecret = env[secretName];
+  if ((clientId ?? '') === '' && (clientSecret ?? '') === '') return null;
+
+  return {
+    ...(clientId === undefined ? {} : { clientId }),
+    ...(clientSecret === undefined ? {} : { clientSecret }),
+  };
+}
+
 const configSchema = z.object({
   databaseUrl: z.string().min(1),
   redisUrl: z.string().min(1).default('redis://localhost:6379'),
@@ -19,6 +39,17 @@ const configSchema = z.object({
     .int()
     .min(60_000)
     .default(30 * 24 * 3_600_000),
+  publicUrl: z
+    .url({ protocol: /^https?$/ })
+    .default('http://localhost:3000')
+    .transform((value): string => value.replace(/\/+$/, '')),
+  // A path of the hub: a full URL would let a login be sent anywhere.
+  authSuccessRedirect: z
+    .string()
+    .regex(/^\/(?!\/)/)
+    .default('/auth/me'),
+  googleOauth: oauthClientSchema,
+  githubOauth: oauthClientSchema,
   operatorApiKey: z.string().min(16).nullable(),
   authCookieSecure: z
     .enum(['true', 'false'])
@@ -38,6 +69,10 @@ export class AppConfigParser {
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
+        publicUrl: env['PUBLIC_URL'],
+        authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],
+        googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
+        githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
         operatorApiKey: env['HUB_API_KEY'] === '' ? null : (env['HUB_API_KEY'] ?? null),
       }),
       logLevel: parseLogLevel(env['LOG_LEVEL'], 'verbose'),

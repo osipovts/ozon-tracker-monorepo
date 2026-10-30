@@ -39,6 +39,7 @@ import {
   registerBodySchema,
   type RegisterBodyType,
 } from './auth.type.js';
+import { cookieOptionsOf } from './cookie-options.type.js';
 import { sessionCookieName, SessionCookieParser } from './session-cookie.parser.js';
 
 function toAuthResponse({ id, email }: UserInterface): AuthResponseType {
@@ -62,13 +63,7 @@ export class AuthController {
     @Inject(SessionCookieParser) private readonly cookies: SessionCookieParser,
     @Inject(APP_CONFIG) config: AppConfigInterface,
   ) {
-    // The token is out of the reach of scripts, and a foreign site cannot make the browser send it.
-    this.cookieOptions = {
-      httpOnly: true,
-      secure: config.authCookieSecure,
-      sameSite: 'lax',
-      path: '/',
-    };
+    this.cookieOptions = cookieOptionsOf(config);
   }
 
   @Post('register')

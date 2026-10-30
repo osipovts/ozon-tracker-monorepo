@@ -6,6 +6,20 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const namingConvention = [
+  { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow' },
+  { selector: 'variable', format: ['camelCase', 'UPPER_CASE'], leadingUnderscore: 'allow' },
+  { selector: 'variable', modifiers: ['destructured'], format: null },
+  { selector: 'import', format: ['camelCase', 'PascalCase'] },
+  { selector: 'typeLike', format: ['PascalCase'] },
+  { selector: 'enumMember', format: ['PascalCase'] },
+  {
+    selector: ['objectLiteralProperty', 'typeProperty'],
+    modifiers: ['requiresQuotes'],
+    format: null,
+  },
+];
+
 const hubContexts = [
   'account',
   'auth',
@@ -98,20 +112,7 @@ export default defineConfig(
         { allowExpressions: true, allowTypedFunctionExpressions: true },
       ],
       '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
-      '@typescript-eslint/naming-convention': [
-        'error',
-        { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow' },
-        { selector: 'variable', format: ['camelCase', 'UPPER_CASE'], leadingUnderscore: 'allow' },
-        { selector: 'variable', modifiers: ['destructured'], format: null },
-        { selector: 'import', format: ['camelCase', 'PascalCase'] },
-        { selector: 'typeLike', format: ['PascalCase'] },
-        { selector: 'enumMember', format: ['PascalCase'] },
-        {
-          selector: ['objectLiteralProperty', 'typeProperty'],
-          modifiers: ['requiresQuotes'],
-          format: null,
-        },
-      ],
+      '@typescript-eslint/naming-convention': ['error', ...namingConvention],
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -147,6 +148,18 @@ export default defineConfig(
       },
     })),
   ]),
+
+  {
+    // What the providers send and expect is snake_case: the wire format is theirs.
+    files: ['apps/hub/src/auth/infrastructure/*.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        ...namingConvention,
+        { selector: ['objectLiteralProperty', 'typeProperty'], format: null },
+      ],
+    },
+  },
 
   {
     files: ['**/*.{js,mjs,cjs}'],

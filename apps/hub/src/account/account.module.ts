@@ -18,6 +18,7 @@ import {
 } from './application/linked-identity-repository.port.js';
 import { PASSWORD_HASHER, type PasswordHasherPort } from './application/password-hasher.port.js';
 import { RegisterAccountUseCase } from './application/register-account.use-case.js';
+import { ResolveOauthAccountUseCase } from './application/resolve-oauth-account.use-case.js';
 import { USER_REPOSITORY, type UserRepositoryPort } from './application/user-repository.port.js';
 import { Argon2idPasswordHasherAdapter } from './infrastructure/argon2id-password-hasher.adapter.js';
 import { PrismaAccountRegistrationAdapter } from './infrastructure/prisma-account-registration.adapter.js';
@@ -75,11 +76,26 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
       inject: [USER_REPOSITORY, CREDENTIAL_REPOSITORY, PASSWORD_HASHER],
     },
     {
+      provide: ResolveOauthAccountUseCase,
+      useFactory: (
+        users: UserRepositoryPort,
+        identities: LinkedIdentityRepositoryPort,
+        registration: AccountRegistrationPort,
+      ): ResolveOauthAccountUseCase =>
+        new ResolveOauthAccountUseCase(users, identities, registration),
+      inject: [USER_REPOSITORY, LINKED_IDENTITY_REPOSITORY, ACCOUNT_REGISTRATION],
+    },
+    {
       provide: GetAccountUseCase,
       useFactory: (users: UserRepositoryPort): GetAccountUseCase => new GetAccountUseCase(users),
       inject: [USER_REPOSITORY],
     },
   ],
-  exports: [RegisterAccountUseCase, AuthenticateWithPasswordUseCase, GetAccountUseCase],
+  exports: [
+    RegisterAccountUseCase,
+    AuthenticateWithPasswordUseCase,
+    ResolveOauthAccountUseCase,
+    GetAccountUseCase,
+  ],
 })
 export class AccountModule {}
