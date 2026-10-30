@@ -29,4 +29,10 @@ export class InMemoryAccountRegistrationAdapter implements AccountRegistrationPo
 
     return true;
   }
+
+  async claimWithIdentity(userId: string, identity: LinkedIdentityEntity, at: Date): Promise<void> {
+    await this.credentials.delete(userId);
+    await this.users.markEmailVerified(userId, at);
+    await this.identities.add(identity);
+  }
 }

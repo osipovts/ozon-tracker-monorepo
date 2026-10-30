@@ -123,9 +123,15 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
         providers: OauthProvidersType,
         resolveAccount: ResolveOauthAccountUseCase,
         start: StartAuthSessionUseCase,
+        revokeSessions: RevokeOtherAuthSessionsUseCase,
       ): CompleteOauthLoginUseCase =>
-        new CompleteOauthLoginUseCase(providers, resolveAccount, start),
-      inject: [OAUTH_PROVIDERS, ResolveOauthAccountUseCase, StartAuthSessionUseCase],
+        new CompleteOauthLoginUseCase(providers, resolveAccount, start, revokeSessions),
+      inject: [
+        OAUTH_PROVIDERS,
+        ResolveOauthAccountUseCase,
+        StartAuthSessionUseCase,
+        RevokeOtherAuthSessionsUseCase,
+      ],
     },
     SessionCookieParser,
     OauthLoginCookieParser,

@@ -13,6 +13,13 @@ export class InMemoryUserRepositoryAdapter implements UserRepositoryPort {
     return Promise.resolve(!taken);
   }
 
+  markEmailVerified(userId: string, at: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (user !== undefined) this.users.set(userId, user.verified(at));
+
+    return Promise.resolve();
+  }
+
   findById(id: string): Promise<UserEntity | null> {
     return Promise.resolve(this.users.get(id) ?? null);
   }

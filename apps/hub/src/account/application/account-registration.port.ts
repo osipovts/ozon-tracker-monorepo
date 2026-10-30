@@ -9,4 +9,9 @@ export interface AccountRegistrationPort {
   registerWithPassword(user: UserEntity, credential: CredentialEntity): Promise<boolean>;
   /** Creates the user with the provider account they come from, or neither; false if the email is taken. */
   registerWithIdentity(user: UserEntity, identity: LinkedIdentityEntity): Promise<boolean>;
+  /**
+   * Takes over an account whose email was never proven to be its holder's, for the one a provider
+   * has proven it to: the password goes, the email is marked proven, the provider account is linked.
+   */
+  claimWithIdentity(userId: string, identity: LinkedIdentityEntity, at: Date): Promise<void>;
 }

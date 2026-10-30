@@ -24,6 +24,14 @@ export class UserEntity {
     });
   }
 
+  /** The same user with the email proven to be theirs, as of the first time it was. */
+  verified(at: Date): UserEntity {
+    return new UserEntity({
+      ...this.snapshot,
+      emailVerifiedAt: this.snapshot.emailVerifiedAt ?? at,
+    });
+  }
+
   static register(id: string, email: string, createdAt: Date): UserEntity {
     return new UserEntity({
       id,

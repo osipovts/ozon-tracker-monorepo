@@ -10,6 +10,12 @@ export class InMemoryCredentialRepositoryAdapter implements CredentialRepository
     return Promise.resolve();
   }
 
+  delete(userId: string): Promise<void> {
+    this.credentials.delete(userId);
+
+    return Promise.resolve();
+  }
+
   findByUserId(userId: string): Promise<CredentialEntity | null> {
     return Promise.resolve(this.credentials.get(userId) ?? null);
   }

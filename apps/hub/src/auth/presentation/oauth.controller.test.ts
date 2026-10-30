@@ -97,6 +97,7 @@ before(async (): Promise<void> => {
           providers,
           new ResolveOauthAccountUseCase(users, identities, registration),
           startSession,
+          new RevokeOtherAuthSessionsUseCase(sessions),
         ),
       },
       {
@@ -248,19 +249,30 @@ void test('knows only the providers that are set up', async (): Promise<void> =>
   assert.equal((await call('/auth/oauth/facebook/start')).status, 400);
 });
 
-void test('does not hand a password account to whoever holds the same email at a provider', async (): Promise<void> => {
-  await fetch(`${baseUrl}/auth/register`, {
+void test('gives a password account of an email to the provider that proves it, and ends the way in of whoever signed up with it', async (): Promise<void> => {
+  const registered = await fetch(`${baseUrl}/auth/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'sam@example.com', password: 'secret-pass' }),
+    body: JSON.stringify({ email: 'sam@example.com', password: 'squatter-pass' }),
   });
+  const squatterCookie = registered.headers.getSetCookie()[0]?.split(';')[0] ?? '';
+  assert.equal((await call('/auth/me', squatterCookie)).status, 200);
   google.profile = { subject: '2002', email: 'sam@example.com', emailVerified: true };
   const { cookie, state } = await startLogin();
 
   const reply = await call(`/auth/oauth/google/callback?code=good-code&state=${state}`, cookie);
 
-  assert.equal(reply.status, 409);
-  assert.ok(!reply.setCookie.some((item): boolean => item.startsWith('session=')));
+  assert.equal(reply.status, 302);
+  assert.equal((await call('/auth/me', squatterCookie)).status, 401);
+  const owner = await call('/auth/me', pairOf(reply, 'session'));
+  assert.equal(authResponseSchema.parse(owner.body).user.email, 'sam@example.com');
+
+  const password = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'sam@example.com', password: 'squatter-pass' }),
+  });
+  assert.equal(password.status, 401);
 });
 
 void test('refuses a provider that does not vouch for the email', async (): Promise<void> => {

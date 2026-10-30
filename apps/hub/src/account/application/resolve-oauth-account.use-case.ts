@@ -18,11 +18,20 @@ export interface OauthAccountInterface {
   emailVerified: boolean;
 }
 
+export interface OauthAccountResultInterface {
+  user: UserInterface;
+  /**
+   * The account was one whose email nobody had proven, and the provider has taken it over: its
+   * password is gone, and the sessions it had are the caller's to end.
+   */
+  claimed: boolean;
+}
+
 /**
  * Tells the user of an account of a provider: the one it is linked to, else the one of its verified
- * email, else a new one. A user is joined by email only when that email is proven to be theirs, which
- * a password account's is not until it is verified: otherwise whoever signed up with somebody else's
- * email first would keep the way in after the real owner came through a provider.
+ * email, else a new one. The email is proven by the provider, so an account of that email that nobody
+ * proved it for (a password account: sign-up is open) is taken over: otherwise whoever signed up with
+ * somebody else's email first would keep the way in, or keep the owner out for good.
  */
 export class ResolveOauthAccountUseCase {
   constructor(
@@ -31,34 +40,45 @@ export class ResolveOauthAccountUseCase {
     private readonly registration: AccountRegistrationPort,
   ) {}
 
-  async execute(account: OauthAccountInterface): Promise<UserInterface> {
+  async execute(account: OauthAccountInterface): Promise<OauthAccountResultInterface> {
     const linked = await this.linkedUser(account);
-    if (linked !== null) return linked;
+    if (linked !== null) return { user: linked, claimed: false };
 
     if (!account.emailVerified || account.email === null) throw new OauthEmailUnverifiedError();
     const email = UserEntity.normalizeEmail(account.email);
 
     const existing = await this.users.findByEmail(email);
-    if (existing !== null) {
-      if (existing.snapshot.emailVerifiedAt === null) throw new EmailTakenError(email);
-
-      await this.identities.add(this.identityOf(existing.snapshot.id, account));
-
-      return existing.snapshot;
-    }
+    if (existing !== null) return this.join(existing, account);
 
     const user = UserEntity.registerVerified(randomUUID(), email, new Date());
     if (
       await this.registration.registerWithIdentity(user, this.identityOf(user.snapshot.id, account))
     ) {
-      return user.snapshot;
+      return { user: user.snapshot, claimed: false };
     }
 
     // A concurrent login got there first: with this provider account, or with this email.
     const raced = await this.linkedUser(account);
     if (raced === null) throw new EmailTakenError(email);
 
-    return raced;
+    return { user: raced, claimed: false };
+  }
+
+  private async join(
+    existing: UserEntity,
+    account: OauthAccountInterface,
+  ): Promise<OauthAccountResultInterface> {
+    const identity = this.identityOf(existing.snapshot.id, account);
+    if (existing.snapshot.emailVerifiedAt !== null) {
+      await this.identities.add(identity);
+
+      return { user: existing.snapshot, claimed: false };
+    }
+
+    const at = new Date();
+    await this.registration.claimWithIdentity(existing.snapshot.id, identity, at);
+
+    return { user: existing.verified(at).snapshot, claimed: true };
   }
 
   private async linkedUser(account: OauthAccountInterface): Promise<UserInterface | null> {

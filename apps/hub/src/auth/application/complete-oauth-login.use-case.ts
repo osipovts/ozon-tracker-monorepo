@@ -4,7 +4,10 @@ import type {
   OauthProviderType,
   ResolveOauthAccountUseCase,
 } from '../../account/application/index.js';
-import type { StartAuthSessionUseCase } from '../../auth-session/application/index.js';
+import type {
+  RevokeOtherAuthSessionsUseCase,
+  StartAuthSessionUseCase,
+} from '../../auth-session/application/index.js';
 import type {
   AuthenticatedSessionInterface,
   ClientInterface,
@@ -34,6 +37,7 @@ export class CompleteOauthLoginUseCase {
     private readonly providers: OauthProvidersType,
     private readonly resolveAccount: ResolveOauthAccountUseCase,
     private readonly startSession: StartAuthSessionUseCase,
+    private readonly revokeSessions: RevokeOtherAuthSessionsUseCase,
   ) {}
 
   async execute(input: CompleteOauthLoginInterface): Promise<AuthenticatedSessionInterface> {
@@ -50,7 +54,13 @@ export class CompleteOauthLoginUseCase {
       codeVerifier: input.codeVerifier,
       redirectUri: input.redirectUri,
     });
-    const user = await this.resolveAccount.execute({ provider: input.provider, ...profile });
+    const { user, claimed } = await this.resolveAccount.execute({
+      provider: input.provider,
+      ...profile,
+    });
+    // Whoever signed the account up first loses it with the password: no session of theirs may outlive that.
+    if (claimed) await this.revokeSessions.execute(user.id, null);
+
     const { token, expiresAt } = await this.startSession.execute({
       userId: user.id,
       userAgent: input.userAgent,

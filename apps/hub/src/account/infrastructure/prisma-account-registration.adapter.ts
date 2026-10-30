@@ -30,4 +30,15 @@ export class PrismaAccountRegistrationAdapter implements AccountRegistrationPort
       return true;
     });
   }
+
+  async claimWithIdentity(userId: string, identity: LinkedIdentityEntity, at: Date): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.credential.deleteMany({ where: { userId } }),
+      this.prisma.user.updateMany({
+        where: { id: userId, emailVerifiedAt: null },
+        data: { emailVerifiedAt: at },
+      }),
+      this.prisma.linkedIdentity.createMany({ data: [identity.snapshot], skipDuplicates: true }),
+    ]);
+  }
 }

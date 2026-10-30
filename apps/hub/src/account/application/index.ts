@@ -19,6 +19,7 @@ export {
 } from './register-account.use-case.js';
 export {
   type OauthAccountInterface,
+  type OauthAccountResultInterface,
   ResolveOauthAccountUseCase,
 } from './resolve-oauth-account.use-case.js';
 

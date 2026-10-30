@@ -6,4 +6,6 @@ export interface CredentialRepositoryPort {
   /** Sets the credential of the user, replacing the previous one. */
   save(credential: CredentialEntity): Promise<void>;
   findByUserId(userId: string): Promise<CredentialEntity | null>;
+  /** Takes the password way in away from the user; none left is no error. */
+  delete(userId: string): Promise<void>;
 }

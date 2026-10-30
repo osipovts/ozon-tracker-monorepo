@@ -18,6 +18,10 @@ export class PrismaCredentialRepositoryAdapter implements CredentialRepositoryPo
     });
   }
 
+  async delete(userId: string): Promise<void> {
+    await this.prisma.credential.deleteMany({ where: { userId } });
+  }
+
   async findByUserId(userId: string): Promise<CredentialEntity | null> {
     const row = await this.prisma.credential.findUnique({ where: { userId } });
 

@@ -24,6 +24,13 @@ export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
     return count > 0;
   }
 
+  async markEmailVerified(userId: string, at: Date): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, emailVerifiedAt: null },
+      data: { emailVerifiedAt: at },
+    });
+  }
+
   async findById(id: string): Promise<UserEntity | null> {
     const row = await this.prisma.user.findUnique({ where: { id } });
 
