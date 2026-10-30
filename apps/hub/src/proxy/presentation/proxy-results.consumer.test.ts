@@ -20,6 +20,9 @@ const config: AppConfigInterface = {
   port: 3000,
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
+  authSessionIdleTtlMs: 60_000,
+  authSessionAbsoluteTtlMs: 120_000,
+  authCookieSecure: false,
   logLevel: 'error',
 };
 

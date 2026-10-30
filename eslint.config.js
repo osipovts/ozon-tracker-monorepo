@@ -6,7 +6,15 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const hubContexts = ['account', 'auth-session', 'browser-session', 'job', 'product', 'proxy'];
+const hubContexts = [
+  'account',
+  'auth',
+  'auth-session',
+  'browser-session',
+  'job',
+  'product',
+  'proxy',
+];
 const hubUnits = [...hubContexts, 'shared'];
 const frameworks = ['@nestjs/*', 'bullmq', 'ioredis', '**/generated/**'];
 const hubLayerPatterns = {

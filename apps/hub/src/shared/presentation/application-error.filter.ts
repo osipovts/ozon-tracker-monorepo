@@ -10,6 +10,7 @@ export const applicationErrorStatuses: Record<ApplicationErrorKindType, HttpStat
   notFound: HttpStatus.NOT_FOUND,
   conflict: HttpStatus.CONFLICT,
   invalidInput: HttpStatus.BAD_REQUEST,
+  unauthorized: HttpStatus.UNAUTHORIZED,
 };
 
 @Catch(ApplicationError)

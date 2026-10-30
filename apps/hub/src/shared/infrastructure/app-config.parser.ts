@@ -9,6 +9,20 @@ const configSchema = z.object({
   port: z.coerce.number().int().min(1).max(65535).default(3000),
   priceProxyCount: z.coerce.number().int().min(1).max(20).default(5),
   priceTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(60000),
+  authSessionIdleTtlMs: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .default(14 * 24 * 3_600_000),
+  authSessionAbsoluteTtlMs: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .default(30 * 24 * 3_600_000),
+  authCookieSecure: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value): boolean => value === 'true'),
 });
 
 export class AppConfigParser {
@@ -20,6 +34,9 @@ export class AppConfigParser {
         port: env['PORT'],
         priceProxyCount: env['PRICE_PROXY_COUNT'],
         priceTimeoutMs: env['PRICE_TIMEOUT_MS'],
+        authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
+        authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
+        authCookieSecure: env['AUTH_COOKIE_SECURE'],
       }),
       logLevel: parseLogLevel(env['LOG_LEVEL'], 'verbose'),
     };
