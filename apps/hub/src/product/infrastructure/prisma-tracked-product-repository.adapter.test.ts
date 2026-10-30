@@ -1,0 +1,120 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { after, before, test } from 'node:test';
+
+import { PrismaPg } from '@prisma/adapter-pg';
+
+import { PrismaClient } from '../../generated/prisma/client.js';
+import { ProductGoneError } from '../application/product-gone.error.js';
+import { PrismaTrackedProductRepositoryAdapter } from './prisma-tracked-product-repository.adapter.js';
+
+/** Needs a Postgres with the migrations applied: set TEST_DATABASE_URL to run it (never a database with data that matters). */
+const url = process.env['TEST_DATABASE_URL'];
+const skip = url === undefined ? 'TEST_DATABASE_URL is not set' : false;
+
+let prisma: PrismaClient;
+let products: PrismaTrackedProductRepositoryAdapter;
+let jane: string;
+let sam: string;
+
+before(async (): Promise<void> => {
+  if (url === undefined) return;
+
+  prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url, max: 20 }) });
+  products = new PrismaTrackedProductRepositoryAdapter(prisma);
+  [jane, sam] = [randomUUID(), randomUUID()];
+  for (const id of [jane, sam]) {
+    await prisma.user.create({ data: { id, email: `${id}@example.com` } });
+  }
+});
+
+after(async (): Promise<void> => {
+  if (url === undefined) return;
+
+  await prisma.user.deleteMany({ where: { id: { in: [jane, sam] } } });
+  await prisma.$disconnect();
+});
+
+async function newProduct(): Promise<string> {
+  const externalId = randomUUID();
+  const { product } = await products.add({
+    marketplace: 'ozon',
+    externalId,
+    url: `https://www.ozon.ru/product/${externalId}/`,
+  });
+
+  return product.snapshot.id;
+}
+
+void test(
+  'tracks a product once per user, and lists the products of a user, the newest subscription first',
+  { skip },
+  async (): Promise<void> => {
+    const [first, second] = [await newProduct(), await newProduct()];
+
+    assert.equal(await products.subscribe(jane, first), true);
+    assert.equal(await products.subscribe(jane, first), false);
+    await new Promise((resolve): void => {
+      setTimeout(resolve, 20);
+    });
+    assert.equal(await products.subscribe(jane, second), true);
+    assert.equal(await products.subscribe(sam, first), true);
+
+    const own = await products.listSubscribed(jane, { page: 1, pageSize: 100 });
+    assert.deepEqual(own.items.map((product): string => product.snapshot.id).slice(0, 2), [
+      second,
+      first,
+    ]);
+    assert.notEqual(await products.findSubscribed(sam, first), null);
+    assert.equal(await products.findSubscribed(sam, second), null);
+
+    for (const id of [first, second]) await prisma.trackedProduct.delete({ where: { id } });
+  },
+);
+
+void test(
+  'deletes a product with its last tracker, and not before',
+  { skip },
+  async (): Promise<void> => {
+    const id = await newProduct();
+    await products.subscribe(jane, id);
+    await products.subscribe(sam, id);
+
+    assert.equal(await products.unsubscribe(jane, id), true);
+    assert.equal(await products.unsubscribe(jane, id), false);
+    assert.notEqual(await products.findById(id), null);
+
+    assert.equal(await products.unsubscribe(sam, id), true);
+    assert.equal(await products.findById(id), null);
+  },
+);
+
+void test(
+  'while the last tracker leaves, a user who joins ends up either on the kept product or told it is gone',
+  { skip },
+  async (): Promise<void> => {
+    for (let round = 0; round < 25; round += 1) {
+      const id = await newProduct();
+      await products.subscribe(jane, id);
+
+      const [removed, joined] = await Promise.all([
+        products.unsubscribe(jane, id),
+        products.subscribe(sam, id).then(
+          (): string => 'joined',
+          (error: unknown): string => (error instanceof ProductGoneError ? 'gone' : 'broken'),
+        ),
+      ]);
+
+      assert.equal(removed, true);
+      assert.notEqual(joined, 'broken');
+      const kept = await products.findById(id);
+      assert.equal(kept !== null, joined === 'joined');
+      // Whichever way it fell, no product is left that nobody tracks, and nobody tracks a missing one.
+      assert.equal(
+        await prisma.trackedProduct.count({ where: { id, subscriptions: { none: {} } } }),
+        0,
+      );
+      if (kept !== null) await prisma.trackedProduct.delete({ where: { id } });
+    }
+  },
+);

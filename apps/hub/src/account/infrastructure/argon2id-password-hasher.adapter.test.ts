@@ -32,3 +32,11 @@ void test('treats a hash it cannot read as no match', async (): Promise<void> =>
   assert.equal(await hasher.verify('$argon2id$v=19$m=x,t=1,p=1$c2FsdHNhbHQ$aGFzaA', 'p'), false);
   assert.equal(await hasher.verify('$argon2i$v=19$m=64,t=1,p=1$c2FsdHNhbHQ$aGFzaA', 'p'), false);
 });
+
+void test('treats a stored cost the machine cannot run as no match instead of throwing', async (): Promise<void> => {
+  // 1 KiB of memory is below what argon2 allows: the derivation itself refuses it.
+  assert.equal(
+    await hasher.verify('$argon2id$v=19$m=1,t=1,p=1$c2FsdHNhbHQ$aGFzaGhhc2g', 'p'),
+    false,
+  );
+});

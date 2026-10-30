@@ -20,7 +20,12 @@ const oauthOnly = UserEntity.register(
   new Date('2026-10-31T10:00:00Z'),
 );
 
-async function setup(): Promise<{ useCase: AuthenticateWithPasswordUseCase; verified: string[] }> {
+async function setup(): Promise<{
+  useCase: AuthenticateWithPasswordUseCase;
+  verified: string[];
+  users: InMemoryUserRepositoryAdapter;
+  credentials: InMemoryCredentialRepositoryAdapter;
+}> {
   const users = new InMemoryUserRepositoryAdapter();
   const credentials = new InMemoryCredentialRepositoryAdapter();
   await users.add(jane);
@@ -39,7 +44,12 @@ async function setup(): Promise<{ useCase: AuthenticateWithPasswordUseCase; veri
     },
   };
 
-  return { useCase: new AuthenticateWithPasswordUseCase(users, credentials, hasher), verified };
+  return {
+    useCase: new AuthenticateWithPasswordUseCase(users, credentials, hasher),
+    verified,
+    users,
+    credentials,
+  };
 }
 
 void test('returns the user of the right password, whatever the case of the email', async (): Promise<void> => {
@@ -74,4 +84,20 @@ void test('refuses an unknown email and a user without a password the same way, 
   // One hash check each, against a decoy, so that the time does not tell who is registered.
   assert.equal(verified.length, 2);
   assert.ok(!verified.includes('hashed:secret-pass'));
+});
+
+void test('a user without a password is refused even where the check of a hash would approve anything', async (): Promise<void> => {
+  const { users, credentials } = await setup();
+  const approvesAll: PasswordHasherPort = {
+    hash: (password): Promise<string> => Promise.resolve(`hashed:${password}`),
+    verify: (): Promise<boolean> => Promise.resolve(true),
+  };
+
+  await assert.rejects(
+    new AuthenticateWithPasswordUseCase(users, credentials, approvesAll).execute({
+      email: 'sam@example.com',
+      password: 'anything',
+    }),
+    InvalidCredentialsError,
+  );
 });

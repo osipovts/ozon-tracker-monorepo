@@ -31,7 +31,7 @@ model Proxy {
 }
 
 model TrackedProduct {
-  id            String             @id @default(uuid()) @db.Uuid
+  id            String                @id @default(uuid()) @db.Uuid
   marketplace   String
   externalId    String
   /// Canonical product URL.
@@ -39,7 +39,7 @@ model TrackedProduct {
   /// Status of the last fetch, including failed ones.
   lastStatus    String?
   lastCheckedAt DateTime?
-  createdAt     DateTime           @default(now())
+  createdAt     DateTime              @default(now())
   observations  PriceObservation[]
   subscriptions ProductSubscription[]
 
@@ -67,23 +67,23 @@ model PriceObservation {
 
 model JobRecord {
   /// The job id given to the queue.
-  id         String    @id @db.Uuid
+  id          String    @id @db.Uuid
   /// proxy_fetch or price_fetch.
-  kind       String
+  kind        String
   /// The proxy source of a proxy job or the product id of a price job.
-  subject    String
+  subject     String
   /// The user who asked for the job, who alone may read it; null for the jobs of the operator.
-  requestedBy String? @db.Uuid
+  requestedBy String?   @db.Uuid
   /// queued, running, retrying, completed or failed.
-  status     String
-  processed  Int       @default(0)
+  status      String
+  processed   Int       @default(0)
   /// Null until the worker knows how much work there is.
-  total      Int?
-  succeeded  Int       @default(0)
-  error      String?
-  createdAt  DateTime  @default(now())
-  startedAt  DateTime?
-  finishedAt DateTime?
+  total       Int?
+  succeeded   Int       @default(0)
+  error       String?
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
 
   @@index([createdAt(sort: Desc)])
   @@index([kind, status])
@@ -114,15 +114,15 @@ model BrowserSession {
 }
 
 model User {
-  id           String           @id @db.Uuid
+  id                   String                @id @db.Uuid
   /// Trimmed and lowercase.
-  email           String           @unique
+  email                String                @unique
   /// Null until the user proves the address is theirs.
-  emailVerifiedAt DateTime?
-  createdAt       DateTime         @default(now())
-  credential   Credential?
-  identities   LinkedIdentity[]
-  authSessions AuthSession[]
+  emailVerifiedAt      DateTime?
+  createdAt            DateTime              @default(now())
+  credential           Credential?
+  identities           LinkedIdentity[]
+  authSessions         AuthSession[]
   productSubscriptions ProductSubscription[]
 
   @@map("users")

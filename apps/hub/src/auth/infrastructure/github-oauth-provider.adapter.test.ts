@@ -85,6 +85,13 @@ void test('vouches for no email unless GitHub has verified the primary one', asy
 
   server.reply('GET', '/user/emails', { status: 404, body: { message: 'Not Found' } });
   assert.deepEqual(await github.fetchProfile(exchange), none);
+
+  // An error answer is not to be believed, even if its body looks like a list of verified emails.
+  server.reply('GET', '/user/emails', {
+    status: 403,
+    body: [{ email: 'jane@example.com', primary: true, verified: true, visibility: null }],
+  });
+  assert.deepEqual(await github.fetchProfile(exchange), none);
 });
 
 void test('refuses a user it cannot read', async (): Promise<void> => {

@@ -6,7 +6,9 @@ import { InMemoryAccountRegistrationAdapter } from '../infrastructure/in-memory-
 import { InMemoryCredentialRepositoryAdapter } from '../infrastructure/in-memory-credential-repository.adapter.js';
 import { InMemoryLinkedIdentityRepositoryAdapter } from '../infrastructure/in-memory-linked-identity-repository.adapter.js';
 import { InMemoryUserRepositoryAdapter } from '../infrastructure/in-memory-user-repository.adapter.js';
+import type { AccountRegistrationPort } from './account-registration.port.js';
 import { AuthenticateWithPasswordUseCase } from './authenticate-with-password.use-case.js';
+import { EmailTakenError } from './email-taken.error.js';
 import { InvalidCredentialsError } from './invalid-credentials.error.js';
 import { OauthEmailUnverifiedError } from './oauth-email-unverified.error.js';
 import type { PasswordHasherPort } from './password-hasher.port.js';
@@ -140,4 +142,57 @@ void test('a provider account whose user is gone is not logged in as nobody: its
 
   assert.equal(user.email, 'jane@example.com');
   assert.notEqual(user.id, '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33');
+});
+
+/** A registration that loses: another login got there first, and `onLose` is what it left behind. */
+function losingRegistration(onLose: () => Promise<unknown>): AccountRegistrationPort {
+  return {
+    registerWithPassword: (): Promise<boolean> => Promise.resolve(false),
+    registerWithIdentity: async (): Promise<boolean> => {
+      await onLose();
+
+      return false;
+    },
+    claimWithIdentity: (): Promise<void> => Promise.resolve(),
+  };
+}
+
+void test("a login that lost a race for the same provider account is the winner's user", async (): Promise<void> => {
+  const users = new InMemoryUserRepositoryAdapter();
+  const identities = new InMemoryLinkedIdentityRepositoryAdapter();
+  const winnerUser = (
+    await new ResolveOauthAccountUseCase(
+      users,
+      new InMemoryLinkedIdentityRepositoryAdapter(),
+      new InMemoryAccountRegistrationAdapter(users, new InMemoryCredentialRepositoryAdapter()),
+    ).execute({ ...google, email: 'other@example.com', subject: '1' })
+  ).user;
+  const resolve = new ResolveOauthAccountUseCase(
+    users,
+    identities,
+    losingRegistration(() =>
+      identities.add(
+        new LinkedIdentityEntity({
+          id: '5a5a5a5a-5a5a-4a5a-8a5a-5a5a5a5a5a5a',
+          userId: winnerUser.id,
+          provider: 'google',
+          subject: '1001',
+          createdAt: new Date(),
+        }),
+      ),
+    ),
+  );
+
+  assert.equal((await resolve.execute(google)).user.id, winnerUser.id);
+});
+
+void test('a login that lost a race for the same email, to something that is no login of this account, is refused', async (): Promise<void> => {
+  const users = new InMemoryUserRepositoryAdapter();
+  const resolve = new ResolveOauthAccountUseCase(
+    users,
+    new InMemoryLinkedIdentityRepositoryAdapter(),
+    losingRegistration(() => Promise.resolve()),
+  );
+
+  await assert.rejects(resolve.execute(google), EmailTakenError);
 });
