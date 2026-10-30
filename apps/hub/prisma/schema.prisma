@@ -41,6 +41,7 @@ model TrackedProduct {
   lastCheckedAt DateTime?
   createdAt     DateTime           @default(now())
   observations  PriceObservation[]
+  subscriptions ProductSubscription[]
 
   @@unique([marketplace, externalId], name: "marketplaceExternalId")
   @@map("tracked_products")
@@ -120,6 +121,7 @@ model User {
   credential   Credential?
   identities   LinkedIdentity[]
   authSessions AuthSession[]
+  productSubscriptions ProductSubscription[]
 
   @@map("users")
 }
@@ -166,4 +168,17 @@ model AuthSession {
 
   @@index([userId])
   @@map("auth_sessions")
+}
+
+/// A user tracks a product: the products and their price history are shared, the tracking is not.
+model ProductSubscription {
+  userId           String         @db.Uuid
+  trackedProductId String         @db.Uuid
+  createdAt        DateTime       @default(now())
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackedProductId])
+  @@index([trackedProductId])
+  @@map("product_subscriptions")
 }

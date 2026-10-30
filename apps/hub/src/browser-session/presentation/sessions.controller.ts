@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -25,6 +26,7 @@ import {
   type PaginationQueryType,
   toPageResponse,
 } from '../../shared/presentation/pagination-query.type.js';
+import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { DeleteSessionUseCase } from '../application/delete-session.use-case.js';
 import { ImportSessionUseCase } from '../application/import-session.use-case.js';
 import { ListSessionsUseCase } from '../application/list-sessions.use-case.js';
@@ -55,7 +57,9 @@ function toSession(session: BrowserSessionEntity): SessionType {
   };
 }
 
+@ApiBearerAuth()
 @ApiTags('sessions')
+@routeAccess('operator')
 @Controller('sessions')
 export class SessionsController {
   constructor(

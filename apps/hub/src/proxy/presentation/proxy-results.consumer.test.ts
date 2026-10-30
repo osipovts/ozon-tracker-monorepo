@@ -22,6 +22,7 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  operatorApiKey: null,
   authCookieSecure: false,
   logLevel: 'error',
 };

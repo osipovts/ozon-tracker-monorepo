@@ -34,6 +34,8 @@ try {
           .setTitle('Hub')
           .setDescription('Proxies, browser sessions and price tracking of marketplace products')
           .setVersion('1.0')
+          .addBearerAuth()
+          .addCookieAuth('session')
           .build(),
       ),
     { jsonDocumentUrl: 'docs/json' },

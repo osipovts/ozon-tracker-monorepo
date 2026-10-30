@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 
 import { type INestApplication, StandardSchemaValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 
 import { AuthenticateWithPasswordUseCase } from '../../account/application/authenticate-with-password.use-case.js';
@@ -23,8 +23,8 @@ import {
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
+import { AccessGuard } from './access.guard.js';
 import { AuthController } from './auth.controller.js';
-import { AuthGuard } from './auth.guard.js';
 import { authResponseSchema } from './auth.type.js';
 import { SessionCookieParser } from './session-cookie.parser.js';
 
@@ -36,6 +36,7 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  operatorApiKey: null,
   authCookieSecure: true,
   logLevel: 'error',
 };
@@ -77,7 +78,7 @@ before(async (): Promise<void> => {
       },
       { provide: GetAccountUseCase, useValue: new GetAccountUseCase(users) },
       SessionCookieParser,
-      AuthGuard,
+      { provide: APP_GUARD, useClass: AccessGuard },
     ],
   }).compile();
 

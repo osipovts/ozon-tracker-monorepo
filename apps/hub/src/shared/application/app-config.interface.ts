@@ -15,6 +15,8 @@ export interface AppConfigInterface {
   authSessionAbsoluteTtlMs: number;
   /** Whether the session cookie goes over HTTPS only. */
   authCookieSecure: boolean;
+  /** The key of the operator routes; without one they stay closed. */
+  operatorApiKey: string | null;
   /** error, warn, info, debug or verbose. */
   logLevel: LogLevelType;
 }

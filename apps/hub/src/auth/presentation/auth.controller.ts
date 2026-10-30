@@ -8,7 +8,6 @@ import {
   Post,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -26,11 +25,12 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../shared/application/app-config.interface.js';
+import { NotSignedInError } from '../../shared/application/not-signed-in.error.js';
+import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
+import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import type { ClientInterface } from '../application/authenticated-session.interface.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
-import { NotSignedInError } from '../application/not-signed-in.error.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
-import { AuthGuard } from './auth.guard.js';
 import {
   authResponseSchema,
   type AuthResponseType,
@@ -39,7 +39,6 @@ import {
   registerBodySchema,
   type RegisterBodyType,
 } from './auth.type.js';
-import { identityOf } from './auth-identity.type.js';
 import { sessionCookieName, SessionCookieParser } from './session-cookie.parser.js';
 
 function toAuthResponse({ id, email }: UserInterface): AuthResponseType {
@@ -73,6 +72,7 @@ export class AuthController {
   }
 
   @Post('register')
+  @routeAccess('public')
   @ApiOperation({
     summary: 'Sign up by the email and the password',
     description: 'Logs the user in: the session token comes in an HttpOnly cookie.',
@@ -90,6 +90,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @routeAccess('public')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Log in by the email and the password',
@@ -109,6 +110,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @routeAccess('public')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'End the session of the cookie',
@@ -126,13 +128,11 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'The user of the session cookie' })
   @ApiOkResponse({ standardSchema: authResponseSchema })
   @ApiUnauthorizedResponse({ description: 'No live session' })
   async me(@Req() request: Request): Promise<AuthResponseType> {
-    const identity = identityOf(request);
-    const user = identity === null ? null : await this.getAccount.execute(identity.userId);
+    const user = await this.getAccount.execute(requireIdentity(request).userId);
     if (user === null) throw new NotSignedInError();
 
     return toAuthResponse(user);

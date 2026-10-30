@@ -20,9 +20,10 @@ export class ListProductsUseCase {
   ) {}
 
   async execute(
+    userId: string,
     pagination: PaginationInterface,
   ): Promise<PageInterface<ProductWithLatestInterface>> {
-    const page = await this.products.list(pagination);
+    const page = await this.products.listSubscribed(userId, pagination);
     const latest = new Map(
       (
         await this.observations.findLatestByProducts(

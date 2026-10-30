@@ -1,18 +1,21 @@
 import { Body, Controller, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
-import { ApiAcceptedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiAcceptedResponse, ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { proxySourceSchema, type ProxySourceType } from 'queue-contract';
 
 import {
   jobAcceptedResponseSchema,
   type JobAcceptedResponseType,
 } from '../../shared/presentation/job-accepted.type.js';
+import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { RefreshProxySourceUseCase } from '../application/refresh-proxy-source.use-case.js';
 import {
   proxySourceRefreshBodySchema,
   type ProxySourceRefreshBodyType,
 } from './proxy-source-refresh.type.js';
 
+@ApiBearerAuth()
 @ApiTags('proxies')
+@routeAccess('operator')
 @Controller('proxy-sources')
 export class ProxySourcesController {
   constructor(

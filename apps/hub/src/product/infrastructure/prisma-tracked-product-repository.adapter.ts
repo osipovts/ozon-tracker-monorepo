@@ -52,17 +52,41 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     return { product: toEntity(row), created: count > 0 };
   }
 
-  async list(pagination: PaginationInterface): Promise<PageInterface<TrackedProductEntity>> {
+  async subscribe(userId: string, productId: string): Promise<boolean> {
+    // Skipping a duplicate instead of reading first keeps concurrent subscriptions apart.
+    const { count } = await this.prisma.productSubscription.createMany({
+      data: [{ userId, trackedProductId: productId }],
+      skipDuplicates: true,
+    });
+
+    return count > 0;
+  }
+
+  async findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
+    const row = await this.prisma.trackedProduct.findFirst({
+      where: { id: productId, subscriptions: { some: { userId } } },
+    });
+
+    return row === null ? null : toEntity(row);
+  }
+
+  async listSubscribed(
+    userId: string,
+    pagination: PaginationInterface,
+  ): Promise<PageInterface<TrackedProductEntity>> {
+    const where = { userId };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.trackedProduct.findMany({
+      this.prisma.productSubscription.findMany({
+        where,
+        include: { trackedProduct: true },
         orderBy: { createdAt: 'desc' },
         skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
-      this.prisma.trackedProduct.count(),
+      this.prisma.productSubscription.count({ where }),
     ]);
 
-    return { items: rows.map(toEntity), total };
+    return { items: rows.map((row): TrackedProductEntity => toEntity(row.trackedProduct)), total };
   }
 
   async findById(id: string): Promise<TrackedProductEntity | null> {

@@ -17,6 +17,8 @@ function keyOf(reference: TrackedProductReferenceInterface): string {
 
 export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRepositoryPort {
   private readonly products = new Map<string, TrackedProductEntity>();
+  /** In the order of subscribing: the newest subscription is the last one. */
+  private readonly subscriptions: Array<{ userId: string; productId: string }> = [];
 
   add(
     reference: TrackedProductReferenceInterface,
@@ -37,13 +39,43 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     return Promise.resolve({ product, created: true });
   }
 
-  list(pagination: PaginationInterface): Promise<PageInterface<TrackedProductEntity>> {
-    // A Map keeps the insertion order: the newest product is the last one.
-    return Promise.resolve(pageOf(Array.from(this.products.values()).toReversed(), pagination));
+  subscribe(userId: string, productId: string): Promise<boolean> {
+    const subscribed = this.subscribed(userId, productId);
+    if (!subscribed) this.subscriptions.push({ userId, productId });
+
+    return Promise.resolve(!subscribed);
+  }
+
+  findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
+    return Promise.resolve(
+      this.subscribed(userId, productId) ? (this.products.get(productId) ?? null) : null,
+    );
+  }
+
+  listSubscribed(
+    userId: string,
+    pagination: PaginationInterface,
+  ): Promise<PageInterface<TrackedProductEntity>> {
+    const own = this.subscriptions
+      .filter((subscription): boolean => subscription.userId === userId)
+      .flatMap(({ productId }): TrackedProductEntity[] => {
+        const product = this.products.get(productId);
+
+        return product === undefined ? [] : [product];
+      });
+
+    return Promise.resolve(pageOf(own.toReversed(), pagination));
   }
 
   findById(id: string): Promise<TrackedProductEntity | null> {
     return Promise.resolve(this.products.get(id) ?? null);
+  }
+
+  private subscribed(userId: string, productId: string): boolean {
+    return this.subscriptions.some(
+      (subscription): boolean =>
+        subscription.userId === userId && subscription.productId === productId,
+    );
   }
 
   markChecked(id: string, status: string, checkedAt: Date): Promise<void> {

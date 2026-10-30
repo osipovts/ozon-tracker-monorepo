@@ -19,8 +19,16 @@ export interface TrackedProductRepositoryPort {
   add(
     reference: TrackedProductReferenceInterface,
   ): Promise<{ product: TrackedProductEntity; created: boolean }>;
+  /** The user tracks the product from now on; false if they did already. */
+  subscribe(userId: string, productId: string): Promise<boolean>;
+  /** For the workers, which serve every user: a user asks for `findSubscribed` instead. */
   findById(id: string): Promise<TrackedProductEntity | null>;
-  /** Newest first. */
-  list(pagination: PaginationInterface): Promise<PageInterface<TrackedProductEntity>>;
+  /** The product, if the user tracks it. */
+  findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null>;
+  /** The products of the user, tracked most recently first. */
+  listSubscribed(
+    userId: string,
+    pagination: PaginationInterface,
+  ): Promise<PageInterface<TrackedProductEntity>>;
   markChecked(id: string, status: string, checkedAt: Date): Promise<void>;
 }

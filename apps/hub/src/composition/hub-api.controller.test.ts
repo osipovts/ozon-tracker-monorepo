@@ -2,12 +2,17 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 
 import { type INestApplication, StandardSchemaValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import { silentLogger } from 'logger';
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
+import { AccessGuard } from '../auth/presentation/access.guard.js';
+import { SessionCookieParser } from '../auth/presentation/session-cookie.parser.js';
+import { ResolveAuthSessionUseCase } from '../auth-session/application/resolve-auth-session.use-case.js';
+import { StartAuthSessionUseCase } from '../auth-session/application/start-auth-session.use-case.js';
+import { InMemoryAuthSessionRepositoryAdapter } from '../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
 import { DeleteSessionUseCase } from '../browser-session/application/delete-session.use-case.js';
 import { ImportSessionUseCase } from '../browser-session/application/import-session.use-case.js';
 import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
@@ -35,6 +40,7 @@ import { ProxyEntity } from '../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
 import { ProxiesController } from '../proxy/presentation/proxies.controller.js';
 import { ProxySourcesController } from '../proxy/presentation/proxy-sources.controller.js';
+import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER } from '../shared/application/logger.port.js';
 import { ApplicationErrorFilter } from '../shared/presentation/application-error.filter.js';
 import { HttpLoggingInterceptor } from '../shared/presentation/http-logging.interceptor.js';
@@ -62,8 +68,29 @@ const queue: JobQueuePort = {
 const scheduleJob = new ScheduleJobUseCase(queue, jobs);
 const listMarketplaceSessions = new ListMarketplaceSessionsUseCase(sessions);
 
+const operatorApiKey = 'operator-key-of-at-least-16-chars';
+const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
+const authPolicy = { idleTtlMs: 60_000, absoluteTtlMs: 120_000 };
+const authSessions = new InMemoryAuthSessionRepositoryAdapter();
+const config: AppConfigInterface = {
+  databaseUrl: 'postgresql://localhost:5432/hub',
+  redisUrl: 'redis://localhost:6379',
+  port: 3000,
+  priceProxyCount: 5,
+  priceTimeoutMs: 60000,
+  authSessionIdleTtlMs: 60_000,
+  authSessionAbsoluteTtlMs: 120_000,
+  authCookieSecure: false,
+  operatorApiKey,
+  logLevel: 'error',
+};
+
 let app: INestApplication;
 let baseUrl: string;
+/** What a signed-in user who is also the operator sends: the session cookie and the API key. */
+let credentials: Record<string, string>;
+/** The cookie of another user, with no right of the operator. */
+let otherCookie: string;
 
 before(async (): Promise<void> => {
   const moduleRef = await Test.createTestingModule({
@@ -79,6 +106,13 @@ before(async (): Promise<void> => {
       { provide: APP_FILTER, useClass: ApplicationErrorFilter },
       { provide: APP_INTERCEPTOR, useClass: HttpLoggingInterceptor },
       { provide: LOGGER, useValue: silentLogger },
+      { provide: APP_GUARD, useClass: AccessGuard },
+      { provide: APP_CONFIG, useValue: config },
+      {
+        provide: ResolveAuthSessionUseCase,
+        useValue: new ResolveAuthSessionUseCase(authSessions, authPolicy),
+      },
+      SessionCookieParser,
       { provide: GetJobUseCase, useValue: new GetJobUseCase(jobs) },
       { provide: ListJobsUseCase, useValue: new ListJobsUseCase(jobs) },
       { provide: ImportSessionUseCase, useValue: new ImportSessionUseCase(sessions) },
@@ -117,24 +151,43 @@ before(async (): Promise<void> => {
   app = moduleRef.createNestApplication();
   await app.listen(0);
   baseUrl = await app.getUrl();
+
+  const { token } = await new StartAuthSessionUseCase(authSessions, authPolicy).execute({
+    userId,
+    userAgent: null,
+    ip: null,
+  });
+  credentials = { cookie: `session=${token}`, authorization: `Bearer ${operatorApiKey}` };
+
+  const other = await new StartAuthSessionUseCase(authSessions, authPolicy).execute({
+    userId: '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33',
+    userAgent: null,
+    ip: null,
+  });
+  otherCookie = `session=${other.token}`;
 });
 
 after(async (): Promise<void> => {
   await app.close();
 });
 
+type InitType = Omit<RequestInit, 'headers'> & { headers?: Record<string, string> };
+
 async function call(
   path: string,
-  init?: RequestInit,
+  init: InitType = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const response = await fetch(`${baseUrl}${path}`, init);
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    headers: { ...credentials, ...init.headers },
+  });
   const body: unknown = await response.json();
   assert.ok(typeof body === 'object' && body !== null);
 
   return { status: response.status, body: Object.fromEntries(Object.entries(body)) };
 }
 
-function post(body?: unknown): RequestInit {
+function post(body?: unknown): InitType {
   return {
     method: 'POST',
     ...(body === undefined
@@ -395,7 +448,10 @@ void test('imports, lists and deletes a session without exposing its cookies', a
   assert.equal((await call('/sessions', post({ ...sessionFile, marketplace: 'x' }))).status, 400);
 
   const id = sessionFile.session.id;
-  assert.equal((await fetch(`${baseUrl}/sessions/${id}`, { method: 'DELETE' })).status, 204);
+  assert.equal(
+    (await fetch(`${baseUrl}/sessions/${id}`, { method: 'DELETE', headers: credentials })).status,
+    204,
+  );
   assert.equal((await call(`/sessions/${id}`, { method: 'DELETE' })).status, 404);
 });
 
@@ -471,4 +527,73 @@ void test('a proxy becomes ready once it has an active session', async (): Promi
   assert.equal('ready' in item && item.ready, true);
   assert.equal('session' in item && JSON.stringify(item.session).includes(id), true);
   assert.equal((await call('/proxies?marketplace=unknown')).status, 400);
+});
+
+const userRoutes: Array<[string, string]> = [
+  ['GET', '/products'],
+  ['POST', '/products'],
+  ['POST', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
+  ['GET', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
+  ['GET', '/jobs/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
+];
+
+const operatorRoutes: Array<[string, string]> = [
+  ['GET', '/jobs'],
+  ['GET', '/proxies'],
+  ['POST', '/proxy-sources/github-free-proxy-list/refresh'],
+  ['GET', '/sessions'],
+  ['POST', '/sessions'],
+  ['DELETE', '/sessions/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
+];
+
+async function statusOf(
+  [method, path]: [string, string],
+  headers: Record<string, string>,
+): Promise<number> {
+  return (await fetch(`${baseUrl}${path}`, { method, headers })).status;
+}
+
+void test('every route is closed to the anonymous', async (): Promise<void> => {
+  for (const route of [...userRoutes, ...operatorRoutes]) {
+    assert.equal(await statusOf(route, {}), 401, route.join(' '));
+  }
+});
+
+void test('the routes of the users take the cookie and no key, those of the operator the key and no cookie', async (): Promise<void> => {
+  for (const route of userRoutes) {
+    assert.equal(
+      await statusOf(route, { authorization: credentials['authorization'] ?? '' }),
+      401,
+      route.join(' '),
+    );
+  }
+
+  for (const route of operatorRoutes) {
+    assert.equal(
+      await statusOf(route, { cookie: credentials['cookie'] ?? '' }),
+      401,
+      route.join(' '),
+    );
+  }
+});
+
+void test('a product is tracked per user: the others do not see it, and join it by adding the same link', async (): Promise<void> => {
+  const id = await addProduct();
+  const other = { headers: { cookie: otherCookie } };
+
+  assert.equal((await call('/products', other)).body['total'], 0);
+  assert.equal((await call(`/products/${id}/prices`, other)).status, 404);
+  assert.equal((await call(`/products/${id}/prices`, { method: 'POST', ...other })).status, 404);
+
+  const joined = await call('/products', {
+    ...post({ url: productUrl }),
+    headers: {
+      cookie: otherCookie,
+      'content-type': 'application/json',
+    },
+  });
+  assert.equal(joined.status, 201);
+  assert.equal(joined.body['id'], id);
+  assert.equal((await call('/products', other)).body['total'], 1);
+  assert.equal((await call(`/products/${id}/prices`, other)).status, 200);
 });

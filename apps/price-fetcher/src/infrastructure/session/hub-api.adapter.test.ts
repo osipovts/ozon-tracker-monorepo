@@ -6,7 +6,13 @@ import { after, before, test } from 'node:test';
 import type { CapturedSessionInterface } from '../../domain/session/captured-session.interface.js';
 import { HubApiAdapter } from './hub-api.adapter.js';
 
-const requests: Array<{ method: string; url: string; body: string }> = [];
+const apiKey = 'operator-key-of-at-least-16-chars';
+const requests: Array<{
+  method: string;
+  url: string;
+  body: string;
+  authorization: string | undefined;
+}> = [];
 let status = 201;
 let server: Server;
 let hub: HubApiAdapter;
@@ -20,7 +26,12 @@ before(async (): Promise<void> => {
     });
 
     request.on('end', (): void => {
-      requests.push({ method: request.method ?? '', url: request.url ?? '', body });
+      requests.push({
+        method: request.method ?? '',
+        url: request.url ?? '',
+        body,
+        authorization: request.headers.authorization,
+      });
       if (request.method === 'GET') {
         response.setHeader('content-type', 'application/json');
         response.end(JSON.stringify({ items: [{ server: 'socks5://217.71.230.1:1080' }] }));
@@ -40,7 +51,7 @@ before(async (): Promise<void> => {
   const address: AddressInfo | string | null = server.address();
   assert.ok(address !== null && typeof address === 'object');
 
-  hub = new HubApiAdapter(`http://127.0.0.1:${String(address.port)}`);
+  hub = new HubApiAdapter(`http://127.0.0.1:${String(address.port)}`, apiKey);
 });
 
 after((): void => {
@@ -64,6 +75,7 @@ void test('asks the hub for alive Russian proxies without a session', async (): 
 
   const query = new URL(`http://hub${requests.at(-1)?.url ?? ''}`);
   assert.equal(query.pathname, '/proxies');
+  assert.equal(requests.at(-1)?.authorization, `Bearer ${apiKey}`);
   assert.deepEqual(Object.fromEntries(query.searchParams), {
     alive: 'true',
     country: 'RU',
@@ -80,6 +92,7 @@ void test('uploads a session and reports a rejection with its reason', async ():
   const upload = requests.at(-1);
   assert.equal(upload?.method, 'POST');
   assert.equal(upload.url, '/sessions');
+  assert.equal(upload.authorization, `Bearer ${apiKey}`);
   assert.ok(upload.body.includes(`"id":"${captured.session.id}"`));
 
   status = 400;
@@ -100,7 +113,7 @@ void test('names the hub when it cannot be reached', async (): Promise<void> => 
     });
   });
 
-  const unreachable = new HubApiAdapter(`http://127.0.0.1:${String(address.port)}`);
+  const unreachable = new HubApiAdapter(`http://127.0.0.1:${String(address.port)}`, apiKey);
 
   await assert.rejects(
     unreachable.listProxiesWithoutSession('ozon', 1),

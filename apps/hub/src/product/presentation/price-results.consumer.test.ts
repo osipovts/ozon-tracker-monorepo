@@ -26,12 +26,15 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  operatorApiKey: null,
   authCookieSecure: false,
   logLevel: 'error',
 };
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 const sessionId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
+
+const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 async function setup(): Promise<{
   consumer: PriceResultsConsumer;
@@ -46,6 +49,7 @@ async function setup(): Promise<{
     externalId: '4775581891',
     url: 'https://www.ozon.ru/product/4775581891/',
   });
+  await products.subscribe(userId, product.snapshot.id);
 
   const sessions = new InMemoryBrowserSessionRepositoryAdapter();
   await new ImportSessionUseCase(sessions).execute({
@@ -100,7 +104,8 @@ void test('stores the snapshot of the attempt that read the product', async (): 
     ],
   });
 
-  const [observation] = (await history.execute(productId, { page: 1, pageSize: 10 })).page.items;
+  const [observation] = (await history.execute(userId, productId, { page: 1, pageSize: 10 })).page
+    .items;
   assert.equal(observation?.exitIp, '217.71.230.2');
   assert.equal(observation.prices[0]?.amountMinor, 18673000);
   assert.notEqual((await sessions.findById(sessionId))?.snapshot.lastUsedAt, null);

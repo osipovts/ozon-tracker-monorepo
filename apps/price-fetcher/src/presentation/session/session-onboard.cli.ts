@@ -30,13 +30,18 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
 
   if (values.help === true) {
     console.log(
-      'Usage: pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
+      'Usage: HUB_API_KEY=<key of the hub> pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
     );
 
     return;
   }
 
   const hubUrl = z.url({ protocol: /^https?$/ }).parse(values.hub);
+  // From the environment only: an argument would stay in the history of the shell.
+  const apiKey = z
+    .string({ error: 'Set HUB_API_KEY to the API key of the hub' })
+    .min(1, 'Set HUB_API_KEY to the API key of the hub')
+    .parse(process.env['HUB_API_KEY']);
   const limit = z.coerce.number().int().min(1).max(100).parse(values.limit);
   const waitMs = z.coerce.number().int().min(10_000).max(3_600_000).parse(values['wait-ms']);
   const timeoutMs = z.coerce.number().int().min(1000).max(600_000).parse(values['timeout-ms']);
@@ -57,7 +62,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   try {
     const summary = await new OnboardSessionsUseCase(
-      new HubApiAdapter(hubUrl),
+      new HubApiAdapter(hubUrl, apiKey),
       new OzonSessionCaptureAdapter(
         browser,
         options,

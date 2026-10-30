@@ -12,6 +12,8 @@ import {
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
 
+const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
+
 async function setup(): Promise<{
   productId: string;
   record: RecordPriceResultUseCase;
@@ -25,6 +27,7 @@ async function setup(): Promise<{
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
   });
+  await products.subscribe(userId, product.snapshot.id);
 
   return {
     productId: product.snapshot.id,
@@ -56,7 +59,7 @@ void test('records an observation once even if the result is delivered twice', a
   await record.execute(result(productId, {}));
   await record.execute(result(productId, {}));
 
-  const { product, page } = await history.execute(productId, { page: 1, pageSize: 10 });
+  const { product, page } = await history.execute(userId, productId, { page: 1, pageSize: 10 });
   assert.equal(product.snapshot.url, 'https://www.ozon.ru/product/1/');
   assert.equal(page.total, 1);
   assert.equal(page.items[0]?.prices.length, 1);
@@ -68,7 +71,7 @@ void test('keeps failures out of the price history but remembers the status', as
 
   await record.execute(result(productId, { status: 'challenge_required', observation: null }));
 
-  assert.equal((await history.execute(productId, { page: 1, pageSize: 10 })).page.total, 0);
+  assert.equal((await history.execute(userId, productId, { page: 1, pageSize: 10 })).page.total, 0);
   assert.equal((await products.findById(productId))?.snapshot.lastStatus, 'challenge_required');
 });
 
@@ -77,7 +80,10 @@ void test('ignores a result of an unknown product and rejects its history', asyn
   const unknown = '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33';
 
   await record.execute(result(unknown, {}));
-  await assert.rejects(history.execute(unknown, { page: 1, pageSize: 10 }), ProductNotFoundError);
+  await assert.rejects(
+    history.execute(userId, unknown, { page: 1, pageSize: 10 }),
+    ProductNotFoundError,
+  );
 });
 
 void test('paginates the history, the newest first', async (): Promise<void> => {
@@ -96,8 +102,8 @@ void test('paginates the history, the newest first', async (): Promise<void> => 
     });
   }
 
-  const first = (await history.execute(productId, { page: 1, pageSize: 2 })).page;
-  const second = (await history.execute(productId, { page: 2, pageSize: 2 })).page;
+  const first = (await history.execute(userId, productId, { page: 1, pageSize: 2 })).page;
+  const second = (await history.execute(userId, productId, { page: 2, pageSize: 2 })).page;
 
   assert.equal(first.total, 3);
   assert.deepEqual(

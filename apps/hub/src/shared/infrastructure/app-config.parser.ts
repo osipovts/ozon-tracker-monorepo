@@ -19,6 +19,7 @@ const configSchema = z.object({
     .int()
     .min(60_000)
     .default(30 * 24 * 3_600_000),
+  operatorApiKey: z.string().min(16).nullable(),
   authCookieSecure: z
     .enum(['true', 'false'])
     .default('true')
@@ -37,6 +38,7 @@ export class AppConfigParser {
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
+        operatorApiKey: env['HUB_API_KEY'] === '' ? null : (env['HUB_API_KEY'] ?? null),
       }),
       logLevel: parseLogLevel(env['LOG_LEVEL'], 'verbose'),
     };

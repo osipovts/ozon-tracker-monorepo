@@ -15,10 +15,11 @@ export class ListPriceHistoryUseCase {
   ) {}
 
   async execute(
+    userId: string,
     productId: string,
     pagination: PaginationInterface,
   ): Promise<{ product: TrackedProductEntity; page: PageInterface<PriceObservationInterface> }> {
-    const product = await this.products.findById(productId);
+    const product = await this.products.findSubscribed(userId, productId);
     if (product === null) throw new ProductNotFoundError(productId);
 
     return { product, page: await this.observations.listByProduct(productId, pagination) };

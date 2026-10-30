@@ -1,7 +1,14 @@
 import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
-import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
+import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { GetJobUseCase } from '../application/get-job.use-case.js';
 import { ListJobsUseCase } from '../application/list-jobs.use-case.js';
 import type { JobEntity } from '../domain/job.entity.js';
@@ -36,6 +43,8 @@ export class JobsController {
   ) {}
 
   @Get()
+  @routeAccess('operator')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'List jobs, the newest first' })
   @ApiOkResponse({ standardSchema: jobListResponseSchema })
   async list(

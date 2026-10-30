@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 
 import { AccountModule } from '../account/account.module.js';
 import {
@@ -9,8 +10,8 @@ import { StartAuthSessionUseCase } from '../auth-session/application/index.js';
 import { AuthSessionModule } from '../auth-session/auth-session.module.js';
 import { LogInUseCase } from './application/log-in.use-case.js';
 import { SignUpUseCase } from './application/sign-up.use-case.js';
+import { AccessGuard } from './presentation/access.guard.js';
 import { AuthController } from './presentation/auth.controller.js';
-import { AuthGuard } from './presentation/auth.guard.js';
 import { SessionCookieParser } from './presentation/session-cookie.parser.js';
 
 @Module({
@@ -34,8 +35,8 @@ import { SessionCookieParser } from './presentation/session-cookie.parser.js';
       inject: [AuthenticateWithPasswordUseCase, StartAuthSessionUseCase],
     },
     SessionCookieParser,
-    AuthGuard,
+    // Every route of the hub is guarded; a route says what it needs with `routeAccess`.
+    { provide: APP_GUARD, useClass: AccessGuard },
   ],
-  exports: [AuthGuard, SessionCookieParser],
 })
 export class AuthModule {}

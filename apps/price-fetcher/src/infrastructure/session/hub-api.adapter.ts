@@ -10,7 +10,11 @@ const proxyListSchema = z.object({ items: z.array(z.object({ server: z.string() 
 const requestTimeoutMs = 30_000;
 
 export class HubApiAdapter implements HubSessionsPort {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    /** The key of the operator of the hub: the routes of the proxies and the sessions are closed without it. */
+    private readonly apiKey: string,
+  ) {}
 
   async listProxiesWithoutSession(marketplace: MarketplaceType, limit: number): Promise<string[]> {
     const url = new URL('/proxies', this.baseUrl);
@@ -45,8 +49,11 @@ export class HubApiAdapter implements HubSessionsPort {
 
   /** Names the hub and the network error instead of the bare "fetch failed". */
   private async request(url: URL, init: RequestInit): Promise<Response> {
+    const headers = new Headers(init.headers);
+    headers.set('authorization', `Bearer ${this.apiKey}`);
+
     try {
-      return await fetch(url, init);
+      return await fetch(url, { ...init, headers });
     } catch (error: unknown) {
       const cause: unknown = error instanceof Error ? error.cause : undefined;
       const code =

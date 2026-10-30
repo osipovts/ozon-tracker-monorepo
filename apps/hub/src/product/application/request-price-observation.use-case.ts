@@ -25,8 +25,8 @@ export class RequestPriceObservationUseCase {
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
-  async execute(productId: string): Promise<{ jobId: string }> {
-    const found = await this.products.findById(productId);
+  async execute(userId: string, productId: string): Promise<{ jobId: string }> {
+    const found = await this.products.findSubscribed(userId, productId);
     if (found === null) throw new ProductNotFoundError(productId);
 
     const product = found.snapshot;

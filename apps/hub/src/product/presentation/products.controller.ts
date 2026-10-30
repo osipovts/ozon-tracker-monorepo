@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
 import {
@@ -20,7 +21,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import {
   jobAcceptedResponseSchema,
@@ -31,6 +32,7 @@ import {
   type PaginationQueryType,
   toPageResponse,
 } from '../../shared/presentation/pagination-query.type.js';
+import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
 import { AddProductUseCase } from '../application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
@@ -80,8 +82,9 @@ export class ProductsController {
   @ApiOkResponse({ standardSchema: productListResponseSchema })
   async list(
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
+    @Req() request: Request,
   ): Promise<ProductListResponseType> {
-    const page = await this.listProducts.execute(query);
+    const page = await this.listProducts.execute(requireIdentity(request).userId, query);
 
     return toPageResponse(page, query, ({ product, latest }) => ({
       ...toProduct(product),
@@ -93,17 +96,25 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Track a product by its URL',
     description:
-      'Any link to the product page works: it is canonicalized and a product is tracked once. ' +
+      'Any link to the product page works: it is canonicalized. The users share a product and its ' +
+      'price history, each one tracks it for themselves. ' +
       'No price is read yet: use `POST /products/{id}/prices`.',
   })
   @ApiCreatedResponse({ standardSchema: productSchema, description: 'The product is tracked now' })
-  @ApiOkResponse({ standardSchema: productSchema, description: 'The product was already tracked' })
+  @ApiOkResponse({
+    standardSchema: productSchema,
+    description: 'The user tracked the product already',
+  })
   @ApiBadRequestResponse({ description: 'Unsupported marketplace or product URL' })
   async add(
     @Body({ schema: productCreateBodySchema }) body: ProductCreateBodyType,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductType> {
-    const { product, created } = await this.addProduct.execute(body.url);
+    const { product, created } = await this.addProduct.execute(
+      requireIdentity(request).userId,
+      body.url,
+    );
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
 
     return toProduct(product);
@@ -122,8 +133,9 @@ export class ProductsController {
   @ApiConflictResponse({ description: 'No alive proxies or sessions are available' })
   request(
     @Param('id', { schema: productIdParamSchema }) id: string,
+    @Req() request: Request,
   ): Promise<JobAcceptedResponseType> {
-    return this.requestObservation.execute(id);
+    return this.requestObservation.execute(requireIdentity(request).userId, id);
   }
 
   @Get(':id/prices')
@@ -133,8 +145,13 @@ export class ProductsController {
   async prices(
     @Param('id', { schema: productIdParamSchema }) id: string,
     @Query({ schema: paginationQuerySchema }) query: PaginationQueryType,
+    @Req() request: Request,
   ): Promise<PriceHistoryResponseType> {
-    const { product, page } = await this.listHistory.execute(id, query);
+    const { product, page } = await this.listHistory.execute(
+      requireIdentity(request).userId,
+      id,
+      query,
+    );
 
     return { product: toProduct(product), ...toPageResponse(page, query, toObservation) };
   }

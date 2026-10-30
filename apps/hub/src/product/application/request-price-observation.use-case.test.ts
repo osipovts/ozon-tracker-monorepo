@@ -52,6 +52,7 @@ function session(proxyServer: string | null, status: 'active' | 'stale'): Browse
 }
 
 const productUrl = 'https://www.ozon.ru/product/4775581891/';
+const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 async function createUseCase(
   proxies: ProxyEntity[],
@@ -75,6 +76,7 @@ async function createUseCase(
     externalId: '4775581891',
     url: productUrl,
   });
+  await products.subscribe(userId, product.snapshot.id);
 
   const jobs = new InMemoryJobRepositoryAdapter();
   const requests: PriceFetchRequestInterface[] = [];
@@ -110,7 +112,7 @@ void test('queues the product with the best alive proxies and records the job', 
     proxy('socks5://217.71.230.4:1080', false, 4),
   ]);
 
-  const { jobId } = await useCase.execute(productId);
+  const { jobId } = await useCase.execute(userId, productId);
 
   const request = requests[0];
   assert.ok(request);
@@ -140,7 +142,7 @@ void test('puts routes with an active session first and skips the stale ones', a
     [session(pinned, 'active'), session(null, 'stale')],
   );
 
-  await useCase.execute(productId);
+  await useCase.execute(userId, productId);
 
   const routes = requests[0]?.routes ?? [];
   assert.deepEqual(
@@ -154,7 +156,7 @@ void test('puts routes with an active session first and skips the stale ones', a
 void test('works with a session only, even without alive proxies', async (): Promise<void> => {
   const { useCase, requests, productId } = await createUseCase([], [session(null, 'active')]);
 
-  await useCase.execute(productId);
+  await useCase.execute(userId, productId);
 
   assert.deepEqual(
     requests[0]?.routes.map((route): string | null => route.server),
@@ -162,12 +164,24 @@ void test('works with a session only, even without alive proxies', async (): Pro
   );
 });
 
+void test('refuses a product the user does not track, though it exists', async (): Promise<void> => {
+  const { useCase, requests, productId } = await createUseCase([
+    proxy('socks5://217.71.230.1:1080', true, 4),
+  ]);
+
+  await assert.rejects(
+    useCase.execute('9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33', productId),
+    ProductNotFoundError,
+  );
+  assert.equal(requests.length, 0);
+});
+
 void test('refuses an unknown product and a missing route without queueing', async (): Promise<void> => {
   const empty = await createUseCase([proxy('socks5://217.71.230.1:1080', false, 0)]);
 
-  await assert.rejects(empty.useCase.execute(empty.productId), NoProxiesAvailableError);
+  await assert.rejects(empty.useCase.execute(userId, empty.productId), NoProxiesAvailableError);
   await assert.rejects(
-    empty.useCase.execute('9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33'),
+    empty.useCase.execute(userId, '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33'),
     ProductNotFoundError,
   );
 
@@ -182,7 +196,7 @@ void test('marks the job failed if it cannot be queued', async (): Promise<void>
     true,
   );
 
-  await assert.rejects(useCase.execute(productId), /redis is down/);
+  await assert.rejects(useCase.execute(userId, productId), /redis is down/);
   const [job] = (await jobs.list({}, { page: 1, pageSize: 10 })).items;
   assert.equal(job?.snapshot.status, 'failed');
 });

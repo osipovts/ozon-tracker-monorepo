@@ -1,7 +1,8 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
+import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { ListProxiesUseCase } from '../application/list-proxies.use-case.js';
 import {
   proxyListQuerySchema,
@@ -10,7 +11,9 @@ import {
   type ProxyListResponseType,
 } from './proxy-list.type.js';
 
+@ApiBearerAuth()
 @ApiTags('proxies')
+@routeAccess('operator')
 @Controller('proxies')
 export class ProxiesController {
   constructor(@Inject(ListProxiesUseCase) private readonly listProxies: ListProxiesUseCase) {}

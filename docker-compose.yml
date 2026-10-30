@@ -9,6 +9,7 @@ x-app-env: &app-env
 x-hub-env: &hub-env
   <<: *app-env
   DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
+  HUB_API_KEY: ${HUB_API_KEY:-}
 
 x-depends-on-redis: &depends-on-redis
   redis:
@@ -40,7 +41,7 @@ services:
       args:
         APP_NAME: hub
     environment: *hub-env
-    # The API has no authentication yet: it is reachable from this machine only.
+    # The API is guarded (see the README), and reachable from this machine only.
     ports:
       - '127.0.0.1:${HUB_PORT:-3000}:3000'
     healthcheck:
