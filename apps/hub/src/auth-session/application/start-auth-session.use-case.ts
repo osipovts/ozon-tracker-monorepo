@@ -35,7 +35,7 @@ export class StartAuthSessionUseCase {
       this.policy,
       this.clock.now(),
     );
-    await this.sessions.save(session);
+    await this.sessions.add(session);
 
     return { token, expiresAt: session.snapshot.absoluteExpiresAt };
   }

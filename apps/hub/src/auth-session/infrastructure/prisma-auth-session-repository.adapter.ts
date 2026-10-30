@@ -20,12 +20,23 @@ function toEntity(row: AuthSessionRow): AuthSessionEntity {
 export class PrismaAuthSessionRepositoryAdapter implements AuthSessionRepositoryPort {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async save(session: AuthSessionEntity): Promise<void> {
-    const { id, ...data } = session.snapshot;
-    await this.prisma.authSession.upsert({
-      where: { id },
-      create: { id, ...data },
-      update: data,
+  async add(session: AuthSessionEntity): Promise<void> {
+    await this.prisma.authSession.create({ data: session.snapshot });
+  }
+
+  async touch(sessionId: string, lastSeenAt: Date, expiresAt: Date): Promise<void> {
+    // Only a live session, and only these two columns: a stale write of the whole row is what
+    // once put a revoked session back to life.
+    await this.prisma.authSession.updateMany({
+      where: { id: sessionId, revokedAt: null },
+      data: { lastSeenAt, expiresAt },
+    });
+  }
+
+  async revoke(sessionId: string, at: Date): Promise<void> {
+    await this.prisma.authSession.updateMany({
+      where: { id: sessionId, revokedAt: null },
+      data: { revokedAt: at },
     });
   }
 
@@ -50,9 +61,14 @@ export class PrismaAuthSessionRepositoryAdapter implements AuthSessionRepository
     return rows.map(toEntity);
   }
 
-  async revokeOthers(userId: string, keepSessionId: string, at: Date): Promise<number> {
+  async revokeOthers(userId: string, keepSessionId: string | null, at: Date): Promise<number> {
     const { count } = await this.prisma.authSession.updateMany({
-      where: { userId, id: { not: keepSessionId }, revokedAt: null, expiresAt: { gt: at } },
+      where: {
+        userId,
+        ...(keepSessionId === null ? {} : { id: { not: keepSessionId } }),
+        revokedAt: null,
+        expiresAt: { gt: at },
+      },
       data: { revokedAt: at },
     });
 

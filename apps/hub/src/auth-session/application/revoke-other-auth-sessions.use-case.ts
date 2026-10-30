@@ -7,8 +7,8 @@ export class RevokeOtherAuthSessionsUseCase {
     private readonly clock: ClockPort = systemClock,
   ) {}
 
-  /** Ends the live sessions of the user but the one in hand; tells how many it ended. */
-  execute(userId: string, keepSessionId: string): Promise<number> {
+  /** Ends the live sessions of the user but the one in hand, if any; tells how many it ended. */
+  execute(userId: string, keepSessionId: string | null): Promise<number> {
     return this.sessions.revokeOthers(userId, keepSessionId, this.clock.now());
   }
 }

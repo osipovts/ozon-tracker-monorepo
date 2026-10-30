@@ -1,11 +1,27 @@
 import type { AuthSessionRepositoryPort } from '../application/auth-session-repository.port.js';
-import type { AuthSessionEntity } from '../domain/auth-session.entity.js';
+import { AuthSessionEntity } from '../domain/auth-session.entity.js';
 
 export class InMemoryAuthSessionRepositoryAdapter implements AuthSessionRepositoryPort {
   private readonly sessions = new Map<string, AuthSessionEntity>();
 
-  save(session: AuthSessionEntity): Promise<void> {
+  add(session: AuthSessionEntity): Promise<void> {
     this.sessions.set(session.snapshot.tokenHash, session);
+
+    return Promise.resolve();
+  }
+
+  touch(sessionId: string, lastSeenAt: Date, expiresAt: Date): Promise<void> {
+    this.replace(sessionId, (session): AuthSessionEntity =>
+      session.snapshot.revokedAt === null
+        ? new AuthSessionEntity({ ...session.snapshot, lastSeenAt, expiresAt })
+        : session,
+    );
+
+    return Promise.resolve();
+  }
+
+  revoke(sessionId: string, at: Date): Promise<void> {
+    this.replace(sessionId, (session): AuthSessionEntity => session.revoked(at));
 
     return Promise.resolve();
   }
@@ -34,7 +50,7 @@ export class InMemoryAuthSessionRepositoryAdapter implements AuthSessionReposito
     return Promise.resolve(live);
   }
 
-  revokeOthers(userId: string, keepSessionId: string, at: Date): Promise<number> {
+  revokeOthers(userId: string, keepSessionId: string | null, at: Date): Promise<number> {
     let revoked = 0;
     for (const [tokenHash, session] of this.sessions) {
       if (
@@ -48,5 +64,14 @@ export class InMemoryAuthSessionRepositoryAdapter implements AuthSessionReposito
     }
 
     return Promise.resolve(revoked);
+  }
+
+  private replace(
+    sessionId: string,
+    change: (session: AuthSessionEntity) => AuthSessionEntity,
+  ): void {
+    for (const [tokenHash, session] of this.sessions) {
+      if (session.snapshot.id === sessionId) this.sessions.set(tokenHash, change(session));
+    }
   }
 }

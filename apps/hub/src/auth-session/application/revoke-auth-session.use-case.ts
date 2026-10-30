@@ -16,6 +16,6 @@ export class RevokeAuthSessionUseCase {
       throw new AuthSessionNotFoundError(sessionId);
     }
 
-    await this.sessions.save(session.revoked(at));
+    await this.sessions.revoke(session.snapshot.id, at);
   }
 }

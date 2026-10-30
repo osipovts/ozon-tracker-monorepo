@@ -21,7 +21,8 @@ export class ResolveAuthSessionUseCase {
     const at = this.clock.now();
     if (session?.isActive(at) !== true) return null;
 
-    await this.sessions.save(session.touched(this.policy, at));
+    const { lastSeenAt, expiresAt } = session.touched(this.policy, at).snapshot;
+    await this.sessions.touch(session.snapshot.id, lastSeenAt, expiresAt);
 
     return { userId: session.snapshot.userId, sessionId: session.snapshot.id };
   }

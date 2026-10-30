@@ -13,6 +13,6 @@ export class EndAuthSessionUseCase {
     const session = await this.sessions.findByTokenHash(hashSessionToken(token));
     if (session === null) return;
 
-    await this.sessions.save(session.revoked(this.clock.now()));
+    await this.sessions.revoke(session.snapshot.id, this.clock.now());
   }
 }
