@@ -2,11 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConsoleLoggerAdapter } from 'logger';
 import { QueueMessageParser } from 'queue-worker';
 
+import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
-import {
-  APP_CONFIG,
-  type AppConfigInterface,
-} from '../shared/infrastructure/app-config.interface.js';
 import { AppConfigParser } from '../shared/infrastructure/app-config.parser.js';
 import { NestLoggerAdapter } from '../shared/infrastructure/nest-logger.adapter.js';
 

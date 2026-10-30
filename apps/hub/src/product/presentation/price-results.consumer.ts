@@ -3,12 +3,12 @@ import { priceFetchResultSchema, type PriceFetchResultType, queueNames } from 'q
 import { QueueMessageParser } from 'queue-worker';
 
 import { RecordSessionEventUseCase } from '../../browser-session/application/record-session-event.use-case.js';
-import { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
-import { LOGGER, type LoggerPort } from '../../shared/application/logger.port.js';
+import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,
-} from '../../shared/infrastructure/app-config.interface.js';
+} from '../../shared/application/app-config.interface.js';
+import { LOGGER, type LoggerPort } from '../../shared/application/logger.port.js';
 import { ResultsConsumer } from '../../shared/presentation/results.consumer.js';
 import {
   type PriceResultInterface,
@@ -21,7 +21,7 @@ type ProductResultType = Extract<PriceFetchResultType, { type: 'product_result' 
 export class PriceResultsConsumer extends ResultsConsumer<PriceFetchResultType> {
   constructor(
     @Inject(RecordPriceResultUseCase) private readonly recordResult: RecordPriceResultUseCase,
-    @Inject(RecordJobEventUseCase) recordJobEvent: RecordJobEventUseCase,
+    @Inject(RecordJobMessageUseCase) private readonly recordJobMessage: RecordJobMessageUseCase,
     @Inject(RecordSessionEventUseCase)
     private readonly recordSessionEvent: RecordSessionEventUseCase,
     @Inject(QueueMessageParser) messages: QueueMessageParser,
@@ -34,7 +34,6 @@ export class PriceResultsConsumer extends ResultsConsumer<PriceFetchResultType> 
         schema: priceFetchResultSchema,
         description: 'price fetch result',
       },
-      recordJobEvent,
       messages,
       config,
       logger,
@@ -47,7 +46,7 @@ export class PriceResultsConsumer extends ResultsConsumer<PriceFetchResultType> 
       case 'job_progress':
       case 'job_done':
       case 'job_failed':
-        return this.recordJobMessage(message, at);
+        return this.recordJobMessage.execute(message, at);
       case 'product_result':
         await this.recordResult.execute(this.toResult(message));
         await this.recordSessionOutcomes(message, at);

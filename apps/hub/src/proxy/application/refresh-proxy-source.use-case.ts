@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { type LoggerPort, silentLogger } from 'logger';
+import type { ProxySourceType } from 'queue-contract';
 
 import type { JobQueuePort } from '../../job/application/job-queue.port.js';
 import type { JobRepositoryPort } from '../../job/application/job-repository.port.js';
 import { JobEntity } from '../../job/domain/job.entity.js';
-import type { ProxySourceType } from '../domain/proxy-source.type.js';
 
 export interface RefreshProxySourceOptionsInterface {
   maxCandidates: number;

@@ -2,12 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { proxyFetchResultSchema, type ProxyFetchResultType, queueNames } from 'queue-contract';
 import { QueueMessageParser } from 'queue-worker';
 
-import { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
-import { LOGGER, type LoggerPort } from '../../shared/application/logger.port.js';
+import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,
-} from '../../shared/infrastructure/app-config.interface.js';
+} from '../../shared/application/app-config.interface.js';
+import { LOGGER, type LoggerPort } from '../../shared/application/logger.port.js';
 import { ResultsConsumer } from '../../shared/presentation/results.consumer.js';
 import { RecordProxyChecksUseCase } from '../application/record-proxy-checks.use-case.js';
 
@@ -15,7 +15,7 @@ import { RecordProxyChecksUseCase } from '../application/record-proxy-checks.use
 export class ProxyResultsConsumer extends ResultsConsumer<ProxyFetchResultType> {
   constructor(
     @Inject(RecordProxyChecksUseCase) private readonly recordChecks: RecordProxyChecksUseCase,
-    @Inject(RecordJobEventUseCase) recordJobEvent: RecordJobEventUseCase,
+    @Inject(RecordJobMessageUseCase) private readonly recordJobMessage: RecordJobMessageUseCase,
     @Inject(QueueMessageParser) messages: QueueMessageParser,
     @Inject(APP_CONFIG) config: AppConfigInterface,
     @Inject(LOGGER) logger: LoggerPort,
@@ -26,7 +26,6 @@ export class ProxyResultsConsumer extends ResultsConsumer<ProxyFetchResultType> 
         schema: proxyFetchResultSchema,
         description: 'proxy fetch result',
       },
-      recordJobEvent,
       messages,
       config,
       logger,
@@ -39,7 +38,7 @@ export class ProxyResultsConsumer extends ResultsConsumer<ProxyFetchResultType> 
       case 'job_progress':
       case 'job_done':
       case 'job_failed':
-        return this.recordJobMessage(message, at);
+        return this.recordJobMessage.execute(message, at);
       case 'proxy_checks':
         return this.recordChecks.execute(
           message.checks.map((check) => ({

@@ -1,5 +1,4 @@
-import type { BrowserSessionInterface } from '../../browser-session/domain/browser-session.entity.js';
-import type { ProxySourceType } from '../../proxy/domain/proxy-source.type.js';
+import type { BrowserSessionType, ProxySourceType } from 'queue-contract';
 
 export const JOB_QUEUE = Symbol('JobQueuePort');
 
@@ -13,7 +12,7 @@ export interface ProxyFetchRequestInterface {
 export interface RouteInterface {
   /** Proxy URL in the order of trying; null is a direct connection. */
   server: string | null;
-  session: Pick<BrowserSessionInterface, 'id' | 'exitIp' | 'userAgent' | 'storageState'> | null;
+  session: BrowserSessionType | null;
 }
 
 export interface PriceFetchRequestInterface {

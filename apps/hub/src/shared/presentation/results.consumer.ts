@@ -1,12 +1,10 @@
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { Worker } from 'bullmq';
-import type { JobLifecycleType, JobProgressType } from 'queue-contract';
 import type { QueueMessageParser } from 'queue-worker';
 import type { z } from 'zod';
 
-import type { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
+import type { AppConfigInterface } from '../application/app-config.interface.js';
 import type { LoggerPort } from '../application/logger.port.js';
-import type { AppConfigInterface } from '../infrastructure/app-config.interface.js';
 
 export interface ResultsQueueInterface<MessageType> {
   name: string;
@@ -23,7 +21,6 @@ export abstract class ResultsConsumer<MessageType extends { type: string; jobId:
 
   protected constructor(
     private readonly queue: ResultsQueueInterface<MessageType>,
-    private readonly recordJobEvent: RecordJobEventUseCase,
     private readonly messages: QueueMessageParser,
     private readonly config: AppConfigInterface,
     protected readonly logger: LoggerPort,
@@ -53,34 +50,4 @@ export abstract class ResultsConsumer<MessageType extends { type: string; jobId:
   }
 
   protected abstract record(message: MessageType, at: Date): Promise<void>;
-
-  /** The messages every worker reports about its job. */
-  protected recordJobMessage(message: JobLifecycleType | JobProgressType, at: Date): Promise<void> {
-    const { jobId } = message;
-    switch (message.type) {
-      case 'job_started':
-        return this.recordJobEvent.execute({ type: 'started', jobId, at });
-      case 'job_progress':
-        return this.recordJobEvent.execute({
-          type: 'progress',
-          jobId,
-          at,
-          progress: {
-            processed: message.processed,
-            total: message.total,
-            succeeded: message.succeeded,
-          },
-        });
-      case 'job_done':
-        return this.recordJobEvent.execute({ type: 'completed', jobId, at });
-      case 'job_failed':
-        return this.recordJobEvent.execute({
-          type: 'failed',
-          jobId,
-          at,
-          reason: message.reason,
-          willRetry: message.willRetry,
-        });
-    }
-  }
 }

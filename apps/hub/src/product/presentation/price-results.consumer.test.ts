@@ -9,8 +9,9 @@ import { ImportSessionUseCase } from '../../browser-session/application/import-s
 import { RecordSessionEventUseCase } from '../../browser-session/application/record-session-event.use-case.js';
 import { InMemoryBrowserSessionRepositoryAdapter } from '../../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
+import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
 import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory-job-repository.adapter.js';
-import type { AppConfigInterface } from '../../shared/infrastructure/app-config.interface.js';
+import type { AppConfigInterface } from '../../shared/application/app-config.interface.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { RecordPriceResultUseCase } from '../application/record-price-result.use-case.js';
 import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
@@ -57,7 +58,7 @@ async function setup(): Promise<{
   return {
     consumer: new PriceResultsConsumer(
       new RecordPriceResultUseCase(products, observations),
-      new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
+      new RecordJobMessageUseCase(new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter())),
       new RecordSessionEventUseCase(sessions),
       new QueueMessageParser(silentLogger),
       config,

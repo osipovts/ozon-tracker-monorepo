@@ -6,9 +6,10 @@ import { silentLogger } from 'logger';
 import { QueueMessageParser } from 'queue-worker';
 
 import { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
+import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
 import { JobEntity } from '../../job/domain/job.entity.js';
 import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory-job-repository.adapter.js';
-import type { AppConfigInterface } from '../../shared/infrastructure/app-config.interface.js';
+import type { AppConfigInterface } from '../../shared/application/app-config.interface.js';
 import { RecordProxyChecksUseCase } from '../application/record-proxy-checks.use-case.js';
 import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
 import { ProxyResultsConsumer } from './proxy-results.consumer.js';
@@ -28,7 +29,7 @@ void test('stores the checks of a source and ignores its completion message', as
   const repository = new InMemoryProxyRepositoryAdapter();
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(repository),
-    new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
+    new RecordJobMessageUseCase(new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter())),
     new QueueMessageParser(silentLogger),
     config,
     silentLogger,
@@ -71,7 +72,7 @@ void test('stores the checks of a source and ignores its completion message', as
 void test('rejects a malformed message for good', async (): Promise<void> => {
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(new InMemoryProxyRepositoryAdapter()),
-    new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter()),
+    new RecordJobMessageUseCase(new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter())),
     new QueueMessageParser(silentLogger),
     config,
     silentLogger,
@@ -87,7 +88,7 @@ void test('tracks the progress of a proxy job until it is done', async (): Promi
   );
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(new InMemoryProxyRepositoryAdapter()),
-    new RecordJobEventUseCase(jobs),
+    new RecordJobMessageUseCase(new RecordJobEventUseCase(jobs)),
     new QueueMessageParser(silentLogger),
     config,
     silentLogger,

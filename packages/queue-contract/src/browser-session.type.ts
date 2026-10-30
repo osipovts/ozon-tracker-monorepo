@@ -9,3 +9,5 @@ export const browserSessionSchema = z.object({
   userAgent: z.string().min(1),
   storageState: storageStateSchema,
 });
+
+export type BrowserSessionType = z.infer<typeof browserSessionSchema>;

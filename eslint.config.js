@@ -7,6 +7,24 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 const hubContexts = ['browser-session', 'job', 'product', 'proxy'];
+const hubUnits = [...hubContexts, 'shared'];
+const frameworks = ['@nestjs/*', 'bullmq', 'ioredis', '**/generated/**'];
+const hubLayerPatterns = {
+  domain: ['**/application/**', '**/infrastructure/**', '**/presentation/**', ...frameworks],
+  application: ['**/infrastructure/**', '**/presentation/**', ...frameworks],
+  infrastructure: ['**/presentation/**'],
+  presentation: ['**/infrastructure/**'],
+};
+
+// A context reaches another one only through its domain and application layers; shared reaches none.
+const hubContextPatterns = (unit) =>
+  hubContexts
+    .filter((context) => context !== unit)
+    .flatMap((context) =>
+      unit === 'shared'
+        ? [`**/${context}/**`]
+        : [`**/${context}/infrastructure/**`, `**/${context}/presentation/**`],
+    );
 
 export default defineConfig(
   {
@@ -90,22 +108,25 @@ export default defineConfig(
     },
   },
 
-  // A hub context reaches another context only through its domain and application layers.
-  ...hubContexts.map((context) => ({
-    files: [`apps/hub/src/${context}/**/*.ts`],
-    // Tests wire the in-memory adapters of the neighbour contexts as test doubles.
-    ignores: ['**/*.test.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: hubContexts
-            .filter((other) => other !== context)
-            .flatMap((other) => [`**/${other}/infrastructure/**`, `**/${other}/presentation/**`]),
-        },
-      ],
+  // The layers of a hub context and the contexts among themselves. Tests wire the in-memory
+  // adapters of the neighbour contexts as test doubles.
+  ...hubUnits.flatMap((unit) => [
+    {
+      files: [`apps/hub/src/${unit}/*.ts`],
+      ignores: ['**/*.test.ts'],
+      rules: { 'no-restricted-imports': ['error', { patterns: hubContextPatterns(unit) }] },
     },
-  })),
+    ...Object.entries(hubLayerPatterns).map(([layer, patterns]) => ({
+      files: [`apps/hub/src/${unit}/${layer}/**/*.ts`],
+      ignores: ['**/*.test.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          { patterns: [...hubContextPatterns(unit), ...patterns] },
+        ],
+      },
+    })),
+  ]),
 
   {
     files: ['**/*.{js,mjs,cjs}'],

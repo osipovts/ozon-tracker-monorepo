@@ -1,7 +1,7 @@
 import { parseLogLevel } from 'logger';
 import { z } from 'zod';
 
-import type { AppConfigInterface } from './app-config.interface.js';
+import type { AppConfigInterface } from '../application/app-config.interface.js';
 
 const configSchema = z.object({
   databaseUrl: z.string().min(1),

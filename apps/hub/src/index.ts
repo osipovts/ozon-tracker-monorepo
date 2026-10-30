@@ -6,11 +6,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { errorMessage } from 'logger';
 
 import { AppModule } from './composition/app.module.js';
+import { APP_CONFIG, type AppConfigInterface } from './shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from './shared/application/logger.port.js';
-import {
-  APP_CONFIG,
-  type AppConfigInterface,
-} from './shared/infrastructure/app-config.interface.js';
 import { NestLoggerAdapter } from './shared/infrastructure/nest-logger.adapter.js';
 
 try {
