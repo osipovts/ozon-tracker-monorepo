@@ -9,6 +9,24 @@ import type {
 } from '../application/proxy-repository.port.js';
 import type { ProxyEntity } from '../domain/proxy.entity.js';
 
+function matches({ snapshot }: ProxyEntity, filter: ProxyFilterInterface): boolean {
+  return (
+    (filter.alive === undefined || snapshot.alive === filter.alive) &&
+    (filter.country === undefined || snapshot.country === filter.country) &&
+    (filter.servers === undefined || filter.servers.includes(snapshot.server)) &&
+    filter.excludedServers?.includes(snapshot.server) !== true
+  );
+}
+
+/** The best first: alive ones, then the most reliable, then the fastest. */
+function byQuality(a: ProxyEntity, b: ProxyEntity): number {
+  return (
+    Number(b.snapshot.alive) - Number(a.snapshot.alive) ||
+    b.successRate - a.successRate ||
+    (a.snapshot.latencyMs ?? Infinity) - (b.snapshot.latencyMs ?? Infinity)
+  );
+}
+
 export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
   private readonly proxies = new Map<string, ProxyEntity>();
 
@@ -33,19 +51,8 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     pagination: PaginationInterface,
   ): Promise<PageInterface<ProxyEntity>> {
     const matching = Array.from(this.proxies.values())
-      .filter(
-        ({ snapshot }): boolean =>
-          (filter.alive === undefined || snapshot.alive === filter.alive) &&
-          (filter.country === undefined || snapshot.country === filter.country) &&
-          (filter.servers === undefined || filter.servers.includes(snapshot.server)) &&
-          filter.excludedServers?.includes(snapshot.server) !== true,
-      )
-      .toSorted(
-        (a, b): number =>
-          Number(b.snapshot.alive) - Number(a.snapshot.alive) ||
-          b.successRate - a.successRate ||
-          (a.snapshot.latencyMs ?? Infinity) - (b.snapshot.latencyMs ?? Infinity),
-      );
+      .filter((proxy): boolean => matches(proxy, filter))
+      .toSorted(byQuality);
 
     return Promise.resolve(pageOf(matching, pagination));
   }
