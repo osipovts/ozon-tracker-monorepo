@@ -4,14 +4,19 @@ import { APP_GUARD } from '@nestjs/core';
 import { AccountModule } from '../account/account.module.js';
 import {
   AuthenticateWithPasswordUseCase,
+  ChangeAccountPasswordUseCase,
   type OauthProviderType,
   RegisterAccountUseCase,
   ResolveOauthAccountUseCase,
 } from '../account/application/index.js';
-import { StartAuthSessionUseCase } from '../auth-session/application/index.js';
+import {
+  RevokeOtherAuthSessionsUseCase,
+  StartAuthSessionUseCase,
+} from '../auth-session/application/index.js';
 import { AuthSessionModule } from '../auth-session/auth-session.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
+import { ChangePasswordUseCase } from './application/change-password.use-case.js';
 import { CompleteOauthLoginUseCase } from './application/complete-oauth-login.use-case.js';
 import { LogInUseCase } from './application/log-in.use-case.js';
 import type { OauthProviderPort, OauthProvidersType } from './application/oauth-provider.port.js';
@@ -66,6 +71,25 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
           },
         }),
       inject: [AuthenticateWithPasswordUseCase, StartAuthSessionUseCase, RATE_LIMITER, APP_CONFIG],
+    },
+    {
+      provide: ChangePasswordUseCase,
+      useFactory: (
+        changeAccountPassword: ChangeAccountPasswordUseCase,
+        revokeOthers: RevokeOtherAuthSessionsUseCase,
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
+      ): ChangePasswordUseCase =>
+        new ChangePasswordUseCase(changeAccountPassword, revokeOthers, limiter, {
+          limit: config.authLoginMaxAttempts,
+          windowMs: config.authRateLimitWindowMs,
+        }),
+      inject: [
+        ChangeAccountPasswordUseCase,
+        RevokeOtherAuthSessionsUseCase,
+        RATE_LIMITER,
+        APP_CONFIG,
+      ],
     },
     {
       // A provider whose OAuth app is not set up is left out: its login is off.

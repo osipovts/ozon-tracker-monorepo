@@ -10,6 +10,7 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -29,6 +30,7 @@ import { NotSignedInError } from '../../shared/application/not-signed-in.error.j
 import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import type { ClientInterface } from '../application/authenticated-session.interface.js';
+import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
 import {
@@ -36,6 +38,8 @@ import {
   type AuthResponseType,
   loginBodySchema,
   type LoginBodyType,
+  passwordChangeBodySchema,
+  type PasswordChangeBodyType,
   registerBodySchema,
   type RegisterBodyType,
 } from './auth.type.js';
@@ -60,6 +64,7 @@ export class AuthController {
     @Inject(LogInUseCase) private readonly logIn: LogInUseCase,
     @Inject(EndAuthSessionUseCase) private readonly endSession: EndAuthSessionUseCase,
     @Inject(GetAccountUseCase) private readonly getAccount: GetAccountUseCase,
+    @Inject(ChangePasswordUseCase) private readonly changePassword: ChangePasswordUseCase,
     @Inject(SessionCookieParser) private readonly cookies: SessionCookieParser,
     @Inject(APP_CONFIG) config: AppConfigInterface,
   ) {
@@ -131,5 +136,23 @@ export class AuthController {
     if (user === null) throw new NotSignedInError();
 
     return toAuthResponse(user);
+  }
+
+  @Post('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Change the password',
+    description:
+      'Needs the current password. Signs the user out of every other device; this session stays.',
+  })
+  @ApiNoContentResponse()
+  @ApiBadRequestResponse({ description: 'The current password is wrong' })
+  @ApiUnauthorizedResponse({ description: 'No live session' })
+  async password(
+    @Body({ schema: passwordChangeBodySchema }) body: PasswordChangeBodyType,
+    @Req() request: Request,
+  ): Promise<void> {
+    const { userId, sessionId } = requireIdentity(request);
+    await this.changePassword.execute({ userId, sessionId, ...body });
   }
 }

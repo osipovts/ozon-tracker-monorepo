@@ -16,6 +16,13 @@ export const loginBodySchema = z.object({
 
 export type LoginBodyType = z.infer<typeof loginBodySchema>;
 
+export const passwordChangeBodySchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
+export type PasswordChangeBodyType = z.infer<typeof passwordChangeBodySchema>;
+
 export const authResponseSchema = z.object({
   /** Strict: a field that is not listed is never sent, and a test sees it if it is. */
   user: z.strictObject({ id: z.uuid(), email: z.string() }),

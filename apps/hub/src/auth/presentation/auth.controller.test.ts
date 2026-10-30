@@ -6,6 +6,7 @@ import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 
 import { AuthenticateWithPasswordUseCase } from '../../account/application/authenticate-with-password.use-case.js';
+import { ChangeAccountPasswordUseCase } from '../../account/application/change-account-password.use-case.js';
 import { GetAccountUseCase } from '../../account/application/get-account.use-case.js';
 import { RegisterAccountUseCase } from '../../account/application/register-account.use-case.js';
 import { Argon2idPasswordHasherAdapter } from '../../account/infrastructure/argon2id-password-hasher.adapter.js';
@@ -25,6 +26,7 @@ import {
 } from '../../shared/application/app-config.interface.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
+import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
 import { AccessGuard } from './access.guard.js';
@@ -110,6 +112,15 @@ async function createApp(attempts: number): Promise<INestApplication> {
         useValue: new ResolveAuthSessionUseCase(sessions, policy),
       },
       { provide: GetAccountUseCase, useValue: new GetAccountUseCase(users) },
+      {
+        provide: ChangePasswordUseCase,
+        useValue: new ChangePasswordUseCase(
+          new ChangeAccountPasswordUseCase(credentials, hasher),
+          new RevokeOtherAuthSessionsUseCase(sessions),
+          limiter,
+          { limit: attempts, windowMs: 60_000 },
+        ),
+      },
       SessionCookieParser,
       { provide: APP_GUARD, useClass: AccessGuard },
     ],
@@ -282,11 +293,11 @@ void test('answers 429 with the time to wait once an address tries too often', a
   }
 });
 
-async function login(email: string, userAgent: string): Promise<string> {
+async function login(email: string, userAgent: string, password = 'secret-pass'): Promise<string> {
   const response = await fetch(`${baseUrl}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'user-agent': userAgent },
-    body: JSON.stringify({ email, password: 'secret-pass' }),
+    body: JSON.stringify({ email, password }),
   });
   assert.equal(response.status, 200);
   const pair = response.headers.getSetCookie()[0]?.split(';')[0];
@@ -384,4 +395,63 @@ void test('ends every session but the one asking, and says how many', async (): 
   assert.equal((await me(laptop)).status, 200);
   assert.equal((await me(phone)).status, 401);
   assert.equal((await me(tablet)).status, 401);
+});
+
+void test('changes the password with the current one, and signs out the other devices only', async (): Promise<void> => {
+  const laptop = cookieOf(
+    await post('/auth/register', { email: 'ray@example.com', password: 'old-password' }),
+  );
+  const phone = await login('ray@example.com', 'Safari Mobile', 'old-password');
+
+  const changed = await post(
+    '/auth/password',
+    { currentPassword: 'old-password', newPassword: 'new-password' },
+    laptop,
+  );
+
+  assert.equal(changed.status, 204);
+  assert.equal((await me(laptop)).status, 200);
+  assert.equal((await me(phone)).status, 401);
+  assert.equal(
+    (await post('/auth/login', { email: 'ray@example.com', password: 'old-password' })).status,
+    401,
+  );
+  assert.equal(
+    (await post('/auth/login', { email: 'ray@example.com', password: 'new-password' })).status,
+    200,
+  );
+});
+
+void test('does not change the password on a wrong current one or a weak new one, nor for the anonymous', async (): Promise<void> => {
+  const cookie = cookieOf(
+    await post('/auth/register', { email: 'ivy@example.com', password: 'old-password' }),
+  );
+
+  const wrong = await post(
+    '/auth/password',
+    { currentPassword: 'guess', newPassword: 'new-password' },
+    cookie,
+  );
+  assert.equal(wrong.status, 400);
+  assert.deepEqual(wrong.body, { statusCode: 400, message: 'The current password is wrong' });
+
+  assert.equal(
+    (
+      await post(
+        '/auth/password',
+        { currentPassword: 'old-password', newPassword: 'short' },
+        cookie,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await post('/auth/password', { currentPassword: 'old-password', newPassword: 'new-password' }))
+      .status,
+    401,
+  );
+  assert.equal(
+    (await post('/auth/login', { email: 'ivy@example.com', password: 'old-password' })).status,
+    200,
+  );
 });

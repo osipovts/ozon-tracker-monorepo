@@ -7,6 +7,7 @@ import {
   type AccountRegistrationPort,
 } from './application/account-registration.port.js';
 import { AuthenticateWithPasswordUseCase } from './application/authenticate-with-password.use-case.js';
+import { ChangeAccountPasswordUseCase } from './application/change-account-password.use-case.js';
 import {
   CREDENTIAL_REPOSITORY,
   type CredentialRepositoryPort,
@@ -76,6 +77,14 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
       inject: [USER_REPOSITORY, CREDENTIAL_REPOSITORY, PASSWORD_HASHER],
     },
     {
+      provide: ChangeAccountPasswordUseCase,
+      useFactory: (
+        credentials: CredentialRepositoryPort,
+        hasher: PasswordHasherPort,
+      ): ChangeAccountPasswordUseCase => new ChangeAccountPasswordUseCase(credentials, hasher),
+      inject: [CREDENTIAL_REPOSITORY, PASSWORD_HASHER],
+    },
+    {
       provide: ResolveOauthAccountUseCase,
       useFactory: (
         users: UserRepositoryPort,
@@ -94,6 +103,7 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
   exports: [
     RegisterAccountUseCase,
     AuthenticateWithPasswordUseCase,
+    ChangeAccountPasswordUseCase,
     ResolveOauthAccountUseCase,
     GetAccountUseCase,
   ],

@@ -8,6 +8,10 @@ export {
   AuthenticateWithPasswordUseCase,
   type PasswordLoginInterface,
 } from './authenticate-with-password.use-case.js';
+export {
+  type ChangeAccountPasswordInterface,
+  ChangeAccountPasswordUseCase,
+} from './change-account-password.use-case.js';
 export { GetAccountUseCase } from './get-account.use-case.js';
 export {
   type RegisterAccountInterface,

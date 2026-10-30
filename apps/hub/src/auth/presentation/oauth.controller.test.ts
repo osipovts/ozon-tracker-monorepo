@@ -6,6 +6,7 @@ import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 
 import { AuthenticateWithPasswordUseCase } from '../../account/application/authenticate-with-password.use-case.js';
+import { ChangeAccountPasswordUseCase } from '../../account/application/change-account-password.use-case.js';
 import { GetAccountUseCase } from '../../account/application/get-account.use-case.js';
 import { RegisterAccountUseCase } from '../../account/application/register-account.use-case.js';
 import { ResolveOauthAccountUseCase } from '../../account/application/resolve-oauth-account.use-case.js';
@@ -16,6 +17,7 @@ import { InMemoryLinkedIdentityRepositoryAdapter } from '../../account/infrastru
 import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-memory-user-repository.adapter.js';
 import { EndAuthSessionUseCase } from '../../auth-session/application/end-auth-session.use-case.js';
 import { ResolveAuthSessionUseCase } from '../../auth-session/application/resolve-auth-session.use-case.js';
+import { RevokeOtherAuthSessionsUseCase } from '../../auth-session/application/revoke-other-auth-sessions.use-case.js';
 import { StartAuthSessionUseCase } from '../../auth-session/application/start-auth-session.use-case.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
 import {
@@ -24,6 +26,7 @@ import {
 } from '../../shared/application/app-config.interface.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
+import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { CompleteOauthLoginUseCase } from '../application/complete-oauth-login.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import type { OauthProvidersType } from '../application/oauth-provider.port.js';
@@ -118,6 +121,15 @@ before(async (): Promise<void> => {
         useValue: new ResolveAuthSessionUseCase(sessions, policy),
       },
       { provide: GetAccountUseCase, useValue: new GetAccountUseCase(users) },
+      {
+        provide: ChangePasswordUseCase,
+        useValue: new ChangePasswordUseCase(
+          new ChangeAccountPasswordUseCase(credentials, hasher),
+          new RevokeOtherAuthSessionsUseCase(sessions),
+          limiter,
+          { limit: 1000, windowMs: 60_000 },
+        ),
+      },
       SessionCookieParser,
       OauthLoginCookieParser,
     ],
