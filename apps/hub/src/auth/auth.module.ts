@@ -23,6 +23,7 @@ import { AccessGuard } from './presentation/access.guard.js';
 import { AuthController } from './presentation/auth.controller.js';
 import { OauthController } from './presentation/oauth.controller.js';
 import { OauthLoginCookieParser } from './presentation/oauth-login-cookie.parser.js';
+import { OriginGuard } from './presentation/origin.guard.js';
 import { SessionCookieParser } from './presentation/session-cookie.parser.js';
 
 const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
@@ -99,7 +100,9 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
     },
     SessionCookieParser,
     OauthLoginCookieParser,
-    // Every route of the hub is guarded; a route says what it needs with `routeAccess`.
+    // Every route of the hub is guarded; a route says what it needs with `routeAccess`. The writes
+    // are checked for their origin first, so that a foreign one is refused before it is asked who it is.
+    { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
 })

@@ -30,6 +30,8 @@ export interface AppConfigInterface {
   authRegisterMaxAttempts: number;
   /** Where the hub is reached from outside: the providers send the user back here. */
   publicUrl: string;
+  /** Origins besides the hub itself that may write to it, e.g. a frontend of another origin. */
+  authAllowedOrigins: string[];
   /** Where the user lands after a login through a provider: a path of the hub. */
   authSuccessRedirect: string;
   /** The OAuth app of Google; the login through it is off without one. */

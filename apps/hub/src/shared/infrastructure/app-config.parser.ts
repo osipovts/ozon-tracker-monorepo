@@ -51,6 +51,23 @@ const configSchema = z.object({
     .url({ protocol: /^https?$/ })
     .default('http://localhost:3000')
     .transform((value): string => value.replace(/\/+$/, '')),
+  // Origins, as a browser writes them in a header: a scheme, a host and maybe a port, no path.
+  authAllowedOrigins: z
+    .string()
+    .default('')
+    .transform((value): string[] =>
+      value
+        .split(',')
+        .map((origin): string => origin.trim())
+        .filter((origin): boolean => origin !== ''),
+    )
+    .pipe(
+      z.array(
+        z
+          .url({ protocol: /^https?$/ })
+          .refine((origin): boolean => new URL(origin).origin === origin),
+      ),
+    ),
   // A path of the hub: a full URL would let a login be sent anywhere.
   authSuccessRedirect: z
     .string()
@@ -82,6 +99,7 @@ export class AppConfigParser {
         authLoginMaxAttemptsPerIp: env['AUTH_LOGIN_MAX_ATTEMPTS_PER_IP'],
         authRegisterMaxAttempts: env['AUTH_REGISTER_MAX_ATTEMPTS'],
         publicUrl: env['PUBLIC_URL'],
+        authAllowedOrigins: env['AUTH_ALLOWED_ORIGINS'],
         authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],
         googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
         githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),

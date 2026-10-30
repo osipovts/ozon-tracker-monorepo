@@ -42,6 +42,10 @@
 по умолчанию 10 входов на почту, 50 входов с одного адреса и 5 регистраций с одного адреса за 15 минут
 (`AUTH_*_MAX_ATTEMPTS`, `AUTH_RATE_LIMIT_WINDOW_MS`). Сверх лимита hub отвечает 429 с заголовком `Retry-After`.
 
+Запись (POST, PUT, PATCH, DELETE) из браузера проверяется по заголовку `Origin`: разрешён origin из
+`PUBLIC_URL` и перечисленные в `AUTH_ALLOWED_ORIGINS` (через запятую). Открывать Swagger нужно по адресу из
+`PUBLIC_URL`. Запросы не из браузера (curl, CLI) без `Origin` проходят.
+
 ### Вход через Google и GitHub
 
 Вход через провайдера включается переменными окружения: `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`,

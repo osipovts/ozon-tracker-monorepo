@@ -54,3 +54,21 @@ void test('lands the user on a path of the hub only: a login must not be sent an
     assert.throws(() => parser.parse(env(['AUTH_SUCCESS_REDIRECT', target])), target);
   }
 });
+
+void test('takes the origins that may write to the hub besides itself, as a browser writes them', (): void => {
+  assert.deepEqual(parser.parse(env()).authAllowedOrigins, []);
+  assert.deepEqual(
+    parser.parse(env(['AUTH_ALLOWED_ORIGINS', 'https://app.example.com, http://localhost:5173']))
+      .authAllowedOrigins,
+    ['https://app.example.com', 'http://localhost:5173'],
+  );
+
+  for (const origin of [
+    'app.example.com',
+    'https://app.example.com/',
+    'https://app.example.com/path',
+    '*',
+  ]) {
+    assert.throws(() => parser.parse(env(['AUTH_ALLOWED_ORIGINS', origin])), origin);
+  }
+});

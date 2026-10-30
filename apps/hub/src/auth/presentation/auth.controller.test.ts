@@ -42,6 +42,7 @@ const config: AppConfigInterface = {
   authLoginMaxAttemptsPerIp: 1000,
   authRegisterMaxAttempts: 1000,
   publicUrl: 'http://localhost:3000',
+  authAllowedOrigins: [],
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
   githubOauth: null,
