@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { JOB_QUEUE, type JobQueuePort } from '../application/job/job-queue.port.js';
-import type { LoggerPort } from '../application/shared/logger.port.js';
-import { LOGGER } from '../application/shared/logger.port.js';
-import { BullmqJobQueueAdapter } from '../infrastructure/job/bullmq-job-queue.adapter.js';
+import { JOB_QUEUE, type JobQueuePort } from '../job/application/job-queue.port.js';
+import { BullmqJobQueueAdapter } from '../job/infrastructure/bullmq-job-queue.adapter.js';
+import type { LoggerPort } from '../shared/application/logger.port.js';
+import { LOGGER } from '../shared/application/logger.port.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,
-} from '../infrastructure/shared/app-config.interface.js';
+} from '../shared/infrastructure/app-config.interface.js';
 
 /** The queues the jobs of the workers are published to. */
 @Module({

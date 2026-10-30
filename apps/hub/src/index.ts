@@ -5,13 +5,13 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { errorMessage } from 'logger';
 
-import { LOGGER, type LoggerPort } from './application/shared/logger.port.js';
 import { AppModule } from './composition/app.module.js';
+import { LOGGER, type LoggerPort } from './shared/application/logger.port.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,
-} from './infrastructure/shared/app-config.interface.js';
-import { NestLoggerAdapter } from './infrastructure/shared/nest-logger.adapter.js';
+} from './shared/infrastructure/app-config.interface.js';
+import { NestLoggerAdapter } from './shared/infrastructure/nest-logger.adapter.js';
 
 try {
   // The logger of the application is a provider: Nest holds its own messages until it is ready.

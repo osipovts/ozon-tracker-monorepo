@@ -6,6 +6,8 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const hubContexts = ['browser-session', 'job', 'product', 'proxy'];
+
 export default defineConfig(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/generated/**'],
@@ -87,6 +89,23 @@ export default defineConfig(
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
     },
   },
+
+  // A hub context reaches another context only through its domain and application layers.
+  ...hubContexts.map((context) => ({
+    files: [`apps/hub/src/${context}/**/*.ts`],
+    // Tests wire the in-memory adapters of the neighbour contexts as test doubles.
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: hubContexts
+            .filter((other) => other !== context)
+            .flatMap((other) => [`**/${other}/infrastructure/**`, `**/${other}/presentation/**`]),
+        },
+      ],
+    },
+  })),
 
   {
     files: ['**/*.{js,mjs,cjs}'],

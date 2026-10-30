@@ -1,33 +1,33 @@
 import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import { JOB_REPOSITORY, type JobRepositoryPort } from '../application/job/job-repository.port.js';
-import {
-  PRICE_OBSERVATION_REPOSITORY,
-  type PriceObservationRepositoryPort,
-} from '../application/product/price-observation-repository.port.js';
-import {
-  TRACKED_PRODUCT_REPOSITORY,
-  type TrackedProductRepositoryPort,
-} from '../application/product/tracked-product-repository.port.js';
-import {
-  PROXY_REPOSITORY,
-  type ProxyRepositoryPort,
-} from '../application/proxy/proxy-repository.port.js';
 import {
   BROWSER_SESSION_REPOSITORY,
   type BrowserSessionRepositoryPort,
-} from '../application/session/browser-session-repository.port.js';
+} from '../browser-session/application/browser-session-repository.port.js';
+import { PrismaBrowserSessionRepositoryAdapter } from '../browser-session/infrastructure/prisma-browser-session-repository.adapter.js';
 import { PrismaClient } from '../generated/prisma/client.js';
-import { PrismaJobRepositoryAdapter } from '../infrastructure/job/prisma-job-repository.adapter.js';
-import { PrismaPriceObservationRepositoryAdapter } from '../infrastructure/product/prisma-price-observation-repository.adapter.js';
-import { PrismaTrackedProductRepositoryAdapter } from '../infrastructure/product/prisma-tracked-product-repository.adapter.js';
-import { PrismaProxyRepositoryAdapter } from '../infrastructure/proxy/prisma-proxy-repository.adapter.js';
-import { PrismaBrowserSessionRepositoryAdapter } from '../infrastructure/session/prisma-browser-session-repository.adapter.js';
+import { JOB_REPOSITORY, type JobRepositoryPort } from '../job/application/job-repository.port.js';
+import { PrismaJobRepositoryAdapter } from '../job/infrastructure/prisma-job-repository.adapter.js';
+import {
+  PRICE_OBSERVATION_REPOSITORY,
+  type PriceObservationRepositoryPort,
+} from '../product/application/price-observation-repository.port.js';
+import {
+  TRACKED_PRODUCT_REPOSITORY,
+  type TrackedProductRepositoryPort,
+} from '../product/application/tracked-product-repository.port.js';
+import { PrismaPriceObservationRepositoryAdapter } from '../product/infrastructure/prisma-price-observation-repository.adapter.js';
+import { PrismaTrackedProductRepositoryAdapter } from '../product/infrastructure/prisma-tracked-product-repository.adapter.js';
+import {
+  PROXY_REPOSITORY,
+  type ProxyRepositoryPort,
+} from '../proxy/application/proxy-repository.port.js';
+import { PrismaProxyRepositoryAdapter } from '../proxy/infrastructure/prisma-proxy-repository.adapter.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,
-} from '../infrastructure/shared/app-config.interface.js';
+} from '../shared/infrastructure/app-config.interface.js';
 
 const PRISMA = Symbol('PrismaClient');
 
