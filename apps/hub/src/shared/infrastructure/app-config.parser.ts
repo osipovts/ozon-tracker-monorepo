@@ -39,6 +39,14 @@ const configSchema = z.object({
     .int()
     .min(60_000)
     .default(30 * 24 * 3_600_000),
+  authRateLimitWindowMs: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .default(15 * 60_000),
+  authLoginMaxAttempts: z.coerce.number().int().min(1).default(10),
+  authLoginMaxAttemptsPerIp: z.coerce.number().int().min(1).default(50),
+  authRegisterMaxAttempts: z.coerce.number().int().min(1).default(5),
   publicUrl: z
     .url({ protocol: /^https?$/ })
     .default('http://localhost:3000')
@@ -69,6 +77,10 @@ export class AppConfigParser {
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
+        authRateLimitWindowMs: env['AUTH_RATE_LIMIT_WINDOW_MS'],
+        authLoginMaxAttempts: env['AUTH_LOGIN_MAX_ATTEMPTS'],
+        authLoginMaxAttemptsPerIp: env['AUTH_LOGIN_MAX_ATTEMPTS_PER_IP'],
+        authRegisterMaxAttempts: env['AUTH_REGISTER_MAX_ATTEMPTS'],
         publicUrl: env['PUBLIC_URL'],
         authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],
         googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),

@@ -20,6 +20,14 @@ export interface AppConfigInterface {
   authSessionAbsoluteTtlMs: number;
   /** Whether the session cookie goes over HTTPS only. */
   authCookieSecure: boolean;
+  /** The window the attempts of logging in and signing up are counted in. */
+  authRateLimitWindowMs: number;
+  /** Logins of one email per window, whoever they come from. */
+  authLoginMaxAttempts: number;
+  /** Logins from one address per window, of any emails: wider, as an address may be shared. */
+  authLoginMaxAttemptsPerIp: number;
+  /** Sign-ups from one address per window. */
+  authRegisterMaxAttempts: number;
   /** Where the hub is reached from outside: the providers send the user back here. */
   publicUrl: string;
   /** Where the user lands after a login through a provider: a path of the hub. */

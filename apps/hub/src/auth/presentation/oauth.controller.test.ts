@@ -22,6 +22,7 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../shared/application/app-config.interface.js';
+import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { CompleteOauthLoginUseCase } from '../application/complete-oauth-login.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
@@ -45,6 +46,10 @@ const config: AppConfigInterface = {
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
   authCookieSecure: true,
+  authRateLimitWindowMs: 60_000,
+  authLoginMaxAttempts: 1000,
+  authLoginMaxAttemptsPerIp: 1000,
+  authRegisterMaxAttempts: 1000,
   publicUrl: 'http://hub.test',
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
@@ -66,6 +71,7 @@ before(async (): Promise<void> => {
   const hasher = new Argon2idPasswordHasherAdapter({ memoryKib: 64, passes: 1, parallelism: 1 });
   const registration = new InMemoryAccountRegistrationAdapter(users, credentials, identities);
   const startSession = new StartAuthSessionUseCase(sessions, policy);
+  const limiter = new InMemoryRateLimiterAdapter();
   const providers: OauthProvidersType = new Map([['google', google]]);
 
   const moduleRef = await Test.createTestingModule({
@@ -89,13 +95,20 @@ before(async (): Promise<void> => {
       },
       {
         provide: SignUpUseCase,
-        useValue: new SignUpUseCase(new RegisterAccountUseCase(registration, hasher), startSession),
+        useValue: new SignUpUseCase(
+          new RegisterAccountUseCase(registration, hasher),
+          startSession,
+          limiter,
+          { limit: 1000, windowMs: 60_000 },
+        ),
       },
       {
         provide: LogInUseCase,
         useValue: new LogInUseCase(
           new AuthenticateWithPasswordUseCase(users, credentials, hasher),
           startSession,
+          limiter,
+          { perEmail: { limit: 1000, windowMs: 60_000 }, perIp: { limit: 1000, windowMs: 60_000 } },
         ),
       },
       { provide: EndAuthSessionUseCase, useValue: new EndAuthSessionUseCase(sessions) },

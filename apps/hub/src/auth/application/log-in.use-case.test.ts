@@ -11,6 +11,8 @@ import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-m
 import { ResolveAuthSessionUseCase } from '../../auth-session/application/resolve-auth-session.use-case.js';
 import { StartAuthSessionUseCase } from '../../auth-session/application/start-auth-session.use-case.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
+import { TooManyRequestsError } from '../../shared/application/too-many-requests.error.js';
+import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { LogInUseCase } from './log-in.use-case.js';
 
 const hasher: PasswordHasherPort = {
@@ -18,6 +20,10 @@ const hasher: PasswordHasherPort = {
   verify: (hash, password): Promise<boolean> => Promise.resolve(hash === `hashed:${password}`),
 };
 const policy = { idleTtlMs: 60_000, absoluteTtlMs: 120_000 };
+const limits = {
+  perEmail: { limit: 3, windowMs: 60_000 },
+  perIp: { limit: 5, windowMs: 60_000 },
+};
 
 async function setup(): Promise<{
   logIn: LogInUseCase;
@@ -36,6 +42,8 @@ async function setup(): Promise<{
     logIn: new LogInUseCase(
       new AuthenticateWithPasswordUseCase(users, credentials, hasher),
       new StartAuthSessionUseCase(sessions, policy),
+      new InMemoryRateLimiterAdapter(),
+      limits,
     ),
     resolve: new ResolveAuthSessionUseCase(sessions, policy),
     userId: registered.id,
@@ -66,5 +74,62 @@ void test('starts no session for a wrong password', async (): Promise<void> => {
   await assert.rejects(
     logIn.execute({ email: 'jane@example.com', password: 'wrong', userAgent: null, ip: null }),
     InvalidCredentialsError,
+  );
+});
+
+const attempt = (
+  email: string,
+  ip: string | null,
+): {
+  email: string;
+  password: string;
+  userAgent: null;
+  ip: string | null;
+} => ({ email, password: 'secret-pass', userAgent: null, ip });
+
+void test('stops an email that is tried too often, even with the right password, whoever tries', async (): Promise<void> => {
+  const { logIn } = await setup();
+
+  for (let tries = 0; tries < 3; tries += 1)
+    await logIn.execute(attempt('jane@example.com', `203.0.113.${String(tries)}`));
+
+  await assert.rejects(
+    logIn.execute(attempt('JANE@example.com', '198.51.100.9')),
+    TooManyRequestsError,
+  );
+});
+
+void test('stops an address that tries too many emails, and leaves the others alone', async (): Promise<void> => {
+  const { logIn } = await setup();
+
+  for (let tries = 0; tries < 5; tries += 1) {
+    await assert.rejects(
+      logIn.execute(attempt(`nobody-${String(tries)}@example.com`, '203.0.113.7')),
+      InvalidCredentialsError,
+    );
+  }
+
+  await assert.rejects(
+    logIn.execute(attempt('jane@example.com', '203.0.113.7')),
+    TooManyRequestsError,
+  );
+  assert.equal(
+    (await logIn.execute(attempt('jane@example.com', '198.51.100.9'))).user.email,
+    'jane@example.com',
+  );
+});
+
+void test('names how long to wait', async (): Promise<void> => {
+  const { logIn } = await setup();
+  for (let tries = 0; tries < 3; tries += 1) await logIn.execute(attempt('jane@example.com', null));
+
+  await assert.rejects(
+    logIn.execute(attempt('jane@example.com', null)),
+    (error: unknown): boolean => {
+      assert.ok(error instanceof TooManyRequestsError);
+      assert.ok(error.retryAfterSeconds >= 1 && error.retryAfterSeconds <= 60);
+
+      return true;
+    },
   );
 });

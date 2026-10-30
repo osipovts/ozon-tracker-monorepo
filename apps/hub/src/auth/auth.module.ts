@@ -11,6 +11,7 @@ import {
 import { StartAuthSessionUseCase } from '../auth-session/application/index.js';
 import { AuthSessionModule } from '../auth-session/auth-session.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
+import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { CompleteOauthLoginUseCase } from './application/complete-oauth-login.use-case.js';
 import { LogInUseCase } from './application/log-in.use-case.js';
 import type { OauthProviderPort, OauthProvidersType } from './application/oauth-provider.port.js';
@@ -35,16 +36,34 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
       useFactory: (
         register: RegisterAccountUseCase,
         start: StartAuthSessionUseCase,
-      ): SignUpUseCase => new SignUpUseCase(register, start),
-      inject: [RegisterAccountUseCase, StartAuthSessionUseCase],
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
+      ): SignUpUseCase =>
+        new SignUpUseCase(register, start, limiter, {
+          limit: config.authRegisterMaxAttempts,
+          windowMs: config.authRateLimitWindowMs,
+        }),
+      inject: [RegisterAccountUseCase, StartAuthSessionUseCase, RATE_LIMITER, APP_CONFIG],
     },
     {
       provide: LogInUseCase,
       useFactory: (
         authenticate: AuthenticateWithPasswordUseCase,
         start: StartAuthSessionUseCase,
-      ): LogInUseCase => new LogInUseCase(authenticate, start),
-      inject: [AuthenticateWithPasswordUseCase, StartAuthSessionUseCase],
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
+      ): LogInUseCase =>
+        new LogInUseCase(authenticate, start, limiter, {
+          perEmail: {
+            limit: config.authLoginMaxAttempts,
+            windowMs: config.authRateLimitWindowMs,
+          },
+          perIp: {
+            limit: config.authLoginMaxAttemptsPerIp,
+            windowMs: config.authRateLimitWindowMs,
+          },
+        }),
+      inject: [AuthenticateWithPasswordUseCase, StartAuthSessionUseCase, RATE_LIMITER, APP_CONFIG],
     },
     {
       // A provider whose OAuth app is not set up is left out: its login is off.

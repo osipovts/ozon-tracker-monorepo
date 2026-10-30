@@ -20,6 +20,7 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../shared/application/app-config.interface.js';
+import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
@@ -36,6 +37,10 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  authRateLimitWindowMs: 60_000,
+  authLoginMaxAttempts: 1000,
+  authLoginMaxAttemptsPerIp: 1000,
+  authRegisterMaxAttempts: 1000,
   publicUrl: 'http://localhost:3000',
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
@@ -48,7 +53,8 @@ const config: AppConfigInterface = {
 let app: INestApplication;
 let baseUrl: string;
 
-before(async (): Promise<void> => {
+/** The hub with the given limits of the logins and the sign-ups of one address. */
+async function createApp(attempts: number): Promise<INestApplication> {
   const users = new InMemoryUserRepositoryAdapter();
   const credentials = new InMemoryCredentialRepositoryAdapter();
   const sessions = new InMemoryAuthSessionRepositoryAdapter();
@@ -56,6 +62,7 @@ before(async (): Promise<void> => {
   // The cheapest cost argon2 allows: the tests are about the flow, not the hardness.
   const hasher = new Argon2idPasswordHasherAdapter({ memoryKib: 64, passes: 1, parallelism: 1 });
   const startSession = new StartAuthSessionUseCase(sessions, policy);
+  const limiter = new InMemoryRateLimiterAdapter();
   const register = new RegisterAccountUseCase(
     new InMemoryAccountRegistrationAdapter(users, credentials),
     hasher,
@@ -67,12 +74,23 @@ before(async (): Promise<void> => {
       { provide: APP_PIPE, useClass: StandardSchemaValidationPipe },
       { provide: APP_FILTER, useClass: ApplicationErrorFilter },
       { provide: APP_CONFIG, useValue: config },
-      { provide: SignUpUseCase, useValue: new SignUpUseCase(register, startSession) },
+      {
+        provide: SignUpUseCase,
+        useValue: new SignUpUseCase(register, startSession, limiter, {
+          limit: attempts,
+          windowMs: 60_000,
+        }),
+      },
       {
         provide: LogInUseCase,
         useValue: new LogInUseCase(
           new AuthenticateWithPasswordUseCase(users, credentials, hasher),
           startSession,
+          limiter,
+          {
+            perEmail: { limit: attempts, windowMs: 60_000 },
+            perIp: { limit: attempts, windowMs: 60_000 },
+          },
         ),
       },
       { provide: EndAuthSessionUseCase, useValue: new EndAuthSessionUseCase(sessions) },
@@ -86,8 +104,14 @@ before(async (): Promise<void> => {
     ],
   }).compile();
 
-  app = moduleRef.createNestApplication();
-  await app.listen(0);
+  const created = moduleRef.createNestApplication();
+  await created.listen(0);
+
+  return created;
+}
+
+before(async (): Promise<void> => {
+  app = await createApp(1000);
   baseUrl = await app.getUrl();
 });
 
@@ -219,4 +243,30 @@ void test('logs out: the session is gone and the cookie is cleared; logging out 
   assert.equal((await me(cookie)).status, 401);
   assert.equal((await post('/auth/logout', {}, cookie)).status, 204);
   assert.equal((await post('/auth/logout', {})).status, 204);
+});
+
+void test('answers 429 with the time to wait once an address tries too often', async (): Promise<void> => {
+  const limited = await createApp(2);
+  try {
+    const url = `${await limited.getUrl()}/auth/login`;
+    const login = (): Promise<Response> =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'nobody@example.com', password: 'secret-pass' }),
+      });
+
+    assert.equal((await login()).status, 401);
+    assert.equal((await login()).status, 401);
+
+    const refused = await login();
+    assert.equal(refused.status, 429);
+    assert.match(refused.headers.get('retry-after') ?? '', /^[1-9]\d*$/);
+    assert.deepEqual(await refused.json(), {
+      statusCode: 429,
+      message: 'Too many attempts: try again later',
+    });
+  } finally {
+    await limited.close();
+  }
 });
