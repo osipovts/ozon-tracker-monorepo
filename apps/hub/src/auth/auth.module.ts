@@ -21,6 +21,7 @@ import { GithubOauthProviderAdapter } from './infrastructure/github-oauth-provid
 import { GoogleOauthProviderAdapter } from './infrastructure/google-oauth-provider.adapter.js';
 import { AccessGuard } from './presentation/access.guard.js';
 import { AuthController } from './presentation/auth.controller.js';
+import { AuthSessionsController } from './presentation/auth-sessions.controller.js';
 import { OauthController } from './presentation/oauth.controller.js';
 import { OauthLoginCookieParser } from './presentation/oauth-login-cookie.parser.js';
 import { OriginGuard } from './presentation/origin.guard.js';
@@ -30,7 +31,7 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
 
 @Module({
   imports: [AccountModule, AuthSessionModule],
-  controllers: [AuthController, OauthController],
+  controllers: [AuthController, AuthSessionsController, OauthController],
   providers: [
     {
       provide: SignUpUseCase,

@@ -22,3 +22,28 @@ export const authResponseSchema = z.object({
 });
 
 export type AuthResponseType = z.infer<typeof authResponseSchema>;
+
+export const authSessionIdParamSchema = z.uuid();
+
+export const authSessionsResponseSchema = z.object({
+  sessions: z.array(
+    z.strictObject({
+      id: z.uuid(),
+      /** What the browser called itself at the login. */
+      userAgent: z.string().nullable(),
+      ip: z.string().nullable(),
+      createdAt: z.iso.datetime(),
+      lastSeenAt: z.iso.datetime(),
+      /** Where the session ends if it is not used. */
+      expiresAt: z.iso.datetime(),
+      /** The session this request came with. */
+      current: z.boolean(),
+    }),
+  ),
+});
+
+export type AuthSessionsResponseType = z.infer<typeof authSessionsResponseSchema>;
+
+export const revokedResponseSchema = z.strictObject({ revoked: z.number().int().min(0) });
+
+export type RevokedResponseType = z.infer<typeof revokedResponseSchema>;

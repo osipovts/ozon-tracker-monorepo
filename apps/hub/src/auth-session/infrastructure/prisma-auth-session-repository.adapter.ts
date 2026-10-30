@@ -34,4 +34,28 @@ export class PrismaAuthSessionRepositoryAdapter implements AuthSessionRepository
 
     return row === null ? null : toEntity(row);
   }
+
+  async findById(id: string): Promise<AuthSessionEntity | null> {
+    const row = await this.prisma.authSession.findUnique({ where: { id } });
+
+    return row === null ? null : toEntity(row);
+  }
+
+  async listActiveByUser(userId: string, at: Date): Promise<AuthSessionEntity[]> {
+    const rows = await this.prisma.authSession.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: at } },
+      orderBy: [{ lastSeenAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return rows.map(toEntity);
+  }
+
+  async revokeOthers(userId: string, keepSessionId: string, at: Date): Promise<number> {
+    const { count } = await this.prisma.authSession.updateMany({
+      where: { userId, id: { not: keepSessionId }, revokedAt: null, expiresAt: { gt: at } },
+      data: { revokedAt: at },
+    });
+
+    return count;
+  }
 }

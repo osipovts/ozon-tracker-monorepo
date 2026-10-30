@@ -13,7 +13,10 @@ import { InMemoryAccountRegistrationAdapter } from '../../account/infrastructure
 import { InMemoryCredentialRepositoryAdapter } from '../../account/infrastructure/in-memory-credential-repository.adapter.js';
 import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-memory-user-repository.adapter.js';
 import { EndAuthSessionUseCase } from '../../auth-session/application/end-auth-session.use-case.js';
+import { ListAuthSessionsUseCase } from '../../auth-session/application/list-auth-sessions.use-case.js';
 import { ResolveAuthSessionUseCase } from '../../auth-session/application/resolve-auth-session.use-case.js';
+import { RevokeAuthSessionUseCase } from '../../auth-session/application/revoke-auth-session.use-case.js';
+import { RevokeOtherAuthSessionsUseCase } from '../../auth-session/application/revoke-other-auth-sessions.use-case.js';
 import { StartAuthSessionUseCase } from '../../auth-session/application/start-auth-session.use-case.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
 import {
@@ -26,7 +29,8 @@ import { LogInUseCase } from '../application/log-in.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
 import { AccessGuard } from './access.guard.js';
 import { AuthController } from './auth.controller.js';
-import { authResponseSchema } from './auth.type.js';
+import { authResponseSchema, authSessionsResponseSchema } from './auth.type.js';
+import { AuthSessionsController } from './auth-sessions.controller.js';
 import { SessionCookieParser } from './session-cookie.parser.js';
 
 const config: AppConfigInterface = {
@@ -70,7 +74,7 @@ async function createApp(attempts: number): Promise<INestApplication> {
   );
 
   const moduleRef = await Test.createTestingModule({
-    controllers: [AuthController],
+    controllers: [AuthController, AuthSessionsController],
     providers: [
       { provide: APP_PIPE, useClass: StandardSchemaValidationPipe },
       { provide: APP_FILTER, useClass: ApplicationErrorFilter },
@@ -95,6 +99,12 @@ async function createApp(attempts: number): Promise<INestApplication> {
         ),
       },
       { provide: EndAuthSessionUseCase, useValue: new EndAuthSessionUseCase(sessions) },
+      { provide: ListAuthSessionsUseCase, useValue: new ListAuthSessionsUseCase(sessions) },
+      { provide: RevokeAuthSessionUseCase, useValue: new RevokeAuthSessionUseCase(sessions) },
+      {
+        provide: RevokeOtherAuthSessionsUseCase,
+        useValue: new RevokeOtherAuthSessionsUseCase(sessions),
+      },
       {
         provide: ResolveAuthSessionUseCase,
         useValue: new ResolveAuthSessionUseCase(sessions, policy),
@@ -270,4 +280,108 @@ void test('answers 429 with the time to wait once an address tries too often', a
   } finally {
     await limited.close();
   }
+});
+
+async function login(email: string, userAgent: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'user-agent': userAgent },
+    body: JSON.stringify({ email, password: 'secret-pass' }),
+  });
+  assert.equal(response.status, 200);
+  const pair = response.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(pair !== undefined);
+
+  return pair;
+}
+
+async function sessionsOf(cookie: string): Promise<ReplyInterface> {
+  return call('/auth/sessions', { headers: { cookie } });
+}
+
+void test('lists the sessions of the user with where they come from, and marks the one asking', async (): Promise<void> => {
+  const registered = await post('/auth/register', {
+    email: 'dan@example.com',
+    password: 'secret-pass',
+  });
+  const laptop = cookieOf(registered);
+  const phone = await login('dan@example.com', 'Safari Mobile');
+
+  const reply = await sessionsOf(phone);
+
+  assert.equal(reply.status, 200);
+  const { sessions } = authSessionsResponseSchema.parse(reply.body);
+  assert.equal(sessions.length, 2);
+  assert.deepEqual(
+    sessions.map((session): [string | null, boolean] => [session.userAgent, session.current]),
+    [
+      ['Safari Mobile', true],
+      [sessions[1]?.userAgent ?? null, false],
+    ],
+  );
+  assert.equal((await sessionsOf(laptop)).status, 200);
+  assert.equal((await call('/auth/sessions')).status, 401);
+});
+
+void test('ends one session of the user by its id, the one asking included', async (): Promise<void> => {
+  const registered = await post('/auth/register', {
+    email: 'eve@example.com',
+    password: 'secret-pass',
+  });
+  const laptop = cookieOf(registered);
+  const phone = await login('eve@example.com', 'Safari Mobile');
+  const { sessions } = authSessionsResponseSchema.parse((await sessionsOf(laptop)).body);
+  const other = sessions.find((session): boolean => !session.current);
+  assert.ok(other !== undefined);
+
+  const revoke = (id: string, cookie: string): Promise<Response> =>
+    fetch(`${baseUrl}/auth/sessions/${id}`, { method: 'DELETE', headers: { cookie } });
+
+  assert.equal((await revoke(other.id, laptop)).status, 204);
+  assert.equal((await me(phone)).status, 401);
+  assert.equal((await revoke(other.id, laptop)).status, 404);
+  assert.equal((await revoke('not-an-id', laptop)).status, 400);
+
+  const own = authSessionsResponseSchema.parse((await sessionsOf(laptop)).body).sessions[0];
+  assert.ok(own !== undefined);
+  assert.equal((await revoke(own.id, laptop)).status, 204);
+  assert.equal((await me(laptop)).status, 401);
+});
+
+void test('does not end the session of somebody else', async (): Promise<void> => {
+  const kim = cookieOf(
+    await post('/auth/register', { email: 'kim@example.com', password: 'secret-pass' }),
+  );
+  const lee = cookieOf(
+    await post('/auth/register', { email: 'lee@example.com', password: 'secret-pass' }),
+  );
+  const kimSession = authSessionsResponseSchema.parse((await sessionsOf(kim)).body).sessions[0];
+  assert.ok(kimSession !== undefined);
+
+  const response = await fetch(`${baseUrl}/auth/sessions/${kimSession.id}`, {
+    method: 'DELETE',
+    headers: { cookie: lee },
+  });
+
+  assert.equal(response.status, 404);
+  assert.equal((await me(kim)).status, 200);
+});
+
+void test('ends every session but the one asking, and says how many', async (): Promise<void> => {
+  const laptop = cookieOf(
+    await post('/auth/register', { email: 'zoe@example.com', password: 'secret-pass' }),
+  );
+  const phone = await login('zoe@example.com', 'Safari Mobile');
+  const tablet = await login('zoe@example.com', 'iPad');
+
+  const response = await fetch(`${baseUrl}/auth/sessions`, {
+    method: 'DELETE',
+    headers: { cookie: laptop },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { revoked: 2 });
+  assert.equal((await me(laptop)).status, 200);
+  assert.equal((await me(phone)).status, 401);
+  assert.equal((await me(tablet)).status, 401);
 });
