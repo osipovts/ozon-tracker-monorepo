@@ -491,6 +491,9 @@ void test('the queued session goes to the worker first, then the job reports its
   assert.equal(queuedJob.body['kind'], 'price_fetch');
   assert.equal(queuedJob.body['subject'], productId);
 
+  // A job id is no key to the job: another user does not see it.
+  assert.equal((await call(`/jobs/${jobId}`, { headers: { cookie: otherCookie } })).status, 404);
+
   const events = new RecordJobEventUseCase(jobs);
   await events.execute({
     type: 'progress',

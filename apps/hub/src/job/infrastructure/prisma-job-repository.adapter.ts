@@ -17,6 +17,7 @@ function toEntity(row: JobRow): JobEntity {
     id: row.id,
     kind: kindSchema.parse(row.kind),
     subject: row.subject,
+    requestedBy: row.requestedBy,
     status: statusSchema.parse(row.status),
     processed: row.processed,
     total: row.total,

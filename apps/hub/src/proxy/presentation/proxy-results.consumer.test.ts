@@ -99,7 +99,7 @@ void test('rejects a malformed message for good', async (): Promise<void> => {
 void test('tracks the progress of a proxy job until it is done', async (): Promise<void> => {
   const jobs = new InMemoryJobRepositoryAdapter();
   await jobs.save(
-    JobEntity.queued(jobId, 'proxy_fetch', 'github-free-proxy-list', null, new Date()),
+    JobEntity.queued(jobId, 'proxy_fetch', 'github-free-proxy-list', null, new Date(), null),
   );
   const consumer = new ProxyResultsConsumer(
     new RecordProxyChecksUseCase(new InMemoryProxyRepositoryAdapter()),

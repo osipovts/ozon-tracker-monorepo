@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query, Req } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNotFoundResponse,
@@ -6,8 +6,10 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
+import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { GetJobUseCase } from '../application/get-job.use-case.js';
 import { ListJobsUseCase } from '../application/list-jobs.use-case.js';
@@ -62,10 +64,16 @@ export class JobsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Status and progress of a job; poll it for a progress bar' })
+  @ApiOperation({
+    summary: 'Status and progress of a job; poll it for a progress bar',
+    description: 'Only the user who requested the job can read it.',
+  })
   @ApiOkResponse({ standardSchema: jobSchema })
-  @ApiNotFoundResponse({ description: 'The job is unknown' })
-  async get(@Param('id', { schema: jobIdParamSchema }) id: string): Promise<JobType> {
-    return toJob(await this.getJob.execute(id));
+  @ApiNotFoundResponse({ description: "The job is unknown, or is not the user's" })
+  async get(
+    @Param('id', { schema: jobIdParamSchema }) id: string,
+    @Req() request: Request,
+  ): Promise<JobType> {
+    return toJob(await this.getJob.execute(requireIdentity(request).userId, id));
   }
 }

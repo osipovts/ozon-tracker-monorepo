@@ -18,7 +18,12 @@ export class RefreshProxySourceUseCase {
     source: ProxySourceType,
     options: RefreshProxySourceOptionsInterface,
   ): Promise<{ jobId: string }> {
-    const { jobId } = await this.scheduleJob.execute({ kind: 'proxy_fetch', source, ...options });
+    const { jobId } = await this.scheduleJob.execute({
+      kind: 'proxy_fetch',
+      requestedBy: null,
+      source,
+      ...options,
+    });
 
     this.logger.info(
       `Queued proxy refresh ${jobId}: ${source}, up to ${String(options.maxCandidates)} candidates`,

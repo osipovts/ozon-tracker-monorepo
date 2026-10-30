@@ -118,7 +118,7 @@ xvfb-run -a pnpm --filter price-fetcher start:worker
 
 Собрать и проверить прокси (нужен ключ оператора): `POST /proxy-sources/{source}/refresh`
 
-Прогресс: `GET /jobs/{jobId}` (пользователь) или `GET /jobs` (оператор)
+Прогресс: `GET /jobs` (оператор; `GET /jobs/{jobId}` отдаёт задачу только тому пользователю, кто её запросил)
 
 Результат: `GET /proxies`.
 

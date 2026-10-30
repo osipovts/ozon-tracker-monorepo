@@ -8,10 +8,11 @@ import { JobNotFoundError } from './job-not-found.error.js';
 import { RecordJobEventUseCase } from './record-job-event.use-case.js';
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
+const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 async function setup(): Promise<{ record: RecordJobEventUseCase; get: GetJobUseCase }> {
   const jobs = new InMemoryJobRepositoryAdapter();
-  await jobs.save(JobEntity.queued(jobId, 'price_fetch', 'product', 2, new Date()));
+  await jobs.save(JobEntity.queued(jobId, 'price_fetch', 'product', 2, new Date(), userId));
 
   return { record: new RecordJobEventUseCase(jobs), get: new GetJobUseCase(jobs) };
 }
@@ -27,12 +28,12 @@ void test('applies the events of a job in order and reports its progress', async
     progress: { processed: 1, total: 2, succeeded: 1 },
   });
 
-  const running = await get.execute(jobId);
+  const running = await get.execute(userId, jobId);
   assert.equal(running.snapshot.status, 'running');
   assert.equal(running.percent, 50);
 
   await record.execute({ type: 'completed', jobId, at: new Date() });
-  const done = await get.execute(jobId);
+  const done = await get.execute(userId, jobId);
   assert.equal(done.snapshot.status, 'completed');
   assert.equal(done.percent, 100);
 });
@@ -43,11 +44,11 @@ void test('a redelivered progress message does not move the job back or count tw
   const progress = { processed: 1, total: 2, succeeded: 1 };
   await record.execute({ type: 'progress', jobId, at: new Date(), progress });
   await record.execute({ type: 'progress', jobId, at: new Date(), progress });
-  assert.equal((await get.execute(jobId)).snapshot.processed, 1);
+  assert.equal((await get.execute(userId, jobId)).snapshot.processed, 1);
 
   await record.execute({ type: 'completed', jobId, at: new Date() });
   await record.execute({ type: 'progress', jobId, at: new Date(), progress });
-  assert.equal((await get.execute(jobId)).snapshot.status, 'completed');
+  assert.equal((await get.execute(userId, jobId)).snapshot.status, 'completed');
 });
 
 void test('ignores events of unknown jobs and rejects asking for them', async (): Promise<void> => {
@@ -55,5 +56,5 @@ void test('ignores events of unknown jobs and rejects asking for them', async ()
   const unknown = '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33';
 
   await record.execute({ type: 'started', jobId: unknown, at: new Date() });
-  await assert.rejects(get.execute(unknown), JobNotFoundError);
+  await assert.rejects(get.execute(userId, unknown), JobNotFoundError);
 });

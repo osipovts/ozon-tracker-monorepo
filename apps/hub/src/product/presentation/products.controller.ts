@@ -130,7 +130,7 @@ export class ProductsController {
     summary: 'Queue a read of the fresh price',
     description:
       'Adds an item to the price history once a worker has read the product. ' +
-      'Follow the progress with `GET /jobs/{jobId}`.',
+      'Follow the progress with `GET /jobs/{jobId}`: only you can read your job.',
   })
   @ApiAcceptedResponse({ standardSchema: jobAcceptedResponseSchema })
   @ApiNotFoundResponse({ description: 'The product is not tracked' })

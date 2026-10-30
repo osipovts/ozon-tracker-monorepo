@@ -11,6 +11,7 @@ const job = JobEntity.queued(
   'src',
   null,
   at(0),
+  null,
 );
 
 void test('follows a job from queued to completed with its progress', (): void => {

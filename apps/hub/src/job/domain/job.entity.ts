@@ -11,6 +11,8 @@ export interface JobInterface {
   kind: JobKindType;
   /** The proxy source of a proxy job or the product id of a price job. */
   subject: string;
+  /** The user who asked for the job; null for the jobs of the operator. Only they may read it. */
+  requestedBy: string | null;
   status: JobStatusType;
   processed: number;
   /** Null until the worker knows how much work there is. */
@@ -38,11 +40,13 @@ export class JobEntity {
     subject: string,
     total: number | null,
     createdAt: Date,
+    requestedBy: string | null,
   ): JobEntity {
     return new JobEntity({
       id,
       kind,
       subject,
+      requestedBy,
       status: 'queued',
       processed: 0,
       total,

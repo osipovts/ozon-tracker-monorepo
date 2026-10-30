@@ -72,6 +72,8 @@ model JobRecord {
   kind       String
   /// The proxy source of a proxy job or the product id of a price job.
   subject    String
+  /// The user who asked for the job, who alone may read it; null for the jobs of the operator.
+  requestedBy String? @db.Uuid
   /// queued, running, retrying, completed or failed.
   status     String
   processed  Int       @default(0)

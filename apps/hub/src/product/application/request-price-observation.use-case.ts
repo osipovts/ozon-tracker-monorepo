@@ -36,6 +36,7 @@ export class RequestPriceObservationUseCase {
 
     const { jobId } = await this.scheduleJob.execute({
       kind: 'price_fetch',
+      requestedBy: userId,
       productId: product.id,
       routes,
       products: [{ trackedProductId: product.id, url: product.url }],

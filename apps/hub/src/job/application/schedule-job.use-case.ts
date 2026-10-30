@@ -30,7 +30,14 @@ export class ScheduleJobUseCase {
   private queued(jobId: string, request: JobRequestType): JobEntity {
     switch (request.kind) {
       case 'proxy_fetch':
-        return JobEntity.queued(jobId, request.kind, request.source, null, new Date());
+        return JobEntity.queued(
+          jobId,
+          request.kind,
+          request.source,
+          null,
+          new Date(),
+          request.requestedBy,
+        );
       case 'price_fetch':
         return JobEntity.queued(
           jobId,
@@ -38,6 +45,7 @@ export class ScheduleJobUseCase {
           request.productId,
           request.products.length,
           new Date(),
+          request.requestedBy,
         );
     }
   }
