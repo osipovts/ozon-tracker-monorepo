@@ -22,8 +22,10 @@ export interface AppConfigInterface {
   authCookieSecure: boolean;
   /** The window the attempts of logging in and signing up are counted in. */
   authRateLimitWindowMs: number;
-  /** Logins of one email per window, whoever they come from. */
+  /** Logins of one email from one address per window; also the password changes of a user. */
   authLoginMaxAttempts: number;
+  /** Logins of one email per window from all the addresses together: generous, against a lockout. */
+  authLoginMaxAttemptsPerEmail: number;
   /** Logins from one address per window, of any emails: wider, as an address may be shared. */
   authLoginMaxAttemptsPerIp: number;
   /** Sign-ups from one address per window. */

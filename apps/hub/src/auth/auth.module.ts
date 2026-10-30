@@ -61,8 +61,12 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
         config: AppConfigInterface,
       ): LogInUseCase =>
         new LogInUseCase(authenticate, start, limiter, {
-          perEmail: {
+          perEmailAndIp: {
             limit: config.authLoginMaxAttempts,
+            windowMs: config.authRateLimitWindowMs,
+          },
+          perEmail: {
+            limit: config.authLoginMaxAttemptsPerEmail,
             windowMs: config.authRateLimitWindowMs,
           },
           perIp: {

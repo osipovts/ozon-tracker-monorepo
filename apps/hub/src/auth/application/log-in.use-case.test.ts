@@ -21,7 +21,8 @@ const hasher: PasswordHasherPort = {
 };
 const policy = { idleTtlMs: 60_000, absoluteTtlMs: 120_000 };
 const limits = {
-  perEmail: { limit: 3, windowMs: 60_000 },
+  perEmailAndIp: { limit: 3, windowMs: 60_000 },
+  perEmail: { limit: 6, windowMs: 60_000 },
   perIp: { limit: 5, windowMs: 60_000 },
 };
 
@@ -80,21 +81,56 @@ void test('starts no session for a wrong password', async (): Promise<void> => {
 const attempt = (
   email: string,
   ip: string | null,
-): {
-  email: string;
-  password: string;
-  userAgent: null;
-  ip: string | null;
-} => ({ email, password: 'secret-pass', userAgent: null, ip });
+  password = 'secret-pass',
+): { email: string; password: string; userAgent: null; ip: string | null } => ({
+  email,
+  password,
+  userAgent: null,
+  ip,
+});
 
-void test('stops an email that is tried too often, even with the right password, whoever tries', async (): Promise<void> => {
+void test('stops an address that tries one email too often, even with the right password', async (): Promise<void> => {
   const { logIn } = await setup();
 
-  for (let tries = 0; tries < 3; tries += 1)
-    await logIn.execute(attempt('jane@example.com', `203.0.113.${String(tries)}`));
+  for (let tries = 0; tries < 3; tries += 1) {
+    await assert.rejects(
+      logIn.execute(attempt('jane@example.com', '203.0.113.7', 'wrong-pass')),
+      InvalidCredentialsError,
+    );
+  }
 
   await assert.rejects(
-    logIn.execute(attempt('JANE@example.com', '198.51.100.9')),
+    logIn.execute(attempt('JANE@example.com', '203.0.113.7')),
+    TooManyRequestsError,
+  );
+});
+
+void test('does not let a stranger lock the owner out: the guesses of one address are not counted against the others', async (): Promise<void> => {
+  const { logIn } = await setup();
+  for (let tries = 0; tries < 3; tries += 1) {
+    await assert.rejects(
+      logIn.execute(attempt('jane@example.com', '198.51.100.9', 'wrong-pass')),
+      InvalidCredentialsError,
+    );
+  }
+
+  assert.equal(
+    (await logIn.execute(attempt('jane@example.com', '203.0.113.7'))).user.email,
+    'jane@example.com',
+  );
+});
+
+void test('still stops guessing of one email that is spread over many addresses', async (): Promise<void> => {
+  const { logIn } = await setup();
+  for (let address = 1; address <= 6; address += 1) {
+    await assert.rejects(
+      logIn.execute(attempt('jane@example.com', `198.51.100.${String(address)}`, 'wrong-pass')),
+      InvalidCredentialsError,
+    );
+  }
+
+  await assert.rejects(
+    logIn.execute(attempt('jane@example.com', '198.51.100.99')),
     TooManyRequestsError,
   );
 });
@@ -121,7 +157,7 @@ void test('stops an address that tries too many emails, and leaves the others al
 
 void test('names how long to wait', async (): Promise<void> => {
   const { logIn } = await setup();
-  for (let tries = 0; tries < 3; tries += 1) await logIn.execute(attempt('jane@example.com', null));
+  for (let tries = 0; tries < 6; tries += 1) await logIn.execute(attempt('jane@example.com', null));
 
   await assert.rejects(
     logIn.execute(attempt('jane@example.com', null)),

@@ -45,6 +45,7 @@ const configSchema = z.object({
     .min(1000)
     .default(15 * 60_000),
   authLoginMaxAttempts: z.coerce.number().int().min(1).default(10),
+  authLoginMaxAttemptsPerEmail: z.coerce.number().int().min(1).default(100),
   authLoginMaxAttemptsPerIp: z.coerce.number().int().min(1).default(50),
   authRegisterMaxAttempts: z.coerce.number().int().min(1).default(5),
   trustProxy: z.coerce.number().int().min(0).max(10).default(0),
@@ -98,6 +99,7 @@ export class AppConfigParser {
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
         authRateLimitWindowMs: env['AUTH_RATE_LIMIT_WINDOW_MS'],
         authLoginMaxAttempts: env['AUTH_LOGIN_MAX_ATTEMPTS'],
+        authLoginMaxAttemptsPerEmail: env['AUTH_LOGIN_MAX_ATTEMPTS_PER_EMAIL'],
         authLoginMaxAttemptsPerIp: env['AUTH_LOGIN_MAX_ATTEMPTS_PER_IP'],
         authRegisterMaxAttempts: env['AUTH_REGISTER_MAX_ATTEMPTS'],
         trustProxy: env['TRUST_PROXY'],

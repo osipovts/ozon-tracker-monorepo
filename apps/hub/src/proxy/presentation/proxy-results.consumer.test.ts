@@ -24,6 +24,7 @@ const config: AppConfigInterface = {
   authSessionAbsoluteTtlMs: 120_000,
   authRateLimitWindowMs: 60_000,
   authLoginMaxAttempts: 1000,
+  authLoginMaxAttemptsPerEmail: 1000,
   authLoginMaxAttemptsPerIp: 1000,
   authRegisterMaxAttempts: 1000,
   trustProxy: 0,

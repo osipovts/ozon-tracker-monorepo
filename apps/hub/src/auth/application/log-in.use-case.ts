@@ -5,18 +5,20 @@ import {
 } from '../../account/application/index.js';
 import type { StartAuthSessionUseCase } from '../../auth-session/application/index.js';
 import { addressKeyOf } from '../../shared/application/address-key.type.js';
+import { enforceRateLimits } from '../../shared/application/enforce-rate-limits.type.js';
 import type {
   RateLimiterPort,
   RateLimitInterface,
 } from '../../shared/application/rate-limiter.port.js';
-import { TooManyRequestsError } from '../../shared/application/too-many-requests.error.js';
 import type {
   AuthenticatedSessionInterface,
   ClientInterface,
 } from './authenticated-session.interface.js';
 
 export interface LoginLimitsInterface {
-  /** Against guessing the password of one account, from wherever. */
+  /** Against guessing the password of one account from one address: tight, and no one else's to spend. */
+  perEmailAndIp: RateLimitInterface;
+  /** Against guessing spread over many addresses; generous, or a stranger could lock the owner out. */
   perEmail: RateLimitInterface;
   /** Against trying many accounts from one address; wider, as many users may share an address. */
   perIp: RateLimitInterface;
@@ -47,22 +49,17 @@ export class LogInUseCase {
   }
 
   /** Every attempt counts, the right ones too: whoever tries cannot tell the count from the answer. */
-  private async limitAttempts({
-    email,
-    ip,
-  }: PasswordLoginInterface & ClientInterface): Promise<void> {
-    const verdicts = [
-      await this.limiter.hit(`login:email:${normalizeEmail(email)}`, this.limits.perEmail),
+  private limitAttempts({ email, ip }: PasswordLoginInterface & ClientInterface): Promise<void> {
+    const account = normalizeEmail(email);
+
+    return enforceRateLimits(this.limiter, [
+      [`login:email:${account}`, this.limits.perEmail],
       ...(ip === null
         ? []
-        : [await this.limiter.hit(`login:ip:${addressKeyOf(ip)}`, this.limits.perIp)]),
-    ];
-
-    const refused = verdicts.filter((verdict): boolean => !verdict.allowed);
-    if (refused.length > 0) {
-      throw new TooManyRequestsError(
-        Math.max(...refused.map((verdict): number => verdict.retryAfterMs)),
-      );
-    }
+        : ([
+            [`login:email-ip:${account}|${addressKeyOf(ip)}`, this.limits.perEmailAndIp],
+            [`login:ip:${addressKeyOf(ip)}`, this.limits.perIp],
+          ] as const)),
+    ]);
   }
 }

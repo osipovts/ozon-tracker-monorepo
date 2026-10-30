@@ -3,11 +3,11 @@ import type {
   ChangeAccountPasswordUseCase,
 } from '../../account/application/index.js';
 import type { RevokeOtherAuthSessionsUseCase } from '../../auth-session/application/index.js';
+import { enforceRateLimits } from '../../shared/application/enforce-rate-limits.type.js';
 import type {
   RateLimiterPort,
   RateLimitInterface,
 } from '../../shared/application/rate-limiter.port.js';
-import { TooManyRequestsError } from '../../shared/application/too-many-requests.error.js';
 
 export interface ChangePasswordInterface extends ChangeAccountPasswordInterface {
   /** The session the request came with: it stays, the others of the user end. */
@@ -25,8 +25,7 @@ export class ChangePasswordUseCase {
 
   async execute(input: ChangePasswordInterface): Promise<{ revokedSessions: number }> {
     // Whoever holds a stolen session can guess the current password here: the guesses are counted.
-    const verdict = await this.limiter.hit(`password:user:${input.userId}`, this.limit);
-    if (!verdict.allowed) throw new TooManyRequestsError(verdict.retryAfterMs);
+    await enforceRateLimits(this.limiter, [[`password:user:${input.userId}`, this.limit]]);
 
     await this.changeAccountPassword.execute(input);
 

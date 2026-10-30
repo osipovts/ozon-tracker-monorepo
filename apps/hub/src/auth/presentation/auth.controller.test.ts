@@ -45,6 +45,7 @@ const config: AppConfigInterface = {
   authSessionAbsoluteTtlMs: 120_000,
   authRateLimitWindowMs: 60_000,
   authLoginMaxAttempts: 1000,
+  authLoginMaxAttemptsPerEmail: 1000,
   authLoginMaxAttemptsPerIp: 1000,
   authRegisterMaxAttempts: 1000,
   trustProxy: 0,
@@ -96,6 +97,7 @@ async function createApp(attempts: number): Promise<INestApplication> {
           startSession,
           limiter,
           {
+            perEmailAndIp: { limit: attempts, windowMs: 60_000 },
             perEmail: { limit: attempts, windowMs: 60_000 },
             perIp: { limit: attempts, windowMs: 60_000 },
           },
