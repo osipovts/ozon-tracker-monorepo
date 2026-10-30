@@ -24,7 +24,8 @@ export class HttpLoggingInterceptor implements NestInterceptor {
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
     const startedAt = performance.now();
-    const label = `${request.method} ${request.originalUrl}`;
+    // The path, never the query: a callback of a login carries a one-time code in it.
+    const label = `${request.method} ${request.path}`;
     this.logger.verbose(`--> ${label}`);
 
     const done = (status: number, error?: unknown): void => {

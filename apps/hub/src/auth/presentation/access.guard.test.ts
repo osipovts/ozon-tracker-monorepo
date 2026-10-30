@@ -57,6 +57,7 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     authLoginMaxAttempts: 1000,
     authLoginMaxAttemptsPerIp: 1000,
     authRegisterMaxAttempts: 1000,
+    trustProxy: 0,
     publicUrl: 'http://localhost:3000',
     authAllowedOrigins: [],
     authSuccessRedirect: '/auth/me',

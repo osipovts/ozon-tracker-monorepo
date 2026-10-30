@@ -23,6 +23,8 @@ try {
 
   // A session file carries the cookies and the local storage of the browser.
   app.useBodyParser('json', { limit: '10mb' });
+  // Behind a reverse proxy the address of a client is in X-Forwarded-For; the limits count by it.
+  if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
   app.enableShutdownHooks();
   SwaggerModule.setup(
     'docs',

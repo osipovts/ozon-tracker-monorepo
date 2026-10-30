@@ -53,6 +53,7 @@ const config: AppConfigInterface = {
   authLoginMaxAttempts: 1000,
   authLoginMaxAttemptsPerIp: 1000,
   authRegisterMaxAttempts: 1000,
+  trustProxy: 0,
   publicUrl: 'http://hub.test',
   authAllowedOrigins: [],
   authSuccessRedirect: '/auth/me',

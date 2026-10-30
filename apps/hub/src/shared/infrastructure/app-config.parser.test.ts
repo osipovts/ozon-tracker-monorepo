@@ -50,7 +50,7 @@ void test('builds the callbacks from the public URL without a trailing slash', (
 void test('lands the user on a path of the hub only: a login must not be sent anywhere else', (): void => {
   assert.equal(parser.parse(env(['AUTH_SUCCESS_REDIRECT', '/docs'])).authSuccessRedirect, '/docs');
 
-  for (const target of ['https://evil.example', '//evil.example', 'docs']) {
+  for (const target of ['https://evil.example', '//evil.example', '/\\evil.example', 'docs']) {
     assert.throws(() => parser.parse(env(['AUTH_SUCCESS_REDIRECT', target])), target);
   }
 });
@@ -71,4 +71,11 @@ void test('takes the origins that may write to the hub besides itself, as a brow
   ]) {
     assert.throws(() => parser.parse(env(['AUTH_ALLOWED_ORIGINS', origin])), origin);
   }
+});
+
+void test('trusts no proxy unless told how many stand in front of the hub', (): void => {
+  assert.equal(parser.parse(env()).trustProxy, 0);
+  assert.equal(parser.parse(env(['TRUST_PROXY', '1'])).trustProxy, 1);
+  assert.throws(() => parser.parse(env(['TRUST_PROXY', 'true'])));
+  assert.throws(() => parser.parse(env(['TRUST_PROXY', '-1'])));
 });

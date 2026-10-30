@@ -3,6 +3,7 @@ import type {
   RegisterAccountUseCase,
 } from '../../account/application/index.js';
 import type { StartAuthSessionUseCase } from '../../auth-session/application/index.js';
+import { addressKeyOf } from '../../shared/application/address-key.type.js';
 import type {
   RateLimiterPort,
   RateLimitInterface,
@@ -26,7 +27,7 @@ export class SignUpUseCase {
     input: RegisterAccountInterface & ClientInterface,
   ): Promise<AuthenticatedSessionInterface> {
     if (input.ip !== null) {
-      const verdict = await this.limiter.hit(`register:ip:${input.ip}`, this.limit);
+      const verdict = await this.limiter.hit(`register:ip:${addressKeyOf(input.ip)}`, this.limit);
       if (!verdict.allowed) throw new TooManyRequestsError(verdict.retryAfterMs);
     }
 

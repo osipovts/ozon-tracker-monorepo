@@ -47,6 +47,7 @@ const configSchema = z.object({
   authLoginMaxAttempts: z.coerce.number().int().min(1).default(10),
   authLoginMaxAttemptsPerIp: z.coerce.number().int().min(1).default(50),
   authRegisterMaxAttempts: z.coerce.number().int().min(1).default(5),
+  trustProxy: z.coerce.number().int().min(0).max(10).default(0),
   publicUrl: z
     .url({ protocol: /^https?$/ })
     .default('http://localhost:3000')
@@ -71,7 +72,8 @@ const configSchema = z.object({
   // A path of the hub: a full URL would let a login be sent anywhere.
   authSuccessRedirect: z
     .string()
-    .regex(/^\/(?!\/)/)
+    // Not `//host`, nor `/\host`: a browser reads a backslash as a slash.
+    .regex(/^\/(?![/\\])/)
     .default('/auth/me'),
   googleOauth: oauthClientSchema,
   githubOauth: oauthClientSchema,
@@ -98,6 +100,7 @@ export class AppConfigParser {
         authLoginMaxAttempts: env['AUTH_LOGIN_MAX_ATTEMPTS'],
         authLoginMaxAttemptsPerIp: env['AUTH_LOGIN_MAX_ATTEMPTS_PER_IP'],
         authRegisterMaxAttempts: env['AUTH_REGISTER_MAX_ATTEMPTS'],
+        trustProxy: env['TRUST_PROXY'],
         publicUrl: env['PUBLIC_URL'],
         authAllowedOrigins: env['AUTH_ALLOWED_ORIGINS'],
         authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],

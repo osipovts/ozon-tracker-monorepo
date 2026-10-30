@@ -28,6 +28,11 @@ export interface AppConfigInterface {
   authLoginMaxAttemptsPerIp: number;
   /** Sign-ups from one address per window. */
   authRegisterMaxAttempts: number;
+  /**
+   * How many reverse proxies stand in front of the hub: 0 when clients reach it directly. Behind
+   * one, the address of a client is read from X-Forwarded-For, which only a hop count can trust.
+   */
+  trustProxy: number;
   /** Where the hub is reached from outside: the providers send the user back here. */
   publicUrl: string;
   /** Origins besides the hub itself that may write to it, e.g. a frontend of another origin. */

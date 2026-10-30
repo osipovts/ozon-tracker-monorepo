@@ -4,6 +4,7 @@ import {
   type PasswordLoginInterface,
 } from '../../account/application/index.js';
 import type { StartAuthSessionUseCase } from '../../auth-session/application/index.js';
+import { addressKeyOf } from '../../shared/application/address-key.type.js';
 import type {
   RateLimiterPort,
   RateLimitInterface,
@@ -52,7 +53,9 @@ export class LogInUseCase {
   }: PasswordLoginInterface & ClientInterface): Promise<void> {
     const verdicts = [
       await this.limiter.hit(`login:email:${normalizeEmail(email)}`, this.limits.perEmail),
-      ...(ip === null ? [] : [await this.limiter.hit(`login:ip:${ip}`, this.limits.perIp)]),
+      ...(ip === null
+        ? []
+        : [await this.limiter.hit(`login:ip:${addressKeyOf(ip)}`, this.limits.perIp)]),
     ];
 
     const refused = verdicts.filter((verdict): boolean => !verdict.allowed);
