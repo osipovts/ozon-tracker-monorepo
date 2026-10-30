@@ -109,3 +109,61 @@ model BrowserSession {
   @@unique([marketplace, routeKey], name: "marketplaceRouteKey")
   @@map("browser_sessions")
 }
+
+model User {
+  id           String           @id @db.Uuid
+  /// Trimmed and lowercase.
+  email           String           @unique
+  /// Null until the user proves the address is theirs.
+  emailVerifiedAt DateTime?
+  createdAt       DateTime         @default(now())
+  credential   Credential?
+  identities   LinkedIdentity[]
+  authSessions AuthSession[]
+
+  @@map("users")
+}
+
+/// The password of a user apart from the user: see CredentialEntity for why.
+model Credential {
+  userId       String @id @db.Uuid
+  /// A hash of the password, never the password itself.
+  passwordHash String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credentials")
+}
+
+model LinkedIdentity {
+  id        String   @id @db.Uuid
+  userId    String   @db.Uuid
+  /// google or github.
+  provider  String
+  /// The id of the user at the provider.
+  subject   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject], name: "providerSubject")
+  @@index([userId])
+  @@map("linked_identities")
+}
+
+model AuthSession {
+  id                String    @id @db.Uuid
+  userId            String    @db.Uuid
+  /// SHA-256 of the session token.
+  tokenHash         String    @unique
+  userAgent         String?
+  ip                String?
+  createdAt         DateTime  @default(now())
+  lastSeenAt        DateTime
+  /// Moves forward while the session is used.
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
