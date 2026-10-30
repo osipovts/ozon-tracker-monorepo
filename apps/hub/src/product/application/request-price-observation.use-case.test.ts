@@ -1,17 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { ListMarketplaceSessionsUseCase } from '../../browser-session/application/index.js';
 import { BrowserSessionEntity } from '../../browser-session/domain/browser-session.entity.js';
 import { InMemoryBrowserSessionRepositoryAdapter } from '../../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
+import { ScheduleJobUseCase } from '../../job/application/index.js';
 import type {
   JobQueuePort,
   PriceFetchRequestInterface,
 } from '../../job/application/job-queue.port.js';
 import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory-job-repository.adapter.js';
-import { NoProxiesAvailableError } from '../../proxy/application/no-proxies-available.error.js';
+import { ListBestProxyServersUseCase } from '../../proxy/application/index.js';
 import { ProxyEntity } from '../../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
+import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
 
@@ -88,10 +91,9 @@ async function createUseCase(
   return {
     useCase: new RequestPriceObservationUseCase(
       products,
-      repository,
-      sessionRepository,
-      queue,
-      jobs,
+      new ListBestProxyServersUseCase(repository),
+      new ListMarketplaceSessionsUseCase(sessionRepository),
+      new ScheduleJobUseCase(queue, jobs),
       { proxyCount: 2, timeoutMs: 30000 },
     ),
     requests,

@@ -1,5 +1,7 @@
-import type { BrowserSessionRepositoryPort } from '../../browser-session/application/browser-session-repository.port.js';
-import type { BrowserSessionEntity } from '../../browser-session/domain/browser-session.entity.js';
+import type {
+  ListMarketplaceSessionsUseCase,
+  MarketplaceSessionInterface,
+} from '../../browser-session/application/index.js';
 import type {
   PageInterface,
   PaginationInterface,
@@ -19,14 +21,14 @@ export interface ProxyListFilterInterface {
 export interface ProxyWithSessionInterface {
   proxy: ProxyEntity;
   /** The session of the marketplace bound to the proxy, whatever its status. */
-  session: BrowserSessionEntity | null;
+  session: MarketplaceSessionInterface | null;
   ready: boolean;
 }
 
 export class ListProxiesUseCase {
   constructor(
     private readonly proxies: ProxyRepositoryPort,
-    private readonly sessions: BrowserSessionRepositoryPort,
+    private readonly sessions: ListMarketplaceSessionsUseCase,
   ) {}
 
   async execute(
@@ -34,16 +36,14 @@ export class ListProxiesUseCase {
     pagination: PaginationInterface,
   ): Promise<PageInterface<ProxyWithSessionInterface>> {
     const sessions = new Map(
-      (await this.sessions.listByMarketplace(filter.marketplace)).flatMap(
-        (session): Array<[string, BrowserSessionEntity]> =>
-          session.snapshot.proxyServer === null ? [] : [[session.snapshot.proxyServer, session]],
+      (await this.sessions.execute(filter.marketplace)).flatMap(
+        (session): Array<[string, MarketplaceSessionInterface]> =>
+          session.proxyServer === null ? [] : [[session.proxyServer, session]],
       ),
     );
-    const readyServers = Array.from(sessions.values())
-      .filter((session): boolean => session.active)
-      .flatMap((session): string[] =>
-        session.snapshot.proxyServer === null ? [] : [session.snapshot.proxyServer],
-      );
+    const readyServers = Array.from(sessions.entries())
+      .filter(([, session]): boolean => session.active)
+      .map(([server]): string => server);
 
     const page = await this.proxies.list(
       {

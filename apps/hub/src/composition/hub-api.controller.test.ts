@@ -10,10 +10,12 @@ import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-ref
 
 import { DeleteSessionUseCase } from '../browser-session/application/delete-session.use-case.js';
 import { ImportSessionUseCase } from '../browser-session/application/import-session.use-case.js';
+import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { ListSessionsUseCase } from '../browser-session/application/list-sessions.use-case.js';
 import { InMemoryBrowserSessionRepositoryAdapter } from '../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { SessionsController } from '../browser-session/presentation/sessions.controller.js';
 import { GetJobUseCase } from '../job/application/get-job.use-case.js';
+import { ScheduleJobUseCase } from '../job/application/index.js';
 import type { JobQueuePort } from '../job/application/job-queue.port.js';
 import { ListJobsUseCase } from '../job/application/list-jobs.use-case.js';
 import { RecordJobEventUseCase } from '../job/application/record-job-event.use-case.js';
@@ -26,6 +28,7 @@ import { RequestPriceObservationUseCase } from '../product/application/request-p
 import { InMemoryPriceObservationRepositoryAdapter } from '../product/infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../product/infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { ProductsController } from '../product/presentation/products.controller.js';
+import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ListProxiesUseCase } from '../proxy/application/list-proxies.use-case.js';
 import { RefreshProxySourceUseCase } from '../proxy/application/refresh-proxy-source.use-case.js';
 import { ProxyEntity } from '../proxy/domain/proxy.entity.js';
@@ -56,6 +59,9 @@ const queue: JobQueuePort = {
   },
 };
 
+const scheduleJob = new ScheduleJobUseCase(queue, jobs);
+const listMarketplaceSessions = new ListMarketplaceSessionsUseCase(sessions);
+
 let app: INestApplication;
 let baseUrl: string;
 
@@ -78,8 +84,11 @@ before(async (): Promise<void> => {
       { provide: ImportSessionUseCase, useValue: new ImportSessionUseCase(sessions) },
       { provide: ListSessionsUseCase, useValue: new ListSessionsUseCase(sessions) },
       { provide: DeleteSessionUseCase, useValue: new DeleteSessionUseCase(sessions) },
-      { provide: RefreshProxySourceUseCase, useValue: new RefreshProxySourceUseCase(queue, jobs) },
-      { provide: ListProxiesUseCase, useValue: new ListProxiesUseCase(proxies, sessions) },
+      { provide: RefreshProxySourceUseCase, useValue: new RefreshProxySourceUseCase(scheduleJob) },
+      {
+        provide: ListProxiesUseCase,
+        useValue: new ListProxiesUseCase(proxies, listMarketplaceSessions),
+      },
       {
         provide: AddProductUseCase,
         useValue: new AddProductUseCase(
@@ -90,10 +99,13 @@ before(async (): Promise<void> => {
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
       {
         provide: RequestPriceObservationUseCase,
-        useValue: new RequestPriceObservationUseCase(products, proxies, sessions, queue, jobs, {
-          proxyCount: 3,
-          timeoutMs: 30000,
-        }),
+        useValue: new RequestPriceObservationUseCase(
+          products,
+          new ListBestProxyServersUseCase(proxies),
+          listMarketplaceSessions,
+          scheduleJob,
+          { proxyCount: 3, timeoutMs: 30000 },
+        ),
       },
       {
         provide: ListPriceHistoryUseCase,

@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { priceFetchResultSchema, type PriceFetchResultType, queueNames } from 'queue-contract';
 import { QueueMessageParser } from 'queue-worker';
 
-import { RecordSessionEventUseCase } from '../../browser-session/application/record-session-event.use-case.js';
-import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
+import { RecordSessionEventUseCase } from '../../browser-session/application/index.js';
+import { RecordJobMessageUseCase } from '../../job/application/index.js';
 import {
   APP_CONFIG,
   type AppConfigInterface,

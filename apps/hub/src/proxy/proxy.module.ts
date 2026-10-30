@@ -1,16 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import {
-  BROWSER_SESSION_REPOSITORY,
-  type BrowserSessionRepositoryPort,
-} from '../browser-session/application/browser-session-repository.port.js';
+import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
-import { JOB_QUEUE, type JobQueuePort } from '../job/application/job-queue.port.js';
-import { JOB_REPOSITORY, type JobRepositoryPort } from '../job/application/job-repository.port.js';
+import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
+import { ListBestProxyServersUseCase } from './application/list-best-proxy-servers.use-case.js';
 import { ListProxiesUseCase } from './application/list-proxies.use-case.js';
 import { PROXY_REPOSITORY, type ProxyRepositoryPort } from './application/proxy-repository.port.js';
 import { RecordProxyChecksUseCase } from './application/record-proxy-checks.use-case.js';
@@ -33,20 +30,25 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
     {
       provide: RefreshProxySourceUseCase,
       useFactory: (
-        queue: JobQueuePort,
-        jobs: JobRepositoryPort,
+        scheduleJob: ScheduleJobUseCase,
         logger: LoggerPort,
       ): RefreshProxySourceUseCase =>
-        new RefreshProxySourceUseCase(queue, jobs, logger.child('proxies')),
-      inject: [JOB_QUEUE, JOB_REPOSITORY, LOGGER],
+        new RefreshProxySourceUseCase(scheduleJob, logger.child('proxies')),
+      inject: [ScheduleJobUseCase, LOGGER],
     },
     {
       provide: ListProxiesUseCase,
       useFactory: (
         proxies: ProxyRepositoryPort,
-        sessions: BrowserSessionRepositoryPort,
+        sessions: ListMarketplaceSessionsUseCase,
       ): ListProxiesUseCase => new ListProxiesUseCase(proxies, sessions),
-      inject: [PROXY_REPOSITORY, BROWSER_SESSION_REPOSITORY],
+      inject: [PROXY_REPOSITORY, ListMarketplaceSessionsUseCase],
+    },
+    {
+      provide: ListBestProxyServersUseCase,
+      useFactory: (proxies: ProxyRepositoryPort): ListBestProxyServersUseCase =>
+        new ListBestProxyServersUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
     },
     {
       provide: RecordProxyChecksUseCase,
@@ -56,6 +58,6 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
     },
     ProxyResultsConsumer,
   ],
-  exports: [PROXY_REPOSITORY],
+  exports: [ListBestProxyServersUseCase],
 })
 export class ProxyModule {}

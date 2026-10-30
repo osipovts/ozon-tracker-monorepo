@@ -1,14 +1,10 @@
-import { randomUUID } from 'node:crypto';
-
 import { type LoggerPort, silentLogger } from 'logger';
 import { marketplaceExitCountries, type MarketplaceType } from 'product-reference';
 
-import type { BrowserSessionRepositoryPort } from '../../browser-session/application/browser-session-repository.port.js';
-import type { JobQueuePort, RouteInterface } from '../../job/application/job-queue.port.js';
-import type { JobRepositoryPort } from '../../job/application/job-repository.port.js';
-import { JobEntity } from '../../job/domain/job.entity.js';
-import { NoProxiesAvailableError } from '../../proxy/application/no-proxies-available.error.js';
-import type { ProxyRepositoryPort } from '../../proxy/application/proxy-repository.port.js';
+import type { ListMarketplaceSessionsUseCase } from '../../browser-session/application/index.js';
+import type { RouteInterface, ScheduleJobUseCase } from '../../job/application/index.js';
+import type { ListBestProxyServersUseCase } from '../../proxy/application/index.js';
+import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import type { TrackedProductRepositoryPort } from './tracked-product-repository.port.js';
 
@@ -22,10 +18,9 @@ export interface RequestPriceObservationSettingsInterface {
 export class RequestPriceObservationUseCase {
   constructor(
     private readonly products: TrackedProductRepositoryPort,
-    private readonly proxies: ProxyRepositoryPort,
-    private readonly sessions: BrowserSessionRepositoryPort,
-    private readonly queue: JobQueuePort,
-    private readonly jobs: JobRepositoryPort,
+    private readonly proxyServers: ListBestProxyServersUseCase,
+    private readonly sessions: ListMarketplaceSessionsUseCase,
+    private readonly scheduleJob: ScheduleJobUseCase,
     private readonly settings: RequestPriceObservationSettingsInterface,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
@@ -39,21 +34,13 @@ export class RequestPriceObservationUseCase {
     const routes = await this.chooseRoutes(product.marketplace);
     if (routes.length === 0) throw new NoProxiesAvailableError();
 
-    const jobId = randomUUID();
-    const job = JobEntity.queued(jobId, 'price_fetch', product.id, 1, new Date());
-    await this.jobs.save(job);
-
-    try {
-      await this.queue.enqueuePriceFetch({
-        jobId,
-        routes,
-        products: [{ trackedProductId: product.id, url: product.url }],
-        timeoutMs: this.settings.timeoutMs,
-      });
-    } catch (error: unknown) {
-      await this.jobs.save(job.failed('Could not be queued', false, new Date()));
-      throw error;
-    }
+    const { jobId } = await this.scheduleJob.execute({
+      kind: 'price_fetch',
+      productId: product.id,
+      routes,
+      products: [{ trackedProductId: product.id, url: product.url }],
+      timeoutMs: this.settings.timeoutMs,
+    });
 
     this.logger.info(
       `Queued price observation ${jobId} of ${product.marketplace} ${product.externalId} (product ${product.id}) via ${String(routes.length)} routes: ${routes
@@ -69,29 +56,28 @@ export class RequestPriceObservationUseCase {
 
   /** Routes with a session come first: they are the ones the site lets through. */
   private async chooseRoutes(marketplace: MarketplaceType): Promise<RouteInterface[]> {
-    const sessions = await this.sessions.listByMarketplace(marketplace);
+    const sessions = await this.sessions.execute(marketplace);
     const routes: RouteInterface[] = sessions
       .filter((session): boolean => session.active)
       .map((session): RouteInterface => ({
-        server: session.snapshot.proxyServer,
+        server: session.proxyServer,
         session: {
-          id: session.snapshot.id,
-          exitIp: session.snapshot.exitIp,
-          userAgent: session.snapshot.userAgent,
-          storageState: session.snapshot.storageState,
+          id: session.id,
+          exitIp: session.exitIp,
+          userAgent: session.userAgent,
+          storageState: session.storageState,
         },
       }));
 
     const taken = new Set(routes.map((route): string | null => route.server));
     // The workers accept exits in the country of the marketplace only: others would be rejected anyway.
-    const best = await this.proxies.list(
-      { alive: true, country: marketplaceExitCountries[marketplace] },
-      { page: 1, pageSize: this.settings.proxyCount },
-    );
+    const best = await this.proxyServers.execute({
+      country: marketplaceExitCountries[marketplace],
+      limit: this.settings.proxyCount,
+    });
 
-    for (const proxy of best.items) {
-      if (!taken.has(proxy.snapshot.server))
-        routes.push({ server: proxy.snapshot.server, session: null });
+    for (const server of best) {
+      if (!taken.has(server)) routes.push({ server, session: null });
     }
 
     return routes;

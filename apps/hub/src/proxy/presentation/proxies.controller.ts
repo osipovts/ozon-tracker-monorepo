@@ -50,10 +50,10 @@ export class ProxiesController {
         session === null
           ? null
           : {
-              id: session.snapshot.id,
-              status: session.snapshot.status,
-              staleReason: session.snapshot.staleReason,
-              updatedAt: session.snapshot.updatedAt.toISOString(),
+              id: session.id,
+              status: session.status,
+              staleReason: session.staleReason,
+              updatedAt: session.updatedAt.toISOString(),
             },
     }));
   }

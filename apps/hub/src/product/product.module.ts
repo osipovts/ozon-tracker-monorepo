@@ -1,19 +1,12 @@
 import { Module } from '@nestjs/common';
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
-import {
-  BROWSER_SESSION_REPOSITORY,
-  type BrowserSessionRepositoryPort,
-} from '../browser-session/application/browser-session-repository.port.js';
+import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
-import { JOB_QUEUE, type JobQueuePort } from '../job/application/job-queue.port.js';
-import { JOB_REPOSITORY, type JobRepositoryPort } from '../job/application/job-repository.port.js';
+import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
-import {
-  PROXY_REPOSITORY,
-  type ProxyRepositoryPort,
-} from '../proxy/application/proxy-repository.port.js';
+import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ProxyModule } from '../proxy/proxy.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
@@ -78,28 +71,25 @@ import { ProductsController } from './presentation/products.controller.js';
       provide: RequestPriceObservationUseCase,
       useFactory: (
         products: TrackedProductRepositoryPort,
-        proxies: ProxyRepositoryPort,
-        sessions: BrowserSessionRepositoryPort,
-        queue: JobQueuePort,
-        jobs: JobRepositoryPort,
+        proxyServers: ListBestProxyServersUseCase,
+        sessions: ListMarketplaceSessionsUseCase,
+        scheduleJob: ScheduleJobUseCase,
         config: AppConfigInterface,
         logger: LoggerPort,
       ): RequestPriceObservationUseCase =>
         new RequestPriceObservationUseCase(
           products,
-          proxies,
+          proxyServers,
           sessions,
-          queue,
-          jobs,
+          scheduleJob,
           { proxyCount: config.priceProxyCount, timeoutMs: config.priceTimeoutMs },
           logger.child('products'),
         ),
       inject: [
         TRACKED_PRODUCT_REPOSITORY,
-        PROXY_REPOSITORY,
-        BROWSER_SESSION_REPOSITORY,
-        JOB_QUEUE,
-        JOB_REPOSITORY,
+        ListBestProxyServersUseCase,
+        ListMarketplaceSessionsUseCase,
+        ScheduleJobUseCase,
         APP_CONFIG,
         LOGGER,
       ],

@@ -10,6 +10,7 @@ import { JOB_REPOSITORY, type JobRepositoryPort } from './application/job-reposi
 import { ListJobsUseCase } from './application/list-jobs.use-case.js';
 import { RecordJobEventUseCase } from './application/record-job-event.use-case.js';
 import { RecordJobMessageUseCase } from './application/record-job-message.use-case.js';
+import { ScheduleJobUseCase } from './application/schedule-job.use-case.js';
 import { BullmqJobQueueAdapter } from './infrastructure/bullmq-job-queue.adapter.js';
 import { PrismaJobRepositoryAdapter } from './infrastructure/prisma-job-repository.adapter.js';
 import { JobsController } from './presentation/jobs.controller.js';
@@ -43,6 +44,12 @@ import { JobsController } from './presentation/jobs.controller.js';
       inject: [RecordJobEventUseCase],
     },
     {
+      provide: ScheduleJobUseCase,
+      useFactory: (queue: JobQueuePort, jobs: JobRepositoryPort): ScheduleJobUseCase =>
+        new ScheduleJobUseCase(queue, jobs),
+      inject: [JOB_QUEUE, JOB_REPOSITORY],
+    },
+    {
       provide: GetJobUseCase,
       useFactory: (jobs: JobRepositoryPort): GetJobUseCase => new GetJobUseCase(jobs),
       inject: [JOB_REPOSITORY],
@@ -53,6 +60,6 @@ import { JobsController } from './presentation/jobs.controller.js';
       inject: [JOB_REPOSITORY],
     },
   ],
-  exports: [JOB_REPOSITORY, JOB_QUEUE, RecordJobMessageUseCase],
+  exports: [ScheduleJobUseCase, RecordJobMessageUseCase],
 })
 export class JobModule {}

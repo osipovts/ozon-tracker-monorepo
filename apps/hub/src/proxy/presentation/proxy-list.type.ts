@@ -1,7 +1,7 @@
 import { marketplaceSchema } from 'queue-contract';
 import { z } from 'zod';
 
-import { sessionStatuses } from '../../browser-session/domain/browser-session.entity.js';
+import { sessionStatuses } from '../../browser-session/application/index.js';
 import {
   pageResponseSchema,
   paginationQuerySchema,

@@ -9,6 +9,7 @@ import {
 } from './application/browser-session-repository.port.js';
 import { DeleteSessionUseCase } from './application/delete-session.use-case.js';
 import { ImportSessionUseCase } from './application/import-session.use-case.js';
+import { ListMarketplaceSessionsUseCase } from './application/list-marketplace-sessions.use-case.js';
 import { ListSessionsUseCase } from './application/list-sessions.use-case.js';
 import { RecordSessionEventUseCase } from './application/record-session-event.use-case.js';
 import { PrismaBrowserSessionRepositoryAdapter } from './infrastructure/prisma-browser-session-repository.adapter.js';
@@ -39,6 +40,12 @@ import { SessionsController } from './presentation/sessions.controller.js';
       inject: [BROWSER_SESSION_REPOSITORY],
     },
     {
+      provide: ListMarketplaceSessionsUseCase,
+      useFactory: (sessions: BrowserSessionRepositoryPort): ListMarketplaceSessionsUseCase =>
+        new ListMarketplaceSessionsUseCase(sessions),
+      inject: [BROWSER_SESSION_REPOSITORY],
+    },
+    {
       provide: DeleteSessionUseCase,
       useFactory: (
         sessions: BrowserSessionRepositoryPort,
@@ -56,6 +63,6 @@ import { SessionsController } from './presentation/sessions.controller.js';
       inject: [BROWSER_SESSION_REPOSITORY, LOGGER],
     },
   ],
-  exports: [BROWSER_SESSION_REPOSITORY, RecordSessionEventUseCase],
+  exports: [ListMarketplaceSessionsUseCase, RecordSessionEventUseCase],
 })
 export class BrowserSessionModule {}

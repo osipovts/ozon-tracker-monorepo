@@ -16,14 +16,24 @@ const hubLayerPatterns = {
   presentation: ['**/infrastructure/**'],
 };
 
-// A context reaches another one only through its domain and application layers; shared reaches none.
-const hubContextPatterns = (unit) =>
+// A context reaches another one only through its application barrel, and its module to wire it;
+// the domain of a context and shared reach none. The files are excluded one level at a time: a file
+// cannot be let back in once its directory is excluded.
+const hubContextPatterns = (unit, layer) =>
   hubContexts
     .filter((context) => context !== unit)
     .flatMap((context) =>
-      unit === 'shared'
+      unit === 'shared' || layer === 'domain'
         ? [`**/${context}/**`]
-        : [`**/${context}/infrastructure/**`, `**/${context}/presentation/**`],
+        : [
+            `**/${context}/domain/**`,
+            `**/${context}/infrastructure/**`,
+            `**/${context}/presentation/**`,
+            `**/${context}/application/*.js`,
+            `!**/${context}/application/index.js`,
+            `**/${context}/*.js`,
+            `!**/${context}/${context}.module.js`,
+          ],
     );
 
 export default defineConfig(
@@ -114,7 +124,9 @@ export default defineConfig(
     {
       files: [`apps/hub/src/${unit}/*.ts`],
       ignores: ['**/*.test.ts'],
-      rules: { 'no-restricted-imports': ['error', { patterns: hubContextPatterns(unit) }] },
+      rules: {
+        'no-restricted-imports': ['error', { patterns: hubContextPatterns(unit, 'module') }],
+      },
     },
     ...Object.entries(hubLayerPatterns).map(([layer, patterns]) => ({
       files: [`apps/hub/src/${unit}/${layer}/**/*.ts`],
@@ -122,7 +134,7 @@ export default defineConfig(
       rules: {
         'no-restricted-imports': [
           'error',
-          { patterns: [...hubContextPatterns(unit), ...patterns] },
+          { patterns: [...hubContextPatterns(unit, layer), ...patterns] },
         ],
       },
     })),

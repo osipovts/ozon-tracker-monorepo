@@ -1,11 +1,7 @@
-import { randomUUID } from 'node:crypto';
-
 import { type LoggerPort, silentLogger } from 'logger';
 import type { ProxySourceType } from 'queue-contract';
 
-import type { JobQueuePort } from '../../job/application/job-queue.port.js';
-import type { JobRepositoryPort } from '../../job/application/job-repository.port.js';
-import { JobEntity } from '../../job/domain/job.entity.js';
+import type { ScheduleJobUseCase } from '../../job/application/index.js';
 
 export interface RefreshProxySourceOptionsInterface {
   maxCandidates: number;
@@ -14,8 +10,7 @@ export interface RefreshProxySourceOptionsInterface {
 
 export class RefreshProxySourceUseCase {
   constructor(
-    private readonly queue: JobQueuePort,
-    private readonly jobs: JobRepositoryPort,
+    private readonly scheduleJob: ScheduleJobUseCase,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
@@ -23,16 +18,7 @@ export class RefreshProxySourceUseCase {
     source: ProxySourceType,
     options: RefreshProxySourceOptionsInterface,
   ): Promise<{ jobId: string }> {
-    const jobId = randomUUID();
-    const job = JobEntity.queued(jobId, 'proxy_fetch', source, null, new Date());
-    await this.jobs.save(job);
-
-    try {
-      await this.queue.enqueueProxyFetch({ jobId, source, ...options });
-    } catch (error: unknown) {
-      await this.jobs.save(job.failed('Could not be queued', false, new Date()));
-      throw error;
-    }
+    const { jobId } = await this.scheduleJob.execute({ kind: 'proxy_fetch', source, ...options });
 
     this.logger.info(
       `Queued proxy refresh ${jobId}: ${source}, up to ${String(options.maxCandidates)} candidates`,
