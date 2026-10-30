@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -16,6 +17,7 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -36,6 +38,7 @@ import { requireIdentity } from '../../shared/presentation/request-identity.type
 import { AddProductUseCase } from '../application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
+import { RemoveProductUseCase } from '../application/remove-product.use-case.js';
 import { RequestPriceObservationUseCase } from '../application/request-price-observation.use-case.js';
 import type { PriceObservationInterface } from '../domain/price-observation.interface.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
@@ -75,6 +78,7 @@ export class ProductsController {
     @Inject(RequestPriceObservationUseCase)
     private readonly requestObservation: RequestPriceObservationUseCase,
     @Inject(ListPriceHistoryUseCase) private readonly listHistory: ListPriceHistoryUseCase,
+    @Inject(RemoveProductUseCase) private readonly removeProduct: RemoveProductUseCase,
   ) {}
 
   @Get()
@@ -154,5 +158,21 @@ export class ProductsController {
     );
 
     return { product: toProduct(product), ...toPageResponse(page, query, toObservation) };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Stop tracking a product',
+    description:
+      'The product is shared: it is deleted with its price history only when nobody tracks it any more.',
+  })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'The product is not tracked' })
+  async remove(
+    @Param('id', { schema: productIdParamSchema }) id: string,
+    @Req() request: Request,
+  ): Promise<void> {
+    await this.removeProduct.execute(requireIdentity(request).userId, id);
   }
 }

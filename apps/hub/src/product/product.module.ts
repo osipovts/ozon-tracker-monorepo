@@ -19,6 +19,7 @@ import {
   type PriceObservationRepositoryPort,
 } from './application/price-observation-repository.port.js';
 import { RecordPriceResultUseCase } from './application/record-price-result.use-case.js';
+import { RemoveProductUseCase } from './application/remove-product.use-case.js';
 import { RequestPriceObservationUseCase } from './application/request-price-observation.use-case.js';
 import {
   TRACKED_PRODUCT_REPOSITORY,
@@ -58,6 +59,12 @@ import { ProductsController } from './presentation/products.controller.js';
         logger: LoggerPort,
       ): AddProductUseCase => new AddProductUseCase(resolve, products, logger.child('products')),
       inject: [ResolveProductReferenceUseCase, TRACKED_PRODUCT_REPOSITORY, LOGGER],
+    },
+    {
+      provide: RemoveProductUseCase,
+      useFactory: (products: TrackedProductRepositoryPort): RemoveProductUseCase =>
+        new RemoveProductUseCase(products),
+      inject: [TRACKED_PRODUCT_REPOSITORY],
     },
     {
       provide: ListProductsUseCase,

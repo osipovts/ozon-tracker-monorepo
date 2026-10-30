@@ -46,6 +46,21 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     return Promise.resolve(!subscribed);
   }
 
+  unsubscribe(userId: string, productId: string): Promise<boolean> {
+    const index = this.subscriptions.findIndex(
+      (subscription): boolean =>
+        subscription.userId === userId && subscription.productId === productId,
+    );
+    if (index === -1) return Promise.resolve(false);
+
+    this.subscriptions.splice(index, 1);
+    if (!this.subscriptions.some((subscription): boolean => subscription.productId === productId)) {
+      this.products.delete(productId);
+    }
+
+    return Promise.resolve(true);
+  }
+
   findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
     return Promise.resolve(
       this.subscribed(userId, productId) ? (this.products.get(productId) ?? null) : null,

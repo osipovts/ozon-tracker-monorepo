@@ -10,6 +10,7 @@ import {
   pageOffset,
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
+import { ProductGoneError } from '../application/product-gone.error.js';
 import type {
   TrackedProductReferenceInterface,
   TrackedProductRepositoryPort,
@@ -17,6 +18,11 @@ import type {
 import { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 
 const marketplaceSchema = z.enum(marketplaces);
+
+/** Prisma reports a violated foreign key as P2003. */
+function isForeignKeyViolation(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'P2003';
+}
 
 function toEntity(row: TrackedProductRow): TrackedProductEntity {
   return new TrackedProductEntity({
@@ -53,13 +59,39 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
   }
 
   async subscribe(userId: string, productId: string): Promise<boolean> {
-    // Skipping a duplicate instead of reading first keeps concurrent subscriptions apart.
-    const { count } = await this.prisma.productSubscription.createMany({
-      data: [{ userId, trackedProductId: productId }],
-      skipDuplicates: true,
-    });
+    try {
+      // Skipping a duplicate instead of reading first keeps concurrent subscriptions apart.
+      const { count } = await this.prisma.productSubscription.createMany({
+        data: [{ userId, trackedProductId: productId }],
+        skipDuplicates: true,
+      });
 
-    return count > 0;
+      return count > 0;
+    } catch (error: unknown) {
+      // The foreign key to the product: the last tracker removed it just now.
+      if (isForeignKeyViolation(error)) throw new ProductGoneError(productId);
+
+      throw error;
+    }
+  }
+
+  unsubscribe(userId: string, productId: string): Promise<boolean> {
+    return this.prisma.$transaction(async (tx): Promise<boolean> => {
+      // The row is locked until the end: a user joining the product meanwhile waits, then either
+      // finds it kept or fails its foreign key and adds the product anew.
+      await tx.$queryRaw`SELECT id FROM tracked_products WHERE id = ${productId}::uuid FOR UPDATE`;
+
+      const { count } = await tx.productSubscription.deleteMany({
+        where: { userId, trackedProductId: productId },
+      });
+      if (count === 0) return false;
+
+      await tx.trackedProduct.deleteMany({
+        where: { id: productId, subscriptions: { none: {} } },
+      });
+
+      return true;
+    });
   }
 
   async findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {

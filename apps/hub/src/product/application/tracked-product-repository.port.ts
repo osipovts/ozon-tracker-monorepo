@@ -19,8 +19,16 @@ export interface TrackedProductRepositoryPort {
   add(
     reference: TrackedProductReferenceInterface,
   ): Promise<{ product: TrackedProductEntity; created: boolean }>;
-  /** The user tracks the product from now on; false if they did already. */
+  /**
+   * The user tracks the product from now on; false if they did already. Throws `ProductGoneError`
+   * if the last tracker removed the product meanwhile.
+   */
   subscribe(userId: string, productId: string): Promise<boolean>;
+  /**
+   * The user stops tracking the product, which is deleted with its price history when nobody
+   * tracks it any more; false if the user did not track it.
+   */
+  unsubscribe(userId: string, productId: string): Promise<boolean>;
   /** For the workers, which serve every user: a user asks for `findSubscribed` instead. */
   findById(id: string): Promise<TrackedProductEntity | null>;
   /** The product, if the user tracks it. */

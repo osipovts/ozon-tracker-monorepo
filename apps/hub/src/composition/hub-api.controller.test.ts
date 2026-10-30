@@ -29,6 +29,7 @@ import { JobsController } from '../job/presentation/jobs.controller.js';
 import { AddProductUseCase } from '../product/application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from '../product/application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../product/application/list-products.use-case.js';
+import { RemoveProductUseCase } from '../product/application/remove-product.use-case.js';
 import { RequestPriceObservationUseCase } from '../product/application/request-price-observation.use-case.js';
 import { InMemoryPriceObservationRepositoryAdapter } from '../product/infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../product/infrastructure/in-memory-tracked-product-repository.adapter.js';
@@ -135,6 +136,7 @@ before(async (): Promise<void> => {
         ),
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
+      { provide: RemoveProductUseCase, useValue: new RemoveProductUseCase(products) },
       {
         provide: RequestPriceObservationUseCase,
         useValue: new RequestPriceObservationUseCase(
@@ -379,6 +381,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     '/jobs',
     '/jobs/{id}',
     '/products',
+    '/products/{id}',
     '/products/{id}/prices',
     '/proxies',
     '/proxy-sources/{source}/refresh',
@@ -538,6 +541,7 @@ const userRoutes: Array<[string, string]> = [
   ['POST', '/products'],
   ['POST', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
   ['GET', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
+  ['DELETE', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
   ['GET', '/jobs/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
 ];
 
@@ -600,4 +604,29 @@ void test('a product is tracked per user: the others do not see it, and join it 
   assert.equal(joined.body['id'], id);
   assert.equal((await call('/products', other)).body['total'], 1);
   assert.equal((await call(`/products/${id}/prices`, other)).status, 200);
+});
+
+void test('stops tracking a product: it goes for good with its last tracker, and not before', async (): Promise<void> => {
+  const id = await addProduct();
+  await call('/products', {
+    ...post({ url: productUrl }),
+    headers: { cookie: otherCookie, 'content-type': 'application/json' },
+  });
+  const remove = (cookie: string): Promise<Response> =>
+    fetch(`${baseUrl}/products/${id}`, { method: 'DELETE', headers: { cookie } });
+
+  assert.equal((await remove(credentials['cookie'] ?? '')).status, 204);
+  assert.equal((await remove(credentials['cookie'] ?? '')).status, 404);
+  assert.equal((await call(`/products/${id}/prices`)).status, 404);
+  assert.equal(
+    (await call(`/products/${id}/prices`, { headers: { cookie: otherCookie } })).status,
+    200,
+  );
+
+  assert.equal((await remove(otherCookie)).status, 204);
+  assert.equal(
+    (await call(`/products/${id}/prices`, { headers: { cookie: otherCookie } })).status,
+    404,
+  );
+  assert.equal((await call('/products/nope', { method: 'DELETE' })).status, 400);
 });
