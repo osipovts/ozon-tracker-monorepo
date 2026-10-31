@@ -69,6 +69,8 @@ export interface AppConfigInterface {
   adminEmails: string[];
   /** The built admin panel, served at `/panel`; there is no panel without one. */
   adminUiDir: string | null;
+  /** The built client app, served at `/app`; there is no app without one. */
+  clientUiDir: string | null;
   /** The key of the operator routes; without one they stay closed. */
   operatorApiKey: string | null;
   /** error, warn, info, debug or verbose. */

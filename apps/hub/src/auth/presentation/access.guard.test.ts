@@ -94,6 +94,7 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     githubOauth: null,
     adminEmails: ['boss@example.com', 'second@example.com'],
     adminUiDir: null,
+    clientUiDir: null,
     operatorApiKey,
     logLevel: 'error',
   };

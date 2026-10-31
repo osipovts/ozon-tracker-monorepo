@@ -114,4 +114,6 @@ void test('serves no admin panel unless a directory of the built one is given', 
   assert.equal(parser.parse(env()).adminUiDir, null);
   assert.equal(parser.parse(env(['ADMIN_UI_DIR', ''])).adminUiDir, null);
   assert.equal(parser.parse(env(['ADMIN_UI_DIR', '/app/panel'])).adminUiDir, '/app/panel');
+  assert.equal(parser.parse(env()).clientUiDir, null);
+  assert.equal(parser.parse(env(['CLIENT_UI_DIR', '/app/client'])).clientUiDir, '/app/client');
 });

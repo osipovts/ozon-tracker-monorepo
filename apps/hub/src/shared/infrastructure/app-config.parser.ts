@@ -120,6 +120,7 @@ const configSchema = z.object({
     )
     .pipe(z.array(z.email())),
   adminUiDir: z.string().min(1).nullable(),
+  clientUiDir: z.string().min(1).nullable(),
   operatorApiKey: z.string().min(16).nullable(),
   authCookieSecure: z
     .enum(['true', 'false'])
@@ -163,6 +164,7 @@ export class AppConfigParser {
         githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
         adminEmails: env['ADMIN_EMAILS'],
         adminUiDir: env['ADMIN_UI_DIR'] === '' ? null : (env['ADMIN_UI_DIR'] ?? null),
+        clientUiDir: env['CLIENT_UI_DIR'] === '' ? null : (env['CLIENT_UI_DIR'] ?? null),
         operatorApiKey: env['HUB_API_KEY'] === '' ? null : (env['HUB_API_KEY'] ?? null),
       }),
       logLevel: parseLogLevel(env['LOG_LEVEL'], 'verbose'),

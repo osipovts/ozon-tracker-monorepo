@@ -84,12 +84,24 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
 RUN pnpm --filter frontend-admin build
 
 ################################
+# Client app (static files the hub serves)
+################################
+FROM fetch AS client-ui-build
+COPY apps/frontend-client ./apps/frontend-client
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter frontend-client...
+RUN pnpm --filter frontend-client build
+
+################################
 # Hub
 ################################
 FROM runtime AS hub-prod
 ENV NODE_ENV=production \
-    ADMIN_UI_DIR=/app/panel
+    ADMIN_UI_DIR=/app/panel \
+    CLIENT_UI_DIR=/app/client
 COPY --from=admin-ui-build /app/apps/frontend-admin/dist ./panel
+COPY --from=client-ui-build /app/apps/frontend-client/dist ./client
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/dist ./dist
 COPY --from=build /deploy/prisma ./prisma

@@ -54,7 +54,15 @@
 http://localhost:5173/panel/ (порт `ADMIN_UI_PORT`) и проксирует запросы на хаб.
 Локально без Docker: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
 `HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
-Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api`.
+Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api && pnpm --filter frontend-client generate:api`
+(документ API лежит в `apps/hub/openapi.json`).
+
+Клиентское приложение (`apps/frontend-client`): вход и регистрация, добавление товара по ссылке, список товаров
+с последней ценой, страница товара с историей цен и двумя графиками (по часам за 48 часов и по дням за 30 дней).
+Точка графика - средняя цена за час или день, в подсказке мин, макс, последняя и средняя цена периода; если за
+период цен нет, берётся последняя известная и рисуется пунктиром. Ценой считается первая из `prices`
+наблюдения. Хаб отдаёт приложение по `/app`, если задан `CLIENT_UI_DIR` (в образе `hub-prod` включено);
+в dev-Docker оно на http://localhost:5174/app/ (`CLIENT_UI_PORT`), локально `pnpm --filter frontend-client dev`.
 
 Подтверждение почты: при регистрации на почту уходит письмо со ссылкой `GET /auth/verify-email?token=...`
 (работает сутки, повторное открытие безвредно); ещё раз выслать - `POST /auth/verify-email/resend`.

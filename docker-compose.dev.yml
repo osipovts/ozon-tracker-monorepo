@@ -49,6 +49,25 @@ services:
     depends_on:
       - hub
 
+  # The client app with hot reload at http://localhost:5174/app/; its requests go to the hub.
+  frontend-client:
+    <<: *dev
+    image: price-tracker/hub:dev
+    build:
+      target: dev
+    command: ['pnpm', '--filter', 'frontend-client', 'dev', '--host', '0.0.0.0']
+    environment:
+      HOME: /tmp
+      NODE_ENV: development
+      pnpm_config_verify_deps_before_run: 'false'
+      HUB_URL: http://hub:3000
+      # The hub lets a write in only from its own PUBLIC_URL, not from the name it has in the network of Docker.
+      HUB_ORIGIN: ${PUBLIC_URL:-http://localhost:3000}
+    ports:
+      - '127.0.0.1:${CLIENT_UI_PORT:-5174}:5174'
+    depends_on:
+      - hub
+
   proxy-fetcher:
     <<: *dev
     image: price-tracker/proxy-fetcher:dev

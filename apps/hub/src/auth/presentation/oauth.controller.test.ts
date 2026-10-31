@@ -77,6 +77,7 @@ const config: AppConfigInterface = {
   githubOauth: null,
   adminEmails: [],
   adminUiDir: null,
+  clientUiDir: null,
   operatorApiKey: null,
   logLevel: 'error',
 };

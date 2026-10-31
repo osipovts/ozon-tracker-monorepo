@@ -7,7 +7,7 @@ import { after, before, test } from 'node:test';
 
 import express from 'express';
 
-import { serveAdminUi } from './admin-ui.type.js';
+import { serveStaticUi } from './static-ui.type.js';
 
 let directory = '';
 let server: Server;
@@ -19,7 +19,7 @@ before(async (): Promise<void> => {
   await writeFile(join(directory, 'app.js'), 'console.log(1)');
 
   const app = express();
-  serveAdminUi(app, directory);
+  serveStaticUi(app, '/panel', directory);
   app.get('/proxies', (_request, response): void => {
     response.json({ api: true });
   });
