@@ -12,6 +12,9 @@ import type {
 } from '../application/refresh-proxy-source.use-case.js';
 import type { ProxySourceType } from '../domain/proxy-source.type.js';
 
+/** The progress of a job goes to the hub at most this often. */
+const progressIntervalMs = 500;
+
 /** Indexed by the contract source, so a source unknown to the domain fails to compile. */
 type SourceUseCasesType = Record<
   ProxySourceType,
@@ -41,18 +44,27 @@ export class ProxyFetchController {
     let total = 0;
     let processed = 0;
     let succeeded = 0;
-    const reportProgress = (): Promise<void> =>
-      this.publish({ type: 'job_progress', jobId: job.jobId, processed, total, succeeded });
+    let lastReportedAt = Number.NEGATIVE_INFINITY;
+    const reportProgress = (): Promise<void> => {
+      lastReportedAt = Date.now();
+
+      return this.publish({ type: 'job_progress', jobId: job.jobId, processed, total, succeeded });
+    };
 
     const listener: RefreshProxySourceListenerInterface = {
       onCandidates: async (candidates): Promise<void> => {
         total = candidates;
         await reportProgress();
       },
+      // A check takes seconds and the results go in batches: the progress does not wait for a batch,
+      // and is sent at most once in an interval so that a long list does not flood the queue.
+      onProgress: async (checked, alive): Promise<void> => {
+        processed = checked;
+        succeeded = alive;
+        if (Date.now() - lastReportedAt >= progressIntervalMs) await reportProgress();
+      },
       onChecks: async (checks): Promise<void> => {
         await this.publish({ type: 'proxy_checks', jobId: job.jobId, source: job.source, checks });
-        processed += checks.length;
-        succeeded += checks.filter((check): boolean => check.alive).length;
         await reportProgress();
       },
     };

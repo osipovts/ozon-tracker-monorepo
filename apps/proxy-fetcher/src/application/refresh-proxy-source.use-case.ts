@@ -12,6 +12,8 @@ export interface RefreshProxySourceParamsInterface {
 export interface RefreshProxySourceListenerInterface {
   /** Called once the candidates are known, before the first check. */
   onCandidates(count: number): Promise<void>;
+  /** Called after every check, with how many are done and how many of them are alive. */
+  onProgress(checked: number, alive: number): Promise<void>;
   /** Called with batches of finished checks. */
   onChecks(checks: ProxyCheckInterface[]): Promise<void>;
 }
@@ -60,7 +62,9 @@ export class RefreshProxySourceUseCase {
         checked += 1;
         if (check.alive) alive += 1;
         buffer.push(check);
+        // The buffer is handed over before anything is awaited, so that it never outgrows a batch.
         if (buffer.length >= this.batchSize) await flush();
+        await listener.onProgress(checked, alive);
       }
     };
 

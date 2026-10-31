@@ -32,6 +32,7 @@ const probe: ProxyProbePort = {
 void test('limits candidates, counts alive proxies and reports checks in batches', async (): Promise<void> => {
   const batches: number[] = [];
   const announced: number[] = [];
+  const progress: string[] = [];
   let alive = 0;
 
   await new RefreshProxySourceUseCase(source, probe, 3, 2).execute(
@@ -40,6 +41,11 @@ void test('limits candidates, counts alive proxies and reports checks in batches
     {
       onCandidates: (count): Promise<void> => {
         announced.push(count);
+
+        return Promise.resolve();
+      },
+      onProgress: (checked, aliveSoFar): Promise<void> => {
+        progress.push(`${String(checked)}/${String(aliveSoFar)}`);
 
         return Promise.resolve();
       },
@@ -59,6 +65,9 @@ void test('limits candidates, counts alive proxies and reports checks in batches
     5,
   );
   assert.ok(batches.every((size): boolean => size <= 2));
+  // Every check is reported on its own, not once for a batch.
+  assert.equal(progress.length, 5);
+  assert.equal(progress.at(-1)?.split('/')[1], '4');
 });
 
 void test('stops probing when the signal is aborted', async (): Promise<void> => {
@@ -69,6 +78,7 @@ void test('stops probing when the signal is aborted', async (): Promise<void> =>
       controller.signal,
       {
         onCandidates: (): Promise<void> => Promise.resolve(),
+        onProgress: (): Promise<void> => Promise.resolve(),
         onChecks: (): Promise<void> => {
           controller.abort();
 

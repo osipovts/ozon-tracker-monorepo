@@ -38,6 +38,8 @@ void test('reports the progress of a job from start to finish', async (): Promis
   const published: ProxyFetchResultType[] = [];
   const controller = createController(async (_params, _signal, listener): Promise<void> => {
     await listener.onCandidates(1);
+    // Within the interval of the progress that was just sent: it is not sent again, the batch sends it.
+    await listener.onProgress(1, 1);
     await listener.onChecks([
       {
         server: 'socks5://203.0.113.10:1080',
@@ -71,6 +73,28 @@ void test('reports the progress of a job from start to finish', async (): Promis
     total: 1,
     succeeded: 1,
   });
+});
+
+void test('reports the progress between the batches of results, at most once in an interval', async (t): Promise<void> => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
+  const published: ProxyFetchResultType[] = [];
+  const controller = createController(async (_params, _signal, listener): Promise<void> => {
+    await listener.onCandidates(100);
+    for (let checked = 1; checked <= 100; checked += 1) {
+      // A check takes 100 ms: the interval of the progress is 500 ms.
+      t.mock.timers.tick(100);
+      await listener.onProgress(checked, checked);
+    }
+  }, published);
+
+  await controller.handle(job, new AbortController().signal);
+
+  const reported = published.flatMap((message): number[] =>
+    message.type === 'job_progress' ? [message.processed] : [],
+  );
+  // The count before the first check, then every fifth check, and not every one.
+  assert.deepEqual(reported.slice(0, 4), [0, 5, 10, 15]);
+  assert.equal(reported.length, 21);
 });
 
 void test('reports a failing source as a failed job and tells whether it is retried', async (): Promise<void> => {
