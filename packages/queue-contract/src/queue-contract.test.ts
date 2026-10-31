@@ -23,6 +23,18 @@ void test('accepts a price fetch job with proxies, and a direct route', (): void
   assert.equal(priceFetchJobSchema.safeParse(job).success, true);
 });
 
+void test('accepts a product marked as read by an earlier try', (): void => {
+  const job = {
+    jobId: uuid,
+    proxies: [{ server: null }],
+    products: [{ trackedProductId: uuid, url: 'https://www.ozon.ru/product/1/', read: true }],
+    timeoutMs: 15000,
+  };
+  const parsed = priceFetchJobSchema.parse(job);
+
+  assert.equal(parsed.products[0]?.read, true);
+});
+
 void test('rejects empty and malformed price fetch jobs', (): void => {
   const valid = {
     jobId: uuid,

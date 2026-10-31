@@ -24,6 +24,12 @@ const jobOptions: JobsOptions = {
   removeOnFail: { age: 86400 },
 };
 
+/** A price read that found nothing comes back after a minute, twice: a hung route or a check of the site often passes by then. */
+const priceFetchJobOptions: JobsOptions = {
+  ...jobOptions,
+  backoff: { type: 'fixed', delay: 60_000 },
+};
+
 export class BullmqJobQueueAdapter implements JobQueuePort {
   private readonly proxyFetchQueue: Queue;
   private readonly priceFetchQueue: Queue;
@@ -58,7 +64,10 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
       products: request.products,
       timeoutMs: request.timeoutMs,
     });
-    await this.priceFetchQueue.add('price-fetch', job, { ...jobOptions, jobId: job.jobId });
+    await this.priceFetchQueue.add('price-fetch', job, {
+      ...priceFetchJobOptions,
+      jobId: job.jobId,
+    });
     this.logger.debug(`Published price-fetch ${job.jobId} to ${queueNames.priceFetchJobs}`);
   }
 

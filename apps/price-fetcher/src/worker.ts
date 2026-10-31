@@ -141,8 +141,8 @@ const expandController = new LinkExpandController(
 );
 
 expandRunner.start((data, signal): Promise<unknown> => expandController.handle(data, signal));
-runner.start((data, signal, willRetry): Promise<void> =>
-  controller.handle(data, signal, willRetry),
+runner.start((data, signal, willRetry, retryWith): Promise<void> =>
+  controller.handle(data, signal, willRetry, retryWith),
 );
 runner.stopOnSignals(async (): Promise<void> => {
   stopping = true;

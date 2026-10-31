@@ -35,7 +35,10 @@ const success: ReadProductResultType = {
   exitIp: '217.71.230.103',
 };
 
-function createController(published: PriceFetchResultType[]): PriceFetchController {
+function createController(
+  published: PriceFetchResultType[],
+  result: ReadProductResultType | ((url: string) => ReadProductResultType) = success,
+): PriceFetchController {
   const publish = (message: PriceFetchResultType): Promise<void> => {
     published.push(message);
 
@@ -46,7 +49,8 @@ function createController(published: PriceFetchResultType[]): PriceFetchControll
     new FetchPricesUseCase(
       new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
       (): ProductReaderPort => ({
-        read: (): Promise<ReadProductResultType> => Promise.resolve(success),
+        read: (reference): Promise<ReadProductResultType> =>
+          Promise.resolve(typeof result === 'function' ? result(reference.url) : result),
       }),
     ),
     new QueueMessageParser(silentLogger),
@@ -125,6 +129,127 @@ void test('reports a failed job and tells whether it is retried', async (): Prom
   const [failure] = published.filter(isType('job_failed'));
   assert.equal(failure?.willRetry, true);
   assert.equal(published.some(isType('job_done')), false);
+});
+
+const secondProductId = '5d8b0a51-6e0e-4f69-9b36-3f4f0a8f2c55';
+const secondUrl = 'https://www.ozon.ru/product/1168909010/';
+const twoProducts = [job.products[0], { trackedProductId: secondProductId, url: secondUrl }];
+const readOnlyFirst = (url: string): ReadProductResultType =>
+  url === secondUrl ? { status: 'network_error' } : success;
+
+void test('fails the job when no product could be read, so that the queue brings it back later', async (): Promise<void> => {
+  for (const status of ['network_error', 'http_error', 'challenge_required'] as const) {
+    const published: PriceFetchResultType[] = [];
+
+    await assert.rejects(
+      createController(published, { status }).handle(
+        { ...job, products: [job.products[0]] },
+        new AbortController().signal,
+        true,
+      ),
+      /could not be read/,
+    );
+
+    assert.equal(published.find(isType('job_failed'))?.willRetry, true, status);
+    assert.equal(published.find(isType('product_result'))?.status, status);
+  }
+});
+
+void test('marks the products that were read, so that the next try leaves them alone', async (): Promise<void> => {
+  const published: PriceFetchResultType[] = [];
+  const next: unknown[] = [];
+
+  await assert.rejects(
+    createController(published, readOnlyFirst).handle(
+      { ...job, products: twoProducts },
+      new AbortController().signal,
+      true,
+      (data): Promise<void> => {
+        next.push(data);
+
+        return Promise.resolve();
+      },
+    ),
+  );
+
+  assert.deepEqual(next, [
+    {
+      ...job,
+      products: [{ ...twoProducts[0], read: true }, twoProducts[1]],
+    },
+  ]);
+});
+
+void test('does not read again a product that is marked as read, and counts it as done', async (): Promise<void> => {
+  const published: PriceFetchResultType[] = [];
+  const asked: string[] = [];
+
+  await createController(published, (url) => {
+    asked.push(url);
+
+    return success;
+  }).handle(
+    { ...job, products: [{ ...twoProducts[0], read: true }, twoProducts[1]] },
+    new AbortController().signal,
+  );
+
+  assert.deepEqual(asked, [secondUrl]);
+  assert.deepEqual(
+    published.filter(isType('product_result')).map(({ trackedProductId }) => trackedProductId),
+    [secondProductId],
+  );
+  assert.deepEqual(
+    published
+      .filter(isType('job_progress'))
+      .map((progress): number[] => [progress.processed, progress.total, progress.succeeded]),
+    [
+      [1, 2, 1],
+      [2, 2, 2],
+    ],
+  );
+});
+
+void test('fails the job on the last try when a product is still unread, keeping what was read', async (): Promise<void> => {
+  const published: PriceFetchResultType[] = [];
+
+  await assert.rejects(
+    createController(published, readOnlyFirst).handle(
+      { ...job, products: twoProducts },
+      new AbortController().signal,
+      false,
+    ),
+    /1 products could not be read/,
+  );
+
+  assert.equal(published.find(isType('job_failed'))?.willRetry, false);
+  assert.deepEqual(
+    published.filter(isType('product_result')).map(({ status }) => status),
+    ['success', 'network_error'],
+  );
+});
+
+void test('fails the job on the last try when nothing was read', async (): Promise<void> => {
+  const published: PriceFetchResultType[] = [];
+
+  await assert.rejects(
+    createController(published, { status: 'network_error' }).handle(
+      { ...job, products: twoProducts },
+      new AbortController().signal,
+      false,
+    ),
+  );
+  assert.equal(published.find(isType('job_failed'))?.willRetry, false);
+});
+
+void test('does not fail the job over links that are no products', async (): Promise<void> => {
+  const published: PriceFetchResultType[] = [];
+
+  await createController(published).handle(
+    { ...job, products: [job.products[1]] },
+    new AbortController().signal,
+  );
+
+  assert.equal(published.some(isType('job_done')), true);
 });
 
 void test('rejects a malformed job', async (): Promise<void> => {

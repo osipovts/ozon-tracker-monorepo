@@ -13,7 +13,13 @@ import type { ProductReaderPort } from './product-reader.port.js';
 export interface FetchPricesJobInterface {
   /** Routes in the order they are tried; a null server is a direct connection. */
   routes: ReadonlyArray<{ server: string | null }>;
-  products: ReadonlyArray<{ trackedProductId: string; url: string; cityId?: string | undefined }>;
+  products: ReadonlyArray<{
+    trackedProductId: string;
+    url: string;
+    cityId?: string | undefined;
+    /** Read by an earlier try: it is counted as done and not read again. */
+    read?: boolean | undefined;
+  }>;
   timeoutMs: number;
 }
 
@@ -26,6 +32,23 @@ export interface ProductFetchResultInterface {
 export interface FetchPricesListenerInterface {
   onProgress(progress: { processed: number; total: number; succeeded: number }): Promise<void>;
   onProduct(result: ProductFetchResultInterface): Promise<void>;
+}
+
+/** What a later try may change: a route that hangs, a check of the site that passes, a card that has not been drawn. */
+const retryableStatuses: ReadonlyArray<ProductFetchResultInterface['status']> = [
+  'network_error',
+  'proxy_rejected',
+  'http_error',
+  'challenge_required',
+  'parse_error',
+];
+
+export function isRetryable(status: ProductFetchResultInterface['status']): boolean {
+  return retryableStatuses.includes(status);
+}
+
+export function isRead(status: ProductFetchResultInterface['status'] | undefined): boolean {
+  return status === 'success' || status === 'partial';
 }
 
 /** Reads the prices of the products of a job through its routes and reports what happened. */
@@ -57,17 +80,19 @@ export class FetchPricesUseCase {
 
     const reader = this.createReader(job.timeoutMs);
     const total = job.products.length;
-    let processed = 0;
-    let succeeded = 0;
+    let processed = job.products.filter(({ read }): boolean => read === true).length;
+    let succeeded = processed;
     await listener.onProgress({ processed, total, succeeded });
 
     for (const product of job.products) {
+      if (product.read === true) continue;
+
       signal.throwIfAborted();
       const result = await this.fetchProduct(product, candidates, reader, signal);
       await listener.onProduct(result);
 
       processed += 1;
-      if (result.status === 'success' || result.status === 'partial') succeeded += 1;
+      if (isRead(result.status)) succeeded += 1;
       await listener.onProgress({ processed, total, succeeded });
     }
   }
