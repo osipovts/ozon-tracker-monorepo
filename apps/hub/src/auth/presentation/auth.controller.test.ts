@@ -72,6 +72,7 @@ const config: AppConfigInterface = {
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
   githubOauth: null,
+  adminEmails: ['boss@example.com'],
   operatorApiKey: null,
   authCookieSecure: true,
   logLevel: 'error',
@@ -583,4 +584,20 @@ void test('tells the holder of an email, not the one who signed up with it again
   assert.ok(mail);
   assert.equal(mail.to, 'zack@example.com');
   assert.doesNotMatch(mail.text, /token=/);
+});
+
+void test('says that a user is an administrator only once their listed email is confirmed', async (): Promise<void> => {
+  const cookie = await signUp('boss@example.com');
+  const isAdmin = async (browserCookie: string): Promise<boolean> =>
+    authResponseSchema.parse((await me(browserCookie)).body).user.isAdmin;
+
+  assert.equal(await isAdmin(cookie), false);
+
+  await call(linkTo('boss@example.com'));
+
+  assert.equal(await isAdmin(cookie), true);
+  assert.equal(
+    authResponseSchema.parse((await me(await signUp('plain@example.com'))).body).user.isAdmin,
+    false,
+  );
 });

@@ -7,6 +7,9 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import type { Request } from 'express';
 
+import { GetAccountUseCase } from '../../account/application/get-account.use-case.js';
+import { UserEntity } from '../../account/domain/user.entity.js';
+import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-memory-user-repository.adapter.js';
 import { ResolveAuthSessionUseCase } from '../../auth-session/application/resolve-auth-session.use-case.js';
 import { StartAuthSessionUseCase } from '../../auth-session/application/start-auth-session.use-case.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
@@ -33,6 +36,12 @@ class ProbeController {
     return { userId: requireIdentity(request).userId };
   }
 
+  @Get('admin')
+  @routeAccess('admin')
+  admin(@Req() request: Request): { userId: string } {
+    return { userId: requireIdentity(request).userId };
+  }
+
   @Get('operator')
   @routeAccess('operator')
   operator(): { ok: true } {
@@ -42,6 +51,14 @@ class ProbeController {
 
 const apiKey = 'operator-key-of-at-least-16-chars';
 const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
+const adminId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
+const unprovenAdminId = '9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33';
+const at = new Date('2026-10-31T10:00:00Z');
+const users = new InMemoryUserRepositoryAdapter();
+await users.add(UserEntity.register(userId, 'user@example.com', at));
+await users.add(UserEntity.registerVerified(adminId, 'boss@example.com', at));
+// Signed up with the email of an administrator, which nobody has proven to be theirs.
+await users.add(UserEntity.register(unprovenAdminId, 'second@example.com', at));
 
 function configWith(operatorApiKey: string | null): AppConfigInterface {
   return {
@@ -75,6 +92,7 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     authSuccessRedirect: '/auth/me',
     googleOauth: null,
     githubOauth: null,
+    adminEmails: ['boss@example.com', 'second@example.com'],
     operatorApiKey,
     logLevel: 'error',
   };
@@ -95,6 +113,7 @@ async function start(
         provide: ResolveAuthSessionUseCase,
         useValue: new ResolveAuthSessionUseCase(sessions, policy),
       },
+      { provide: GetAccountUseCase, useValue: new GetAccountUseCase(users) },
       SessionCookieParser,
     ],
   }).compile();
@@ -108,14 +127,22 @@ const sessions = new InMemoryAuthSessionRepositoryAdapter();
 let app: INestApplication;
 let baseUrl: string;
 let cookie = '';
+let adminCookie = '';
+let unprovenAdminCookie = '';
 
 before(async (): Promise<void> => {
   ({ app, baseUrl } = await start(apiKey, sessions));
-  const { token } = await new StartAuthSessionUseCase(sessions, {
+  const begin = new StartAuthSessionUseCase(sessions, {
     idleTtlMs: 60_000,
     absoluteTtlMs: 120_000,
-  }).execute({ userId, userAgent: null, ip: null });
-  cookie = `session=${token}`;
+  });
+  const cookieOf = async (id: string): Promise<string> =>
+    `session=${(await begin.execute({ userId: id, userAgent: null, ip: null })).token}`;
+  [cookie, adminCookie, unprovenAdminCookie] = [
+    await cookieOf(userId),
+    await cookieOf(adminId),
+    await cookieOf(unprovenAdminId),
+  ];
 });
 
 after(async (): Promise<void> => {
@@ -140,14 +167,37 @@ void test('a route is for a signed-in user unless marked otherwise, and the key 
   assert.deepEqual(await response.json(), { userId });
 });
 
-void test('an operator route takes the API key only: a signed-in user is not an operator', async (): Promise<void> => {
+void test('an admin route is for an administrator signed in: not for a user, nor for the API key', async (): Promise<void> => {
+  const response = await fetch(`${baseUrl}/probe/admin`, { headers: { cookie: adminCookie } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { userId: adminId });
+
+  assert.equal(await status('/probe/admin'), 401);
+  assert.equal(await status('/probe/admin', { cookie: 'session=forged' }), 401);
+  assert.equal(await status('/probe/admin', { authorization: `Bearer ${apiKey}` }), 401);
+  assert.equal(await status('/probe/admin', { cookie }), 403);
+});
+
+void test('an email of the list that nobody has proven makes no administrator', async (): Promise<void> => {
+  assert.equal(await status('/probe/admin', { cookie: unprovenAdminCookie }), 403);
+  assert.equal(await status('/probe/operator', { cookie: unprovenAdminCookie }), 403);
+});
+
+void test('an operator route takes the API key, or an administrator signed in: a user is not an operator', async (): Promise<void> => {
   assert.equal(await status('/probe/operator', { authorization: `Bearer ${apiKey}` }), 200);
+  assert.equal(await status('/probe/operator', { cookie: adminCookie }), 200);
 
   assert.equal(await status('/probe/operator'), 401);
-  assert.equal(await status('/probe/operator', { cookie }), 401);
+  assert.equal(await status('/probe/operator', { cookie }), 403);
+  assert.equal(await status('/probe/operator', { cookie: 'session=forged' }), 401);
   assert.equal(await status('/probe/operator', { authorization: 'Bearer wrong-key' }), 401);
   assert.equal(await status('/probe/operator', { authorization: apiKey }), 401);
   assert.equal(await status('/probe/operator', { authorization: `Basic ${apiKey}` }), 401);
+  // A wrong key is no key, whatever cookie comes with it: the administrator does not get in by the cookie then.
+  assert.equal(
+    await status('/probe/operator', { authorization: 'Bearer wrong-key', cookie: adminCookie }),
+    401,
+  );
 });
 
 void test('without a configured key the operator routes stay closed to everyone', async (): Promise<void> => {

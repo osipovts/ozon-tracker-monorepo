@@ -65,6 +65,8 @@ export interface AppConfigInterface {
   /** The OAuth app of Google; the login through it is off without one. */
   googleOauth: OauthClientConfigInterface | null;
   githubOauth: OauthClientConfigInterface | null;
+  /** The emails of the administrators; one is an administrator once the email is proven to be theirs. */
+  adminEmails: string[];
   /** The key of the operator routes; without one they stay closed. */
   operatorApiKey: string | null;
   /** error, warn, info, debug or verbose. */

@@ -55,6 +55,7 @@ const config: AppConfigInterface = {
   authAllowedOrigins: ['https://app.example.com'],
   googleOauth: null,
   githubOauth: null,
+  adminEmails: [],
   operatorApiKey: null,
   authCookieSecure: true,
   logLevel: 'error',

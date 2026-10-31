@@ -21,3 +21,8 @@ export function requireIdentity(request: Request): RequestIdentityInterface {
 
   return identity;
 }
+
+/** Whoever the guard let in with a session, or null for a request that came with the key of the operator. */
+export function findIdentity(request: Request): RequestIdentityInterface | null {
+  return identities.get(request) ?? null;
+}

@@ -23,7 +23,7 @@ before(
       stack: infrastructure,
       smtpUrl,
       // Every test of this file signs up from the one address of the machine.
-      env: { AUTH_REGISTER_MAX_ATTEMPTS: '100' },
+      env: { AUTH_REGISTER_MAX_ATTEMPTS: '100', ADMIN_EMAILS: 'boss@example.com' },
     });
   },
   { timeout: 120_000 },
@@ -206,4 +206,22 @@ void test('a write that a browser makes from another origin is refused, a read i
     403,
   );
   assert.equal((await me(browser)).status, 200);
+});
+
+void test('an administrator of the list gets the operator routes once the email is confirmed by mail, a user never does', async (): Promise<void> => {
+  const boss = hub.browser();
+  await signUpAndLogIn(boss, 'boss@example.com');
+  assert.deepEqual(await me(boss), { status: 200, verified: false });
+
+  // Signed up with an email of the list, which nobody has proven yet: known, and forbidden.
+  assert.equal((await boss.request('/proxies')).status, 403);
+
+  await boss.request(verificationLinkOf(await smtp.waitFor('boss@example.com')));
+  assert.equal((await boss.request('/proxies')).status, 200);
+  assert.equal(authResponseSchema.parse((await boss.request('/auth/me')).body).user.isAdmin, true);
+
+  const user = hub.browser();
+  await signUpAndLogIn(user, 'plain@example.com');
+  assert.equal((await user.request('/proxies')).status, 403);
+  assert.equal(authResponseSchema.parse((await user.request('/auth/me')).body).user.isAdmin, false);
 });

@@ -109,6 +109,16 @@ const configSchema = z.object({
     .default('/auth/me'),
   googleOauth: oauthClientSchema,
   githubOauth: oauthClientSchema,
+  adminEmails: z
+    .string()
+    .default('')
+    .transform((value): string[] =>
+      value
+        .split(',')
+        .map((email): string => email.trim().toLowerCase())
+        .filter((email): boolean => email !== ''),
+    )
+    .pipe(z.array(z.email())),
   operatorApiKey: z.string().min(16).nullable(),
   authCookieSecure: z
     .enum(['true', 'false'])
@@ -150,6 +160,7 @@ export class AppConfigParser {
         authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],
         googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
         githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
+        adminEmails: env['ADMIN_EMAILS'],
         operatorApiKey: env['HUB_API_KEY'] === '' ? null : (env['HUB_API_KEY'] ?? null),
       }),
       logLevel: parseLogLevel(env['LOG_LEVEL'], 'verbose'),

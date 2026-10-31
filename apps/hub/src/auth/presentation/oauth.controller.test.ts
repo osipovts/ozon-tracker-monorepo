@@ -75,6 +75,7 @@ const config: AppConfigInterface = {
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
   githubOauth: null,
+  adminEmails: [],
   operatorApiKey: null,
   logLevel: 'error',
 };

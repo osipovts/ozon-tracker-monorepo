@@ -100,3 +100,12 @@ void test('refreshes the prices every quarter of an hour of those older than six
   assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '0'])).priceRefreshIntervalMs, 0);
   assert.throws(() => parser.parse(env(['PRICE_REFRESH_MAX_AGE_MS', '10'])));
 });
+
+void test('takes the administrators of the hub from a list of emails, normalized', (): void => {
+  assert.deepEqual(parser.parse(env()).adminEmails, []);
+  assert.deepEqual(
+    parser.parse(env(['ADMIN_EMAILS', ' Boss@Example.com , second@example.com,'])).adminEmails,
+    ['boss@example.com', 'second@example.com'],
+  );
+  assert.throws(() => parser.parse(env(['ADMIN_EMAILS', 'not an email'])));
+});

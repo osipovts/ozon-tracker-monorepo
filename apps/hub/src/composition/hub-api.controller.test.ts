@@ -8,6 +8,8 @@ import { Test } from '@nestjs/testing';
 import { silentLogger } from 'logger';
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
+import { GetAccountUseCase } from '../account/application/get-account.use-case.js';
+import { InMemoryUserRepositoryAdapter } from '../account/infrastructure/in-memory-user-repository.adapter.js';
 import { AccessGuard } from '../auth/presentation/access.guard.js';
 import { SessionCookieParser } from '../auth/presentation/session-cookie.parser.js';
 import { ResolveAuthSessionUseCase } from '../auth-session/application/resolve-auth-session.use-case.js';
@@ -116,6 +118,7 @@ const config: AppConfigInterface = {
   authSuccessRedirect: '/auth/me',
   googleOauth: null,
   githubOauth: null,
+  adminEmails: [],
   operatorApiKey,
   logLevel: 'error',
 };
@@ -142,6 +145,10 @@ before(async (): Promise<void> => {
       { provide: APP_INTERCEPTOR, useClass: HttpLoggingInterceptor },
       { provide: LOGGER, useValue: silentLogger },
       { provide: APP_GUARD, useClass: AccessGuard },
+      {
+        provide: GetAccountUseCase,
+        useValue: new GetAccountUseCase(new InMemoryUserRepositoryAdapter()),
+      },
       { provide: APP_CONFIG, useValue: config },
       {
         provide: ResolveAuthSessionUseCase,
@@ -613,9 +620,10 @@ void test('the routes of the users take the cookie and no key, those of the oper
   }
 
   for (const route of operatorRoutes) {
+    // A signed-in user who is no administrator is known, and forbidden.
     assert.equal(
       await statusOf(route, { cookie: credentials['cookie'] ?? '' }),
-      401,
+      403,
       route.join(' '),
     );
   }

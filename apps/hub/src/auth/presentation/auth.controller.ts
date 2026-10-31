@@ -29,6 +29,7 @@ import {
 import { NotSignedInError } from '../../shared/application/not-signed-in.error.js';
 import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
+import { isAdministrator } from '../application/administrator.type.js';
 import type { ClientInterface } from '../application/authenticated-session.interface.js';
 import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
@@ -48,8 +49,15 @@ import {
 import { cookieOptionsOf } from './cookie-options.type.js';
 import { sessionCookieName, SessionCookieParser } from './session-cookie.parser.js';
 
-function toAuthResponse({ id, email, emailVerifiedAt }: UserInterface): AuthResponseType {
-  return { user: { id, email, emailVerified: emailVerifiedAt !== null } };
+function toAuthResponse(user: UserInterface, adminEmails: readonly string[]): AuthResponseType {
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerifiedAt !== null,
+      isAdmin: isAdministrator(user, adminEmails),
+    },
+  };
 }
 
 function clientOf(request: Request): ClientInterface {
@@ -60,6 +68,7 @@ function clientOf(request: Request): ClientInterface {
 @Controller('auth')
 export class AuthController {
   private readonly cookieOptions: CookieOptions;
+  private readonly adminEmails: readonly string[];
 
   constructor(
     @Inject(SignUpUseCase) private readonly signUp: SignUpUseCase,
@@ -71,6 +80,7 @@ export class AuthController {
     @Inject(APP_CONFIG) config: AppConfigInterface,
   ) {
     this.cookieOptions = cookieOptionsOf(config);
+    this.adminEmails = config.adminEmails;
   }
 
   @Post('register')
@@ -109,7 +119,7 @@ export class AuthController {
     const { user, token, expiresAt } = await this.logIn.execute({ ...body, ...clientOf(request) });
     response.cookie(sessionCookieName, token, { ...this.cookieOptions, expires: expiresAt });
 
-    return toAuthResponse(user);
+    return toAuthResponse(user, this.adminEmails);
   }
 
   @Post('logout')
@@ -138,7 +148,7 @@ export class AuthController {
     const user = await this.getAccount.execute(requireIdentity(request).userId);
     if (user === null) throw new NotSignedInError();
 
-    return toAuthResponse(user);
+    return toAuthResponse(user, this.adminEmails);
   }
 
   @Post('password')

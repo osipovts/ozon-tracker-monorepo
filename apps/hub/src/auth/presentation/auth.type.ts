@@ -33,7 +33,12 @@ export type PasswordChangeBodyType = z.infer<typeof passwordChangeBodySchema>;
 
 export const authResponseSchema = z.object({
   /** Strict: a field that is not listed is never sent, and a test sees it if it is. */
-  user: z.strictObject({ id: z.uuid(), email: z.string(), emailVerified: z.boolean() }),
+  user: z.strictObject({
+    id: z.uuid(),
+    email: z.string(),
+    emailVerified: z.boolean(),
+    isAdmin: z.boolean(),
+  }),
 });
 
 export type AuthResponseType = z.infer<typeof authResponseSchema>;
