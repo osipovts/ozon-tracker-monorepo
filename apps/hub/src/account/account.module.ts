@@ -14,11 +14,13 @@ import {
   CREDENTIAL_REPOSITORY,
   type CredentialRepositoryPort,
 } from './application/credential-repository.port.js';
+import { DeleteAccountUseCase } from './application/delete-account.use-case.js';
 import {
   EMAIL_VERIFICATION_REPOSITORY,
   type EmailVerificationRepositoryPort,
 } from './application/email-verification-repository.port.js';
 import { GetAccountUseCase } from './application/get-account.use-case.js';
+import { GetLinkedAccountsUseCase } from './application/get-linked-accounts.use-case.js';
 import { GetUserStatsUseCase } from './application/get-user-stats.use-case.js';
 import {
   LINKED_IDENTITY_REPOSITORY,
@@ -29,6 +31,7 @@ import { PASSWORD_HASHER, type PasswordHasherPort } from './application/password
 import { RegisterAccountUseCase } from './application/register-account.use-case.js';
 import { ResolveOauthAccountUseCase } from './application/resolve-oauth-account.use-case.js';
 import { SendEmailVerificationUseCase } from './application/send-email-verification.use-case.js';
+import { UnlinkIdentityUseCase } from './application/unlink-identity.use-case.js';
 import { USER_REPOSITORY, type UserRepositoryPort } from './application/user-repository.port.js';
 import { VerifyEmailUseCase } from './application/verify-email.use-case.js';
 import { Argon2idPasswordHasherAdapter } from './infrastructure/argon2id-password-hasher.adapter.js';
@@ -68,6 +71,28 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
     {
       provide: PASSWORD_HASHER,
       useFactory: (): PasswordHasherPort => new Argon2idPasswordHasherAdapter(),
+    },
+    {
+      provide: DeleteAccountUseCase,
+      useFactory: (users: UserRepositoryPort): DeleteAccountUseCase =>
+        new DeleteAccountUseCase(users),
+      inject: [USER_REPOSITORY],
+    },
+    {
+      provide: GetLinkedAccountsUseCase,
+      useFactory: (
+        credentials: CredentialRepositoryPort,
+        identities: LinkedIdentityRepositoryPort,
+      ): GetLinkedAccountsUseCase => new GetLinkedAccountsUseCase(credentials, identities),
+      inject: [CREDENTIAL_REPOSITORY, LINKED_IDENTITY_REPOSITORY],
+    },
+    {
+      provide: UnlinkIdentityUseCase,
+      useFactory: (
+        credentials: CredentialRepositoryPort,
+        identities: LinkedIdentityRepositoryPort,
+      ): UnlinkIdentityUseCase => new UnlinkIdentityUseCase(credentials, identities),
+      inject: [CREDENTIAL_REPOSITORY, LINKED_IDENTITY_REPOSITORY],
     },
     {
       provide: RegisterAccountUseCase,
@@ -152,6 +177,9 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
     },
   ],
   exports: [
+    DeleteAccountUseCase,
+    GetLinkedAccountsUseCase,
+    UnlinkIdentityUseCase,
     RegisterAccountUseCase,
     AuthenticateWithPasswordUseCase,
     ChangeAccountPasswordUseCase,

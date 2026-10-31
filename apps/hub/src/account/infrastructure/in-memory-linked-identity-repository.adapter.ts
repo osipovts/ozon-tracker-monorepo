@@ -14,6 +14,25 @@ export class InMemoryLinkedIdentityRepositoryAdapter implements LinkedIdentityRe
     return Promise.resolve(!taken);
   }
 
+  listByUser(userId: string): Promise<LinkedIdentityEntity[]> {
+    return Promise.resolve(
+      Array.from(this.identities.values())
+        .filter(({ snapshot }): boolean => snapshot.userId === userId)
+        .toSorted(
+          (a, b): number => a.snapshot.createdAt.getTime() - b.snapshot.createdAt.getTime(),
+        ),
+    );
+  }
+
+  remove(userId: string, provider: OauthProviderType): Promise<boolean> {
+    const found = Array.from(this.identities.entries()).filter(
+      ([, { snapshot }]): boolean => snapshot.userId === userId && snapshot.provider === provider,
+    );
+    for (const [key] of found) this.identities.delete(key);
+
+    return Promise.resolve(found.length > 0);
+  }
+
   findByProviderSubject(
     provider: OauthProviderType,
     subject: string,

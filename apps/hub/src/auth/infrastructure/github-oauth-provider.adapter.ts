@@ -1,3 +1,4 @@
+import { type LoggerPort, silentLogger } from 'logger';
 import { z } from 'zod';
 
 import { OauthLoginFailedError } from '../application/oauth-login-failed.error.js';
@@ -40,6 +41,7 @@ export class GithubOauthProviderAdapter implements OauthProviderPort {
   constructor(
     private readonly client: Omit<OauthClientInterface, 'tokenUrl'>,
     private readonly endpoints: GithubEndpointsInterface = githubEndpoints,
+    private readonly logger: LoggerPort = silentLogger,
   ) {
     this.tokens = new OauthTokenExchangeAdapter({ ...client, tokenUrl: endpoints.tokenUrl });
   }
@@ -81,6 +83,14 @@ export class GithubOauthProviderAdapter implements OauthProviderPort {
       response.ok && emails.success
         ? emails.data.find((item): boolean => item.primary && item.verified)
         : undefined;
+    // Why a user is left unproven is the one thing the log must say: the login only tells them it was refused.
+    if (!response.ok) {
+      this.logger.warn(
+        `GitHub refused the list of emails (HTTP ${String(response.status)}): an OAuth App needs the user:email scope, which this hub asks for; a GitHub App needs the "Email addresses" account permission`,
+      );
+    } else if (primary === undefined) {
+      this.logger.warn('GitHub has no primary email that it has verified for this account');
+    }
 
     return primary === undefined
       ? { email: null, emailVerified: false }

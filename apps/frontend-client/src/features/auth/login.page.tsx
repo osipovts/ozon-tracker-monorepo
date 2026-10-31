@@ -4,7 +4,6 @@ import {
   Card,
   Container,
   Divider,
-  Group,
   PasswordInput,
   Stack,
   Tabs,
@@ -17,16 +16,11 @@ import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
-import { LanguageControl } from '../../app/language.component.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { LegalFooter } from '../legal/legal-footer.component.js';
-import {
-  type OauthProviderType,
-  useLogin,
-  useMe,
-  useOauthProviders,
-  useRegister,
-} from './use-me.hook.js';
+import { ProviderIcon } from './provider-icon.component.js';
+import { providerName } from './provider-name.type.js';
+import { useLogin, useMe, useOauthProviders, useRegister } from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
 function explain(error: Error, t: TFunction): string {
@@ -44,8 +38,6 @@ function explain(error: Error, t: TFunction): string {
   return error.message;
 }
 
-const providerNames: Record<OauthProviderType, string> = { google: 'Google', github: 'GitHub' };
-
 /** Buttons that take the browser to the login of a provider, which brings it back logged in. */
 function ProviderButtons(): ReactElement | null {
   const { t } = useTranslation();
@@ -62,8 +54,9 @@ function ProviderButtons(): ReactElement | null {
           component="a"
           href={`/auth/oauth/${provider}/start`}
           variant="default"
+          leftSection={<ProviderIcon provider={provider} />}
         >
-          {t('login.continueWith', { provider: providerNames[provider] })}
+          {t('login.continueWith', { provider: providerName(provider) })}
         </Button>
       ))}
     </Stack>
@@ -101,15 +94,12 @@ export function LoginPage(): ReactElement {
       <Card withBorder padding="xl">
         <form onSubmit={submit}>
           <Stack>
-            <Group justify="space-between">
-              <Stack gap={0}>
-                <Title order={2}>{t('login.title')}</Title>
-                <Text size="sm" c="dimmed">
-                  {t('brand.slogan')}
-                </Text>
-              </Stack>
-              <LanguageControl />
-            </Group>
+            <Stack gap={0}>
+              <Title order={2}>{t('login.title')}</Title>
+              <Text size="sm" c="dimmed">
+                {t('brand.slogan')}
+              </Text>
+            </Stack>
             <Tabs value={mode} onChange={setMode}>
               <Tabs.List grow>
                 <Tabs.Tab value="login">{t('login.logIn')}</Tabs.Tab>

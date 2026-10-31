@@ -35,6 +35,7 @@ import {
 import { RecordPriceResultUseCase } from './application/record-price-result.use-case.js';
 import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
+import { RemoveUserProductsUseCase } from './application/remove-user-products.use-case.js';
 import { RequestPriceObservationUseCase } from './application/request-price-observation.use-case.js';
 import { StoreProductThumbnailUseCase } from './application/store-product-thumbnail.use-case.js';
 import {
@@ -124,6 +125,14 @@ function refreshScheduleSettings(config: AppConfigInterface): {
       ): RemoveProductUseCase =>
         new RemoveProductUseCase(products, storage, logger.child('products')),
       inject: [TRACKED_PRODUCT_REPOSITORY, OBJECT_STORAGE, LOGGER],
+    },
+    {
+      provide: RemoveUserProductsUseCase,
+      useFactory: (
+        products: TrackedProductRepositoryPort,
+        remove: RemoveProductUseCase,
+      ): RemoveUserProductsUseCase => new RemoveUserProductsUseCase(products, remove),
+      inject: [TRACKED_PRODUCT_REPOSITORY, RemoveProductUseCase],
     },
     {
       provide: IMAGE_DOWNLOADER,
@@ -265,6 +274,6 @@ function refreshScheduleSettings(config: AppConfigInterface): {
     },
     PriceResultsConsumer,
   ],
-  exports: [GetProductStatsUseCase],
+  exports: [GetProductStatsUseCase, RemoveUserProductsUseCase],
 })
 export class ProductModule {}

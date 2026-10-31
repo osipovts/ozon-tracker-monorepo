@@ -7,9 +7,11 @@ import { GithubOauthProviderAdapter } from './github-oauth-provider.adapter.js';
 
 const server = new FakeHttpServerAdapter();
 let github: GithubOauthProviderAdapter;
+let serverUrl = '';
 
 before(async (): Promise<void> => {
   const base = await server.start();
+  serverUrl = base;
   github = new GithubOauthProviderAdapter(
     { clientId: 'client-1', clientSecret: 'secret-1' },
     {
@@ -87,6 +89,8 @@ void test('vouches for no email unless GitHub has verified the primary one', asy
   assert.deepEqual(await github.fetchProfile(exchange), none);
 
   // An error answer is not to be believed, even if its body looks like a list of verified emails.
+  server.reply('POST', '/token', { status: 200, body: { access_token: 'token-1' } });
+  server.reply('GET', '/user', { status: 200, body: { id: 42, login: 'jane' } });
   server.reply('GET', '/user/emails', {
     status: 403,
     body: [{ email: 'jane@example.com', primary: true, verified: true, visibility: null }],
@@ -100,4 +104,51 @@ void test('refuses a user it cannot read', async (): Promise<void> => {
 
   server.reply('GET', '/user', { status: 200, body: { login: 'jane' } });
   await assert.rejects(github.fetchProfile(exchange), OauthLoginFailedError);
+});
+
+void test('says in the log why a user is left unproven: the list of emails refused, or no verified primary one', async (): Promise<void> => {
+  const warnings: string[] = [];
+  const logger = {
+    debug: (): void => undefined,
+    verbose: (): void => undefined,
+    info: (): void => undefined,
+    warn: (message: string): void => {
+      warnings.push(message);
+    },
+    error: (): void => undefined,
+    child: function child() {
+      return this;
+    },
+  };
+  const base = serverUrl;
+  const watching = new GithubOauthProviderAdapter(
+    { clientId: 'client-1', clientSecret: 'secret-1' },
+    {
+      authorizeUrl: `${base}/authorize`,
+      tokenUrl: `${base}/token`,
+      userUrl: `${base}/user`,
+      emailsUrl: `${base}/user/emails`,
+    },
+    logger,
+  );
+
+  server.reply('POST', '/token', { status: 200, body: { access_token: 'token-1' } });
+  server.reply('GET', '/user', { status: 200, body: { id: 42, login: 'jane' } });
+  server.reply('GET', '/user/emails', {
+    status: 403,
+    body: { message: 'Resource not accessible by integration' },
+  });
+  assert.deepEqual(await watching.fetchProfile(exchange), {
+    subject: '42',
+    email: null,
+    emailVerified: false,
+  });
+  assert.match(warnings[0] ?? '', /refused the list of emails \(HTTP 403\).*GitHub App/);
+
+  server.reply('GET', '/user/emails', {
+    status: 200,
+    body: [{ email: 'jane@example.com', primary: true, verified: false, visibility: null }],
+  });
+  await watching.fetchProfile(exchange);
+  assert.match(warnings[1] ?? '', /no primary email that it has verified/);
 });

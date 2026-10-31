@@ -30,6 +30,10 @@ export class InMemoryUserRepositoryAdapter implements UserRepositoryPort {
     });
   }
 
+  delete(userId: string): Promise<boolean> {
+    return Promise.resolve(this.users.delete(userId));
+  }
+
   findById(id: string): Promise<UserEntity | null> {
     return Promise.resolve(this.users.get(id) ?? null);
   }

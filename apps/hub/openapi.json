@@ -1755,6 +1755,119 @@
         "tags": ["proxies"]
       }
     },
+    "/auth/account": {
+      "get": {
+        "operationId": "AccountController_account",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "emailVerified": {
+                      "type": "boolean"
+                    },
+                    "hasPassword": {
+                      "type": "boolean"
+                    },
+                    "identities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": ["google", "github"]
+                          },
+                          "linkedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": ["provider", "linkedAt"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["email", "emailVerified", "hasPassword", "identities"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The account of the user: the ways to log in",
+        "tags": ["auth"]
+      },
+      "delete": {
+        "description": "With the products the user tracks (those nobody else tracks go with their price history), the sessions and the ways to log in. The body names the email of the account, to confirm.",
+        "operationId": "AccountController_deleteAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Delete the account for good",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/identities/{provider}": {
+      "delete": {
+        "description": "The last way to log in cannot be taken away: delete the account instead.",
+        "operationId": "AccountController_unlinkIdentity",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": ["google", "github"]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "The account is not linked to the provider"
+          },
+          "409": {
+            "description": "It is the only way to log in"
+          }
+        },
+        "summary": "Stop logging in through a provider",
+        "tags": ["auth"]
+      }
+    },
     "/auth/register": {
       "post": {
         "description": "Answers the same whether the email was free or not, so that it does not tell which emails have an account, and starts no session: log in with `POST /auth/login` after it.",

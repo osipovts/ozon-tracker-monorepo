@@ -2,16 +2,32 @@ import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { createI18n } from '../../i18n/i18n.js';
 import { SettingsPage } from './settings.page.js';
 
 const hubCalls: string[] = [];
+const hubBodies: unknown[] = [];
+
+interface AccountStubInterface {
+  hasPassword: boolean;
+  identities: Array<{ provider: 'google' | 'github'; linkedAt: string }>;
+}
+
+const passwordAndGoogle: AccountStubInterface = {
+  hasPassword: true,
+  identities: [
+    { provider: 'google', linkedAt: '2026-10-30T10:00:00.000Z' },
+    { provider: 'github', linkedAt: '2026-10-31T10:00:00.000Z' },
+  ],
+};
 
 /** A hub that knows one user, signed in on two devices. */
-function stubHub(): void {
+function stubHub(account: AccountStubInterface = passwordAndGoogle): void {
   hubCalls.length = 0;
+  hubBodies.length = 0;
   vi.stubGlobal(
     'fetch',
     vi.fn((request: Request): Promise<Response> => {
@@ -24,6 +40,18 @@ function stubHub(): void {
             user: { id: 'u', email: 'jane@example.com', emailVerified: true, isAdmin: false },
           }),
         );
+      }
+      if (pathname === '/auth/account' && request.method === 'GET') {
+        return Promise.resolve(
+          Response.json({ email: 'jane@example.com', emailVerified: true, ...account }),
+        );
+      }
+      if (request.method === 'DELETE' && pathname === '/auth/account') {
+        return request.json().then((body: unknown): Response => {
+          hubBodies.push(body);
+
+          return new Response(null, { status: 204 });
+        });
       }
       if (pathname === '/auth/sessions' && request.method === 'GET') {
         const now = new Date().toISOString();
@@ -57,11 +85,13 @@ function stubHub(): void {
 function openSettings(): void {
   render(
     <MantineProvider defaultColorScheme="auto">
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
-        <SettingsPage />
-      </QueryClientProvider>
+      <MemoryRouter>
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <SettingsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
     </MantineProvider>,
   );
 }
@@ -139,4 +169,50 @@ test('changes the password with the current one', async (): Promise<void> => {
 
   expect(await screen.findByText('The password is changed.')).toBeInTheDocument();
   expect(hubCalls).toContain('POST /auth/password');
+});
+
+test('shows the password and the providers linked, and unlinks one of them', async (): Promise<void> => {
+  openSettings();
+
+  expect(await screen.findByRole('heading', { name: 'Linked accounts' })).toBeInTheDocument();
+  expect(await screen.findByText('Google')).toBeInTheDocument();
+  expect(screen.getByText('GitHub')).toBeInTheDocument();
+
+  const unlinkButtons = await screen.findAllByRole('button', { name: 'Unlink' });
+  expect(unlinkButtons).toHaveLength(2);
+  const github = unlinkButtons[1];
+  if (github === undefined) throw new Error('No button to unlink GitHub');
+  await userEvent.click(github);
+
+  expect(hubCalls).toContain('DELETE /auth/identities/github');
+});
+
+test('does not let the last way to log in go', async (): Promise<void> => {
+  stubHub({
+    hasPassword: false,
+    identities: [{ provider: 'google', linkedAt: '2026-10-30T10:00:00.000Z' }],
+  });
+  openSettings();
+
+  expect(await screen.findByText('The only way to log in')).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Unlink' })).toBeDisabled();
+});
+
+test('deletes the account only once its email is written', async (): Promise<void> => {
+  openSettings();
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+  const submit = await screen.findByRole('button', { name: 'Delete the account for good' });
+  expect(submit).toBeDisabled();
+
+  await userEvent.type(screen.getByLabelText('Email of the account'), 'someone@example.com');
+  expect(submit).toBeDisabled();
+
+  await userEvent.clear(screen.getByLabelText('Email of the account'));
+  await userEvent.type(screen.getByLabelText('Email of the account'), 'Jane@Example.com');
+  expect(submit).toBeEnabled();
+  await userEvent.click(submit);
+
+  expect(hubCalls).toContain('DELETE /auth/account');
+  expect(hubBodies).toEqual([{ email: 'Jane@Example.com' }]);
 });

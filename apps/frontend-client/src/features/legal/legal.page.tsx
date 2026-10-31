@@ -3,7 +3,6 @@ import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { LanguageControl } from '../../app/language.component.js';
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import type { LegalDocumentsType } from './legal-document.type.js';
 import { LegalFooter } from './legal-footer.component.js';
@@ -19,12 +18,9 @@ function LegalPage({ documents }: { documents: LegalDocumentsType }): ReactEleme
   return (
     <Container size="sm" py="xl">
       <Stack gap="lg">
-        <Stack gap="xs" align="flex-start">
-          <Anchor component={Link} to="/" size="sm">
-            {t('legal.back')}
-          </Anchor>
-          <LanguageControl size="xs" />
-        </Stack>
+        <Anchor component={Link} to="/" size="sm">
+          {t('legal.back')}
+        </Anchor>
         <Stack gap={4}>
           <Title order={1}>{document.title}</Title>
           <Text size="sm" c="dimmed">

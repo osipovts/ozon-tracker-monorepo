@@ -41,6 +41,12 @@ export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
     return { total, verified, joined };
   }
 
+  async delete(userId: string): Promise<boolean> {
+    const { count } = await this.prisma.user.deleteMany({ where: { id: userId } });
+
+    return count > 0;
+  }
+
   async findById(id: string): Promise<UserEntity | null> {
     const row = await this.prisma.user.findUnique({ where: { id } });
 

@@ -303,7 +303,7 @@ void test('the theme and the language are set on the page of the settings, and k
 
 void test('the settings show the account and the devices, and sign the other devices out', async (): Promise<void> => {
   await page.goto(`${hub.baseUrl}/app/settings`);
-  await page.getByRole('heading', { name: 'Account', level: 4 }).waitFor();
+  await page.getByRole('heading', { name: 'Account', level: 4, exact: true }).waitFor();
   await page.getByText(email, { exact: true }).first().waitFor();
 
   // The same person on a second device.
@@ -357,7 +357,7 @@ void test('a visitor who logs out is sent to the login', async (): Promise<void>
   await page.waitForURL('**/app/login');
 });
 
-void test('the language follows the browser, and a language that is picked is kept', async (): Promise<void> => {
+void test('the language follows the browser, and the login page has no switch of it', async (): Promise<void> => {
   // A browser that asks for Russian sends `Accept-Language: ru-RU` and reports it to the page.
   const context = await browser.newContext({ locale: 'ru-RU' });
   const russian = await context.newPage();
@@ -365,11 +365,11 @@ void test('the language follows the browser, and a language that is picked is ke
   await russian.getByText('трекер цен', { exact: true }).waitFor();
   assert.equal(await russian.locator('html').getAttribute('lang'), 'ru');
 
-  await russian.getByText('EN', { exact: true }).click();
-  await russian.getByText('price tracker', { exact: true }).waitFor();
-
-  await russian.reload();
-  await russian.getByText('price tracker', { exact: true }).waitFor();
+  // The language is picked on the page of the settings, not here: no switch on the login page, nor on the legal texts.
+  assert.equal(await russian.getByRole('radiogroup').count(), 0);
+  await russian.goto(`${hub.baseUrl}/app/privacy`);
+  await russian.getByRole('heading', { level: 1, name: 'Политика конфиденциальности' }).waitFor();
+  assert.equal(await russian.getByRole('radiogroup').count(), 0);
   await context.close();
 
   // A browser with a language the app has no words in gets English.

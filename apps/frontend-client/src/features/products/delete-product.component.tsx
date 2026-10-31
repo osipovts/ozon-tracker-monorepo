@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Stack, Text } from '@mantine/core';
+import { Button, CloseButton, Group, Modal, Stack, Text } from '@mantine/core';
 import { type ReactElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -21,16 +21,14 @@ export function DeleteProduct({
 
   return (
     <>
-      <Button
-        size="xs"
-        color="red"
-        variant="light"
+      <CloseButton
+        aria-label={t('product.delete')}
+        title={t('product.delete')}
+        c="red"
         onClick={(): void => {
           setAsking(true);
         }}
-      >
-        {t('product.delete')}
-      </Button>
+      />
       <Modal
         opened={asking}
         title={t('product.deleteTitle')}

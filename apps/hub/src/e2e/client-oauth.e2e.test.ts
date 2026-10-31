@@ -68,6 +68,15 @@ void test('the login page offers both providers, and a login through one lands t
 
   await page.goto(`${hub.baseUrl}/app/login`);
   await page.getByRole('link', { name: 'Continue with GitHub' }).waitFor();
+  // Each button has the mark of its provider.
+  assert.equal(
+    await page.getByRole('link', { name: 'Continue with Google' }).locator('svg').count(),
+    1,
+  );
+  assert.equal(
+    await page.getByRole('link', { name: 'Continue with GitHub' }).locator('svg').count(),
+    1,
+  );
   await page.getByRole('link', { name: 'Continue with Google' }).click();
 
   await page.waitForURL(/\/app\/?$/);
@@ -101,5 +110,30 @@ void test('a first login through GitHub signs a new user up, and they are in the
 
   await page.waitForURL(/\/app\/?$/);
   await page.getByText('sam@example.com', { exact: true }).first().waitFor();
+  await context.close();
+});
+
+void test('the settings show the account linked, refuse to unlink the only way in, and delete the account', async (): Promise<void> => {
+  provider.profile = { subject: '4001', email: 'dana@example.com', emailVerified: true };
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`${hub.baseUrl}/app/login`);
+  await page.getByRole('link', { name: 'Continue with GitHub' }).click();
+  await page.waitForURL(/\/app\/?$/);
+
+  await page.goto(`${hub.baseUrl}/app/settings`);
+  await page.getByRole('heading', { name: 'Linked accounts' }).waitFor();
+  await page.getByText('The only way to log in').waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Unlink' }).isDisabled(), true);
+
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  const dialog = page.getByRole('dialog');
+  const confirm = dialog.getByRole('button', { name: 'Delete the account for good' });
+  assert.equal(await confirm.isDisabled(), true);
+  await dialog.getByLabel('Email of the account').fill('dana@example.com');
+  await confirm.click();
+
+  await page.waitForURL('**/app/login');
+  assert.equal((await page.request.get(`${hub.baseUrl}/auth/me`)).status(), 401);
   await context.close();
 });

@@ -202,6 +202,47 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/account': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The account of the user: the ways to log in */
+    get: operations['AccountController_account'];
+    put?: never;
+    post?: never;
+    /**
+     * Delete the account for good
+     * @description With the products the user tracks (those nobody else tracks go with their price history), the sessions and the ways to log in. The body names the email of the account, to confirm.
+     */
+    delete: operations['AccountController_deleteAccount'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/identities/{provider}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Stop logging in through a provider
+     * @description The last way to log in cannot be taken away: delete the account instead.
+     */
+    delete: operations['AccountController_unlinkIdentity'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/register': {
     parameters: {
       query?: never;
@@ -1128,6 +1169,92 @@ export interface operations {
             jobId: string;
           };
         };
+      };
+    };
+  };
+  AccountController_account: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            email: string;
+            emailVerified: boolean;
+            hasPassword: boolean;
+            identities: {
+              /** @enum {string} */
+              provider: 'google' | 'github';
+              /** Format: date-time */
+              linkedAt: string;
+            }[];
+          };
+        };
+      };
+    };
+  };
+  AccountController_deleteAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** Format: email */
+          email: string;
+        };
+      };
+    };
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AccountController_unlinkIdentity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider: 'google' | 'github';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The account is not linked to the provider */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description It is the only way to log in */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

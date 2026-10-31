@@ -50,6 +50,22 @@ export const en = {
     appearanceHint: 'The theme of the app. Auto follows the one of your device.',
     language: 'Language',
     languageHint: 'Auto follows the language of your browser.',
+    linkedAccounts: 'Linked accounts',
+    linkedHint:
+      'The ways you log in. A provider you unlink can be linked again by logging in through it with the same email.',
+    passwordWay: 'Password',
+    linkedOn: 'Linked {{when}}',
+    unlink: 'Unlink',
+    onlyWay: 'The only way to log in',
+    noProviders: 'No Google or GitHub account is linked.',
+    deleteAccount: 'Delete account',
+    deleteHint:
+      'Deletes your account for good: the ways to log in, the devices and the products you track. A product nobody else tracks is deleted with its price history.',
+    deleteConfirmTitle: 'Delete the account?',
+    deleteConfirmText:
+      'This cannot be undone. Write the email of the account, {{email}}, to confirm.',
+    confirmEmail: 'Email of the account',
+    deleteForever: 'Delete the account for good',
     account: 'Account',
     emailVerified: 'confirmed',
     emailNotVerified: 'not confirmed',

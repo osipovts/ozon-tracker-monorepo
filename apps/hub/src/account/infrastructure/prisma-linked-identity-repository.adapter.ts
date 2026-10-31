@@ -33,6 +33,21 @@ export class PrismaLinkedIdentityRepositoryAdapter implements LinkedIdentityRepo
     return count > 0;
   }
 
+  async listByUser(userId: string): Promise<LinkedIdentityEntity[]> {
+    const rows = await this.prisma.linkedIdentity.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return rows.map(toEntity);
+  }
+
+  async remove(userId: string, provider: OauthProviderType): Promise<boolean> {
+    const { count } = await this.prisma.linkedIdentity.deleteMany({ where: { userId, provider } });
+
+    return count > 0;
+  }
+
   async findByProviderSubject(
     provider: OauthProviderType,
     subject: string,

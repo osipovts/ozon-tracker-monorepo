@@ -5,6 +5,8 @@ import { AccountModule } from '../account/account.module.js';
 import {
   AuthenticateWithPasswordUseCase,
   ChangeAccountPasswordUseCase,
+  DeleteAccountUseCase,
+  GetAccountUseCase,
   NotifyExistingAccountUseCase,
   type OauthProviderType,
   RegisterAccountUseCase,
@@ -16,10 +18,13 @@ import {
   StartAuthSessionUseCase,
 } from '../auth-session/application/index.js';
 import { AuthSessionModule } from '../auth-session/auth-session.module.js';
+import { RemoveUserProductsUseCase } from '../product/application/index.js';
+import { ProductModule } from '../product/product.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { ChangePasswordUseCase } from './application/change-password.use-case.js';
+import { CloseAccountUseCase } from './application/close-account.use-case.js';
 import { CompleteOauthLoginUseCase } from './application/complete-oauth-login.use-case.js';
 import { ListOauthProvidersUseCase } from './application/list-oauth-providers.use-case.js';
 import { LogInUseCase } from './application/log-in.use-case.js';
@@ -30,6 +35,7 @@ import { StartOauthLoginUseCase } from './application/start-oauth-login.use-case
 import { GithubOauthProviderAdapter } from './infrastructure/github-oauth-provider.adapter.js';
 import { GoogleOauthProviderAdapter } from './infrastructure/google-oauth-provider.adapter.js';
 import { AccessGuard } from './presentation/access.guard.js';
+import { AccountController } from './presentation/account.controller.js';
 import { AuthController } from './presentation/auth.controller.js';
 import { AuthSessionsController } from './presentation/auth-sessions.controller.js';
 import { EmailVerificationController } from './presentation/email-verification.controller.js';
@@ -45,8 +51,9 @@ export const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
 const noticeIntervalMs = 60 * 60_000;
 
 @Module({
-  imports: [AccountModule, AuthSessionModule],
+  imports: [AccountModule, AuthSessionModule, ProductModule],
   controllers: [
+    AccountController,
     AuthController,
     AuthSessionsController,
     EmailVerificationController,
@@ -124,6 +131,21 @@ const noticeIntervalMs = 60 * 60_000;
       inject: [AuthenticateWithPasswordUseCase, StartAuthSessionUseCase, RATE_LIMITER, APP_CONFIG],
     },
     {
+      provide: CloseAccountUseCase,
+      useFactory: (
+        accounts: GetAccountUseCase,
+        products: RemoveUserProductsUseCase,
+        sessions: RevokeOtherAuthSessionsUseCase,
+        deletion: DeleteAccountUseCase,
+      ): CloseAccountUseCase => new CloseAccountUseCase(accounts, products, sessions, deletion),
+      inject: [
+        GetAccountUseCase,
+        RemoveUserProductsUseCase,
+        RevokeOtherAuthSessionsUseCase,
+        DeleteAccountUseCase,
+      ],
+    },
+    {
       provide: ChangePasswordUseCase,
       useFactory: (
         changeAccountPassword: ChangeAccountPasswordUseCase,
@@ -145,18 +167,21 @@ const noticeIntervalMs = 60 * 60_000;
     {
       // A provider whose OAuth app is not set up is left out: its login is off.
       provide: OAUTH_PROVIDERS,
-      useFactory: (config: AppConfigInterface): OauthProvidersType => {
+      useFactory: (config: AppConfigInterface, logger: LoggerPort): OauthProvidersType => {
         const providers = new Map<OauthProviderType, OauthProviderPort>();
         if (config.googleOauth !== null) {
           providers.set('google', new GoogleOauthProviderAdapter(config.googleOauth));
         }
         if (config.githubOauth !== null) {
-          providers.set('github', new GithubOauthProviderAdapter(config.githubOauth));
+          providers.set(
+            'github',
+            new GithubOauthProviderAdapter(config.githubOauth, undefined, logger.child('github')),
+          );
         }
 
         return providers;
       },
-      inject: [APP_CONFIG],
+      inject: [APP_CONFIG, LOGGER],
     },
     {
       provide: ListOauthProvidersUseCase,

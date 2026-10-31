@@ -3,3 +3,4 @@ export {
   GetProductStatsUseCase,
   type ProductStatsInterface,
 } from './get-product-stats.use-case.js';
+export { RemoveUserProductsUseCase } from './remove-user-products.use-case.js';
