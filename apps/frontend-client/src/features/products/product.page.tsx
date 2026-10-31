@@ -19,6 +19,7 @@ import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { DeleteProduct } from './delete-product.component.js';
+import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
 import { PriceChart } from './price-chart.component.js';
 import { formatPrice } from './price-format.type.js';
@@ -101,10 +102,10 @@ export function ProductPage(): ReactElement {
       <Anchor component={Link} to="/" size="sm">
         {t('common.backToProducts')}
       </Anchor>
-      <Title order={2}>
+      <Title order={2} fz={{ base: 20, sm: 28 }}>
         {newest?.title ?? `${data.product.marketplace} ${data.product.externalId}`}
       </Title>
-      <Group>
+      <Group gap="sm">
         <Title order={3}>
           {newestPrice === null ? t('product.noPriceYet') : formatPrice(newestPrice)}
         </Title>
@@ -136,28 +137,32 @@ export function ProductPage(): ReactElement {
         />
       </SimpleGrid>
       <Title order={4}>{t('product.history')}</Title>
-      <Table>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>{t('product.observed')}</Table.Th>
-            <Table.Th>{t('product.price')}</Table.Th>
-            <Table.Th>{t('product.availability')}</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map((observation): ReactElement => {
-            const amountMinor = priceOf(observation);
+      <Table.ScrollContainer minWidth={300}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t('product.observed')}</Table.Th>
+              <Table.Th>{t('product.price')}</Table.Th>
+              <Table.Th>{t('product.availability')}</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((observation): ReactElement => {
+              const amountMinor = priceOf(observation);
 
-            return (
-              <Table.Tr key={observation.id}>
-                <Table.Td>{new Date(observation.observedAt).toLocaleString(locale)}</Table.Td>
-                <Table.Td>{amountMinor === null ? '-' : formatPrice(amountMinor)}</Table.Td>
-                <Table.Td>{availabilityLabel(observation.availability, t)}</Table.Td>
-              </Table.Tr>
-            );
-          })}
-        </Table.Tbody>
-      </Table>
+              return (
+                <Table.Tr key={observation.id}>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                    {formatMoment(observation.observedAt, locale)}
+                  </Table.Td>
+                  <Table.Td>{amountMinor === null ? '-' : formatPrice(amountMinor)}</Table.Td>
+                  <Table.Td>{availabilityLabel(observation.availability, t)}</Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
       {data.observations.length === 0 && <Text c="dimmed">{t('product.noHistory')}</Text>}
       <Pagination
         total={Math.max(1, Math.ceil(data.observations.length / tablePageSize))}

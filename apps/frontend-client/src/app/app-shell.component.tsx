@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe, useResendVerification } from '../features/auth/use-me.hook.js';
+import classes from './app-shell.module.css';
 import { ColorSchemeControl } from './color-scheme.component.js';
 import { LanguageControl } from './language.component.js';
 
@@ -15,18 +16,22 @@ export function ClientShell(): ReactElement {
   const navigate = useNavigate();
 
   return (
-    <AppShell header={{ height: 56 }} padding="md">
+    <AppShell header={{ height: { base: 92, sm: 56 } }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Title order={4}>
+        <div className={classes['header']}>
+          <Title order={4} className={classes['title']}>
             <Anchor component={Link} to="/" c="inherit" underline="never">
               {t('shell.title')}
             </Anchor>
           </Title>
-          <Group>
+          <div className={classes['settings']}>
             <LanguageControl />
             <ColorSchemeControl />
-            <Text size="sm">{me.data?.email}</Text>
+          </div>
+          <div className={classes['account']}>
+            <Text size="sm" visibleFrom="sm">
+              {me.data?.email}
+            </Text>
             <Button
               size="xs"
               variant="default"
@@ -37,8 +42,8 @@ export function ClientShell(): ReactElement {
             >
               {t('common.logOut')}
             </Button>
-          </Group>
-        </Group>
+          </div>
+        </div>
       </AppShell.Header>
       <AppShell.Main>
         <Container size="lg">

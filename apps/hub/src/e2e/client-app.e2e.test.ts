@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { after, before, test } from 'node:test';
 
-import { type Browser, chromium, type Page } from 'playwright';
+import { type Browser, chromium, devices, type Page } from 'playwright';
 
 import { DockerStackAdapter } from './support/docker-stack.adapter.js';
 import { FakePriceWorkerAdapter } from './support/fake-price-worker.adapter.js';
@@ -168,6 +168,38 @@ void test('the hint of a point tells the average, the minimum, the maximum and t
   // The hour before it had no price: the hint says what was known last.
   await hover(27);
   await tooltip.getByText(/Last known:/).waitFor();
+});
+
+void test('on a phone the list is cards and nothing is wider than the screen', async (): Promise<void> => {
+  const product = await database.trackedProduct.findFirstOrThrow();
+  const phone = await browser.newContext({
+    ...devices['iPhone 12'],
+    storageState: await page.context().storageState(),
+  });
+  const screen = await phone.newPage();
+  const widerThanScreen = (): Promise<boolean> =>
+    screen.evaluate((): boolean => document.documentElement.scrollWidth > window.innerWidth);
+
+  await screen.goto(`${hub.baseUrl}/app/`);
+  await screen
+    .getByRole('link', { name: /Product|ASUS/ })
+    .first()
+    .waitFor();
+  assert.equal(await screen.locator('table').count(), 0);
+  assert.equal(await widerThanScreen(), false);
+
+  await screen.goto(`${hub.baseUrl}/app/products/${product.id}`);
+  await screen.locator('.recharts-wrapper').nth(1).waitFor();
+  assert.equal(await widerThanScreen(), false);
+
+  // The two charts are one under the other, each as wide as the content.
+  const [first, second] = await Promise.all([
+    screen.locator('.recharts-wrapper').nth(0).boundingBox(),
+    screen.locator('.recharts-wrapper').nth(1).boundingBox(),
+  ]);
+  assert.ok(first && second);
+  assert.ok(second.y > first.y + first.height - 2);
+  await phone.close();
 });
 
 void test('a product is deleted from its page after a confirmation, and goes for good with its last tracker', async (): Promise<void> => {

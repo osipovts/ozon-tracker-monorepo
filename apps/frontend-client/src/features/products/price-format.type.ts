@@ -4,3 +4,14 @@ const rubles = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RU
 export function formatPrice(amountMinor: number): string {
   return rubles.format(amountMinor / 100);
 }
+
+const wholeRubles = new Intl.NumberFormat('ru-RU', {
+  style: 'currency',
+  currency: 'RUB',
+  maximumFractionDigits: 0,
+});
+
+/** For the axis of a chart, where the kopecks only take the room of the line. */
+export function formatPriceShort(amountMinor: number): string {
+  return wholeRubles.format(amountMinor / 100);
+}

@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
-import { formatPrice } from './price-format.type.js';
+import { formatPrice, formatPriceShort } from './price-format.type.js';
 import type { GranularityType, PriceBucketInterface } from './price-series.type.js';
 
 interface ChartRowInterface {
@@ -141,9 +141,9 @@ export function PriceChart({
           <YAxis
             stroke="var(--mantine-color-dimmed)"
             tick={{ fontSize: 12 }}
-            width={80}
+            width={72}
             domain={paddedDomain(buckets)}
-            tickFormatter={(value: number): string => formatPrice(value)}
+            tickFormatter={(value: number): string => formatPriceShort(value)}
           />
           <Tooltip
             content={(props): ReactElement | null => {

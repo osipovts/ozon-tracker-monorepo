@@ -60,7 +60,7 @@ export function LoginPage(): ReactElement {
   };
 
   return (
-    <Container size="xs" mt={96}>
+    <Container size="xs" mt={{ base: 24, sm: 96 }}>
       <Card withBorder padding="xl">
         <form onSubmit={submit}>
           <Stack>
