@@ -58,7 +58,8 @@ export const ru: DictionaryType = {
   },
   proxies: {
     title: 'Прокси',
-    refreshSource: 'Обновить источник',
+    sources: 'Источники',
+    refreshSource: 'Обновить источники',
     refreshProgress: 'Ход обновления',
     filterAlive: 'Живость',
     filterAliveYes: 'Живые',

@@ -56,7 +56,8 @@ export const en = {
   },
   proxies: {
     title: 'Proxies',
-    refreshSource: 'Refresh source',
+    sources: 'Sources',
+    refreshSource: 'Refresh sources',
     refreshProgress: 'Refresh progress',
     filterAlive: 'Alive',
     filterAliveYes: 'Alive',

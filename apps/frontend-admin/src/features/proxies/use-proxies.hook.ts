@@ -1,8 +1,10 @@
 import {
   useMutation,
   type UseMutationResult,
+  useQueries,
   useQuery,
   useQueryClient,
+  type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
 
@@ -103,10 +105,45 @@ export function useDeleteAllProxies(): UseMutationResult<void, Error, void> {
   });
 }
 
-/** Queues the read of the source and follows its job until it ends. */
-export function useRefreshSource(): {
-  start: () => void;
-  jobId: string | null;
+export type ProxySourceType =
+  operations['ProxySourcesController_refresh']['parameters']['path']['source'];
+
+export const proxySources: readonly ProxySourceType[] = [
+  'github-free-proxy-list',
+  'proxifly',
+  'proxyscrape',
+];
+
+function isFinished(status: string | undefined): boolean {
+  return status === 'completed' || status === 'failed';
+}
+
+interface JobProgressInterface {
+  status: string;
+  percent: number;
+}
+
+type JobQueryType = UseQueryOptions<JobProgressInterface | undefined>;
+
+/** Follows a job until it ends; `onFinished` runs with every read of an ended job. */
+function jobQuery(jobId: string, onFinished: () => Promise<void>): JobQueryType {
+  return {
+    queryKey: ['job', jobId],
+    queryFn: async (): Promise<JobProgressInterface | undefined> => {
+      const found = ensure(await api.GET('/jobs/{id}', { params: { path: { id: jobId } } }));
+      if (isFinished(found?.status)) await onFinished();
+
+      return found;
+    },
+    refetchInterval: (query): number | false =>
+      isFinished(query.state.data?.status) ? false : 1000,
+  };
+}
+
+/** Queues the read of the sources and follows their jobs until they end. */
+export function useRefreshSources(): {
+  start: (sources: readonly ProxySourceType[]) => void;
+  jobIds: string[];
   percent: number | null;
   status: string | null;
   error: Error | null;
@@ -114,39 +151,47 @@ export function useRefreshSource(): {
 } {
   const refreshed = useRefreshedViews();
   const start = useMutation({
-    mutationFn: async (): Promise<string | undefined> =>
-      ensure(
-        await api.POST('/proxy-sources/{source}/refresh', {
-          params: { path: { source: 'github-free-proxy-list' } },
-          body: {},
-        }),
-      )?.jobId,
-  });
-  const jobId = start.data ?? null;
-  const job = useQuery({
-    queryKey: ['job', jobId],
-    enabled: jobId !== null,
-    queryFn: async (): Promise<{ status: string; percent: number } | undefined> => {
-      const found = ensure(await api.GET('/jobs/{id}', { params: { path: { id: jobId ?? '' } } }));
-      if (found?.status === 'completed' || found?.status === 'failed') await refreshed();
+    mutationFn: async (sources: readonly ProxySourceType[]): Promise<string[]> => {
+      const jobs = await Promise.all(
+        sources.map(
+          async (source): Promise<string | undefined> =>
+            ensure(
+              await api.POST('/proxy-sources/{source}/refresh', {
+                params: { path: { source } },
+                body: {},
+              }),
+            )?.jobId,
+        ),
+      );
 
-      return found;
-    },
-    refetchInterval: (query): number | false => {
-      const status = query.state.data?.status;
-
-      return status === 'completed' || status === 'failed' ? false : 1000;
+      return jobs.filter((jobId): jobId is string => jobId !== undefined);
     },
   });
+  const jobIds = start.data ?? [];
+  const jobs = useQueries({
+    queries: jobIds.map((jobId): JobQueryType => jobQuery(jobId, refreshed)),
+  });
+  const statuses = jobs.map((job): string | undefined => job.data?.status);
+  const unfinished = statuses.find((status): boolean => !isFinished(status));
 
   return {
-    start: (): void => {
-      start.mutate();
+    start: (sources): void => {
+      start.mutate(sources);
     },
-    jobId,
-    percent: job.data?.percent ?? null,
-    status: job.data?.status ?? null,
-    error: start.error ?? job.error,
+    jobIds,
+    percent:
+      jobs.length === 0
+        ? null
+        : Math.round(jobs.reduce((sum, job) => sum + (job.data?.percent ?? 0), 0) / jobs.length),
+    status:
+      jobs.length === 0
+        ? null
+        : unfinished !== undefined || statuses.includes(undefined)
+          ? (unfinished ?? 'queued')
+          : statuses.includes('failed')
+            ? 'failed'
+            : 'completed',
+    error: start.error ?? jobs.find((job) => job.error !== null)?.error ?? null,
     isStarting: start.isPending,
   };
 }

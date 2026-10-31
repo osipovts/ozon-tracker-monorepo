@@ -4,6 +4,7 @@ import {
   Group,
   Loader,
   Modal,
+  MultiSelect,
   Pagination,
   Progress,
   SegmentedControl,
@@ -22,11 +23,13 @@ import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import {
   proxyPageSize,
+  proxySources,
+  type ProxySourceType,
   sessionMarketplace,
   useDeleteAllProxies,
   useDeleteProxy,
   useProxies,
-  useRefreshSource,
+  useRefreshSources,
   useSetProxyDisabled,
 } from './use-proxies.hook.js';
 
@@ -92,14 +95,30 @@ function Choice({
 
 function RefreshSource(): ReactElement {
   const { t } = useTranslation();
-  const refresh = useRefreshSource();
+  const refresh = useRefreshSources();
+  const [sources, setSources] = useState<readonly ProxySourceType[]>(proxySources);
   const running =
-    refresh.jobId !== null && refresh.status !== 'completed' && refresh.status !== 'failed';
+    refresh.jobIds.length > 0 && refresh.status !== 'completed' && refresh.status !== 'failed';
 
   return (
     <Stack gap={4}>
-      <Group>
-        <Button loading={refresh.isStarting || running} onClick={refresh.start}>
+      <Group align="flex-end">
+        <MultiSelect
+          label={t('proxies.sources')}
+          data={[...proxySources]}
+          value={[...sources]}
+          disabled={refresh.isStarting || running}
+          onChange={(values): void => {
+            setSources(proxySources.filter((source): boolean => values.includes(source)));
+          }}
+        />
+        <Button
+          disabled={sources.length === 0}
+          loading={refresh.isStarting || running}
+          onClick={(): void => {
+            refresh.start(sources);
+          }}
+        >
           {t('proxies.refreshSource')}
         </Button>
         {refresh.status !== null && <Badge>{jobStatusLabel(refresh.status, t)}</Badge>}
