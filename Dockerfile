@@ -123,17 +123,6 @@ USER node
 CMD ["node", "dist/index.js"]
 
 ################################
-# Handbook fetcher
-################################
-FROM runtime AS handbook-fetcher-prod
-ENV NODE_ENV=production
-COPY --from=build /deploy/node_modules ./node_modules
-COPY --from=build /deploy/dist ./dist
-COPY --from=build /deploy/package.json ./package.json
-USER node
-CMD ["node", "dist/index.js"]
-
-################################
 # Chromium for the price fetcher
 ################################
 FROM install AS playwright-version
@@ -171,3 +160,19 @@ COPY --from=build /deploy/dist ./dist
 COPY --from=build /deploy/package.json ./package.json
 USER node
 CMD ["node", "dist/worker.js"]
+
+################################
+# Handbook fetcher: reads the sites in the browser, like the price fetcher
+################################
+FROM chromium AS handbook-fetcher-dev
+ENV NODE_ENV=development \
+    PATH="/opt/pnpm/bin:$PATH"
+COPY --from=pnpm /opt/pnpm /opt/pnpm
+
+FROM chromium AS handbook-fetcher-prod
+ENV NODE_ENV=production
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/dist ./dist
+COPY --from=build /deploy/package.json ./package.json
+USER node
+CMD ["node", "dist/index.js"]

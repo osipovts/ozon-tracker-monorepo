@@ -1,25 +1,57 @@
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
+import { chromium } from 'playwright';
 import { type HandbookFetchResultType, queueNames } from 'queue-contract';
 import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
 import { FetchCitiesUseCase } from './application/fetch-cities.use-case.js';
-import { DnsCitiesByLetterSourceAdapter } from './infrastructure/dns-cities-by-letter-source.adapter.js';
+import { ChromiumOptionsFactory } from './infrastructure/chromium-options.factory.js';
+import { DnsBrowserCitySourceAdapter } from './infrastructure/dns-browser-city-source.adapter.js';
 import { HandbookFetchController } from './presentation/handbook-fetch.controller.js';
 
 const env = z
   .object({
     redisUrl: z.string().default('redis://localhost:6379'),
     jobConcurrency: z.coerce.number().int().min(1).max(5).default(1),
+    headed: z.stringbool().default(true),
+    browserPath: z.string().min(1).optional(),
+    /** How long the site may take to open, and to answer, through a route. */
+    timeoutMs: z.coerce.number().int().min(1000).max(120_000).default(30_000),
   })
   .parse({
     redisUrl: process.env['REDIS_URL'],
     jobConcurrency: process.env['JOB_CONCURRENCY'],
+    headed: process.env['HEADED'],
+    browserPath: process.env['BROWSER_PATH'],
+    timeoutMs: process.env['SITE_TIMEOUT_MS'],
   });
 const logger = new ConsoleLoggerAdapter(
   parseLogLevel(process.env['LOG_LEVEL'], 'verbose'),
   'handbook-fetcher',
 );
+
+const options = new ChromiumOptionsFactory();
+logger.info(`Launching Chromium (${env.headed ? 'with a window' : 'headless'})`);
+const browser = await chromium.launch({
+  ...options.launch({
+    headed: env.headed,
+    timeoutMs: env.timeoutMs,
+    ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
+  }),
+  // The runner closes the browser on a signal, after the job in progress.
+  handleSIGINT: false,
+  handleSIGTERM: false,
+});
+logger.info(`Chromium ${browser.version()} is running`);
+
+let stopping = false;
+browser.on('disconnected', (): void => {
+  // Let the supervisor restart the worker instead of failing every job.
+  if (stopping) return;
+
+  logger.error('The browser disconnected; exiting');
+  process.exit(1);
+});
 
 const runner = new QueueWorkerRunner<HandbookFetchResultType>(
   {
@@ -38,7 +70,7 @@ const russianLetters = Array.from('АБВГДЕЖЗИЙКЛМНОПРСТУФХ�
 const controller = new HandbookFetchController(
   {
     'dns-cities': new FetchCitiesUseCase(
-      new DnsCitiesByLetterSourceAdapter(),
+      new DnsBrowserCitySourceAdapter(browser, options, env.timeoutMs, logger.child('dns-site')),
       russianLetters,
       logger.child('dns-cities'),
     ),
@@ -52,4 +84,7 @@ const controller = new HandbookFetchController(
 runner.start((data, signal, willRetry): Promise<void> =>
   controller.handle(data, signal, willRetry),
 );
-runner.stopOnSignals();
+runner.stopOnSignals(async (): Promise<void> => {
+  stopping = true;
+  await browser.close();
+});

@@ -79,8 +79,10 @@ services:
     <<: *dev
     image: price-tracker/handbook-fetcher:dev
     build:
-      target: dev
+      target: handbook-fetcher-dev
     command: ['pnpm', '--filter', 'handbook-fetcher', 'dev']
+    # tsx watch restarts the worker at once.
+    stop_grace_period: 10s
 
   price-fetcher-worker:
     <<: *dev

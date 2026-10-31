@@ -99,6 +99,10 @@ services:
       args:
         APP_NAME: handbook-fetcher
     environment: *app-env
+    # Chromium runs out of the default 64 MB of /dev/shm on heavy pages.
+    shm_size: 1gb
+    # Lets the read in progress finish: a read of a handbook goes through several routes.
+    stop_grace_period: 70s
     depends_on: *depends-on-redis
 
   # Scales with `docker compose up -d --scale price-fetcher-worker=<count>`.
