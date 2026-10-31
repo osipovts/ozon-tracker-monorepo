@@ -91,14 +91,25 @@ void test('sends mail through the SMTP service it is given, and writes it to the
   assert.equal(parser.parse(env()).emailVerificationTtlMs, 86_400_000);
 });
 
-void test('refreshes the prices every quarter of an hour of those older than six hours, and can be turned off', (): void => {
+void test('refreshes the prices every hour at the 55th minute, of a maximum age of an hour', (): void => {
   const config = parser.parse(env());
 
-  assert.equal(config.priceRefreshIntervalMs, 15 * 60_000);
-  assert.equal(config.priceRefreshMaxAgeMs, 6 * 60 * 60_000);
+  assert.equal(config.priceRefreshIntervalMs, null);
+  assert.equal(config.priceRefreshMinute, 55);
+  assert.equal(config.priceRefreshMaxAgeMs, 60 * 60_000);
   assert.equal(config.priceRefreshBatchSize, 200);
-  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '0'])).priceRefreshIntervalMs, 0);
+  assert.equal(parser.parse(env(['PRICE_REFRESH_MINUTE', '10'])).priceRefreshMinute, 10);
+  assert.throws(() => parser.parse(env(['PRICE_REFRESH_MINUTE', '60'])));
   assert.throws(() => parser.parse(env(['PRICE_REFRESH_MAX_AGE_MS', '10'])));
+});
+
+void test('an interval of the refresh takes the place of the hourly schedule, and 0 turns it off', (): void => {
+  assert.equal(
+    parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '900000'])).priceRefreshIntervalMs,
+    900_000,
+  );
+  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '0'])).priceRefreshIntervalMs, 0);
+  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', ''])).priceRefreshIntervalMs, null);
 });
 
 void test('takes the administrators of the hub from a list of emails, normalized', (): void => {

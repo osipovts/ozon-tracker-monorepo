@@ -22,6 +22,10 @@ import {
   PRICE_OBSERVATION_REPOSITORY,
   type PriceObservationRepositoryPort,
 } from './application/price-observation-repository.port.js';
+import {
+  priceRefreshScheduleOf,
+  schedulePeriodMs,
+} from './application/price-refresh-schedule.type.js';
 import { RecordPriceResultUseCase } from './application/record-price-result.use-case.js';
 import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
@@ -35,6 +39,13 @@ import { PrismaPriceObservationRepositoryAdapter } from './infrastructure/prisma
 import { PrismaTrackedProductRepositoryAdapter } from './infrastructure/prisma-tracked-product-repository.adapter.js';
 import { PriceResultsConsumer } from './presentation/price-results.consumer.js';
 import { ProductsController } from './presentation/products.controller.js';
+
+function refreshScheduleSettings(config: AppConfigInterface): {
+  intervalMs: number | null;
+  minute: number;
+} {
+  return { intervalMs: config.priceRefreshIntervalMs, minute: config.priceRefreshMinute };
+}
 
 @Module({
   imports: [PrismaModule, JobModule, BrowserSessionModule, ProxyModule],
@@ -159,6 +170,7 @@ import { ProductsController } from './presentation/products.controller.js';
           scheduleJob,
           {
             maxAgeMs: config.priceRefreshMaxAgeMs,
+            periodMs: schedulePeriodMs(priceRefreshScheduleOf(refreshScheduleSettings(config))),
             batchSize: config.priceRefreshBatchSize,
             timeoutMs: config.priceTimeoutMs,
           },
@@ -184,7 +196,7 @@ import { ProductsController } from './presentation/products.controller.js';
         new PeriodicPriceRefreshAdapter(
           refresh,
           limiter,
-          config.priceRefreshIntervalMs,
+          priceRefreshScheduleOf(refreshScheduleSettings(config)),
           logger.child('price-refresh'),
         ),
       inject: [RefreshPricesUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],

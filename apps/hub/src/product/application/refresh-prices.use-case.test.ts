@@ -26,7 +26,11 @@ interface SetupInterface {
   queue: { failing: boolean };
 }
 
-function setup(routes: Array<typeof route> = [route], batchSize = 200): SetupInterface {
+function setup(
+  routes: Array<typeof route> = [route],
+  batchSize = 200,
+  age: { maxAgeMs: number; periodMs: number } = { maxAgeMs: 6 * hour, periodMs: 15 * 60_000 },
+): SetupInterface {
   let current = start;
   const clock: ClockPort = { now: (): Date => current };
   const products = new InMemoryTrackedProductRepositoryAdapter();
@@ -51,7 +55,7 @@ function setup(routes: Array<typeof route> = [route], batchSize = 200): SetupInt
       products,
       chooseRoutes,
       new ScheduleJobUseCase(port, jobs),
-      { maxAgeMs: 6 * hour, batchSize, timeoutMs: 30_000 },
+      { ...age, batchSize, timeoutMs: 30_000 },
       clock,
     ),
     products,
@@ -130,6 +134,26 @@ void test('queues a product again once its last read or request is older than th
   // A read that came back (even a failed one) counts as fresh as well.
   await products.markChecked(id, 'ok', new Date(start.getTime() + 12 * hour));
   at(13);
+  assert.deepEqual(await refresh.execute(), { products: 0, jobs: 0 });
+});
+
+void test('with a maximum age as long as the period every run reads every price, and none twice in one', async (): Promise<void> => {
+  const { refresh, products, requests, at } = setup([route], 200, {
+    maxAgeMs: hour,
+    periodMs: hour,
+  });
+  const id = await track(products, 1);
+
+  await refresh.execute();
+  assert.equal(requests.length, 1);
+
+  // A run is an hour after the last, and the price was read at the end of that one: it is 59 minutes old.
+  at(1);
+  await products.markChecked(id, 'ok', new Date(start.getTime() + 59 * 60_000));
+  await refresh.execute();
+  assert.equal(requests.length, 2);
+
+  // The same run again reads nothing: the request of a moment ago is not older than the run.
   assert.deepEqual(await refresh.execute(), { products: 0, jobs: 0 });
 });
 

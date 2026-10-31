@@ -5,14 +5,17 @@ import type { ScheduleJobUseCase } from '../../job/application/index.js';
 import { type ClockPort, systemClock } from '../../shared/application/clock.port.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
+import { dueAgeMs } from './price-refresh-schedule.type.js';
 import type { TrackedProductRepositoryPort } from './tracked-product-repository.port.js';
 
 /** What a job of the price worker takes: the contract of the queue allows 50 products to a job. */
 const productsPerJob = 50;
 
 export interface PriceRefreshSettingsInterface {
-  /** A product is read again once its last read or request is older than this. */
+  /** A price must not be older than this. */
   maxAgeMs: number;
+  /** Time between two runs: a price is read at the last run before it outlives the maximum age. */
+  periodMs: number;
   /** How many products one run queues at most: the rest wait for the next run. */
   batchSize: number;
   timeoutMs: number;
@@ -41,7 +44,7 @@ export class RefreshPricesUseCase {
   async execute(): Promise<PriceRefreshResultInterface> {
     const now = this.clock.now();
     const due = await this.products.listDueForRefresh(
-      new Date(now.getTime() - this.settings.maxAgeMs),
+      new Date(now.getTime() - dueAgeMs(this.settings.maxAgeMs, this.settings.periodMs)),
       this.settings.batchSize,
     );
 

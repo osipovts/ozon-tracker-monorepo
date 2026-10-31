@@ -96,6 +96,7 @@ const config: AppConfigInterface = {
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
   priceRefreshIntervalMs: 0,
+  priceRefreshMinute: 55,
   priceRefreshMaxAgeMs: 21_600_000,
   priceRefreshBatchSize: 200,
   authSessionIdleTtlMs: 60_000,

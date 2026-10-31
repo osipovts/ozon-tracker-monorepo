@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 
 import { silentLogger } from 'logger';
 
@@ -34,7 +34,7 @@ void test('refreshes when the hub starts and then every interval, until it shuts
   const adapter = new PeriodicPriceRefreshAdapter(
     refresh,
     new InMemoryRateLimiterAdapter(),
-    40,
+    { kind: 'interval', intervalMs: 40 },
     silentLogger,
   );
 
@@ -52,8 +52,18 @@ void test('of the instances of the hub that share a Redis only one refreshes in 
   const shared = new InMemoryRateLimiterAdapter();
   const [first, second] = [counting(), counting()];
   const adapters = [
-    new PeriodicPriceRefreshAdapter(first.refresh, shared, 10_000, silentLogger),
-    new PeriodicPriceRefreshAdapter(second.refresh, shared, 10_000, silentLogger),
+    new PeriodicPriceRefreshAdapter(
+      first.refresh,
+      shared,
+      { kind: 'interval', intervalMs: 10_000 },
+      silentLogger,
+    ),
+    new PeriodicPriceRefreshAdapter(
+      second.refresh,
+      shared,
+      { kind: 'interval', intervalMs: 10_000 },
+      silentLogger,
+    ),
   ];
 
   for (const adapter of adapters) adapter.onApplicationBootstrap();
@@ -63,12 +73,12 @@ void test('of the instances of the hub that share a Redis only one refreshes in 
   assert.equal(first.calls() + second.calls(), 1);
 });
 
-void test('is off with an interval of 0', async (): Promise<void> => {
+void test('is off when the schedule is off', async (): Promise<void> => {
   const { refresh, calls } = counting();
   const adapter = new PeriodicPriceRefreshAdapter(
     refresh,
     new InMemoryRateLimiterAdapter(),
-    0,
+    { kind: 'off' },
     silentLogger,
   );
 
@@ -89,12 +99,17 @@ void test('a refresh that fails is logged and tried again at the next interval',
       return Promise.reject(new Error('database is down'));
     },
   };
-  const adapter = new PeriodicPriceRefreshAdapter(failing, new InMemoryRateLimiterAdapter(), 30, {
-    ...silentLogger,
-    warn: (message: string): void => {
-      warnings.push(message);
+  const adapter = new PeriodicPriceRefreshAdapter(
+    failing,
+    new InMemoryRateLimiterAdapter(),
+    { kind: 'interval', intervalMs: 30 },
+    {
+      ...silentLogger,
+      warn: (message: string): void => {
+        warnings.push(message);
+      },
     },
-  });
+  );
 
   adapter.onApplicationBootstrap();
   await wait(110);
@@ -103,4 +118,41 @@ void test('a refresh that fails is logged and tried again at the next interval',
   assert.ok(calls >= 2);
   assert.ok(warnings.length >= 2);
   assert.match(warnings[0] ?? '', /database is down/);
+});
+
+const settle = (): Promise<void> =>
+  new Promise((resolve): void => {
+    setImmediate(resolve);
+  });
+
+void test('at a minute of the hour it runs at that minute of every hour, and not when the hub starts', async (t: TestContext): Promise<void> => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 9, 31, 14, 20) });
+  const { refresh, calls } = counting();
+  const adapter = new PeriodicPriceRefreshAdapter(
+    refresh,
+    new InMemoryRateLimiterAdapter(),
+    { kind: 'hourly', minute: 55 },
+    silentLogger,
+  );
+
+  adapter.onApplicationBootstrap();
+  await settle();
+  assert.equal(calls(), 0);
+
+  t.mock.timers.tick(34 * 60_000);
+  await settle();
+  assert.equal(calls(), 0, 'not yet at 14:54');
+
+  t.mock.timers.tick(60_000);
+  await settle();
+  assert.equal(calls(), 1, 'at 14:55');
+
+  t.mock.timers.tick(60 * 60_000);
+  await settle();
+  assert.equal(calls(), 2, 'at 15:55');
+
+  await adapter.onApplicationShutdown();
+  t.mock.timers.tick(2 * 60 * 60_000);
+  await settle();
+  assert.equal(calls(), 2, 'not after it shuts down');
 });

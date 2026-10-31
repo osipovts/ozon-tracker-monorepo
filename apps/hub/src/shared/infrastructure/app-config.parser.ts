@@ -29,16 +29,14 @@ const configSchema = z.object({
   port: z.coerce.number().int().min(1).max(65535).default(3000),
   priceProxyCount: z.coerce.number().int().min(1).max(20).default(5),
   priceTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(60000),
-  priceRefreshIntervalMs: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .default(15 * 60_000),
+  // Not given: the prices are refreshed every hour at `priceRefreshMinute`.
+  priceRefreshIntervalMs: z.coerce.number().int().min(0).nullable(),
+  priceRefreshMinute: z.coerce.number().int().min(0).max(59).default(55),
   priceRefreshMaxAgeMs: z.coerce
     .number()
     .int()
     .min(60_000)
-    .default(6 * 60 * 60_000),
+    .default(60 * 60_000),
   priceRefreshBatchSize: z.coerce.number().int().min(1).max(5000).default(200),
   authSessionIdleTtlMs: z.coerce
     .number()
@@ -137,7 +135,11 @@ export class AppConfigParser {
         port: env['PORT'],
         priceProxyCount: env['PRICE_PROXY_COUNT'],
         priceTimeoutMs: env['PRICE_TIMEOUT_MS'],
-        priceRefreshIntervalMs: env['PRICE_REFRESH_INTERVAL_MS'],
+        priceRefreshIntervalMs:
+          env['PRICE_REFRESH_INTERVAL_MS'] === undefined || env['PRICE_REFRESH_INTERVAL_MS'] === ''
+            ? null
+            : env['PRICE_REFRESH_INTERVAL_MS'],
+        priceRefreshMinute: env['PRICE_REFRESH_MINUTE'],
         priceRefreshMaxAgeMs: env['PRICE_REFRESH_MAX_AGE_MS'],
         priceRefreshBatchSize: env['PRICE_REFRESH_BATCH_SIZE'],
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],

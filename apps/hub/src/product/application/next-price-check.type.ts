@@ -1,29 +1,40 @@
 import type { TrackedProductInterface } from '../domain/tracked-product.entity.js';
+import {
+  dueAgeMs,
+  nextHourlyRunAfter,
+  type PriceRefreshScheduleType,
+  schedulePeriodMs,
+} from './price-refresh-schedule.type.js';
 
 export interface PriceRefreshPolicyInterface {
-  /** How often the schedule looks for stale prices; 0 turns the schedule off. */
-  intervalMs: number;
-  /** A price older than this is read again. */
+  schedule: PriceRefreshScheduleType;
+  /** A price must not be older than this. */
   maxAgeMs: number;
 }
 
 /**
- * When the schedule reads the price of a product again, about: the product is due once both its last
- * read and its last request are older than the maximum age, and the schedule notices at its next look,
- * which is up to one interval later. A time that has passed means the product waits for that look.
- * Null when the schedule is off.
+ * When the schedule reads the price of a product again. At a minute of the hour it is the first run after
+ * the product is due, to the minute; at an interval it is the time the product is due, and the next look
+ * of the schedule comes up to one interval later. A time that has passed means the product waits for that
+ * look. Null when the schedule is off.
  */
 export function nextPriceCheckAt(
   product: Pick<TrackedProductInterface, 'lastCheckedAt' | 'lastRequestedAt'>,
   policy: PriceRefreshPolicyInterface,
   now: Date,
 ): Date | null {
-  if (policy.intervalMs === 0) return null;
+  const { schedule } = policy;
+  if (schedule.kind === 'off') return null;
 
   const touches = [product.lastCheckedAt, product.lastRequestedAt].flatMap((at): number[] =>
     at === null ? [] : [at.getTime()],
   );
-  if (touches.length === 0) return now;
+  const dueAt =
+    touches.length === 0
+      ? now
+      : new Date(Math.max(...touches) + dueAgeMs(policy.maxAgeMs, schedulePeriodMs(schedule)));
 
-  return new Date(Math.max(...touches) + policy.maxAgeMs);
+  if (schedule.kind === 'interval') return dueAt;
+
+  return nextHourlyRunAfter(schedule.minute, dueAt > now ? dueAt : now);
 }

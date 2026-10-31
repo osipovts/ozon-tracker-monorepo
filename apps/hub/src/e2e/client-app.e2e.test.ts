@@ -42,8 +42,8 @@ before(
     hub = await startHub({
       stack: infrastructure,
       env: {
-        // The schedule is on, and looks too rarely to read anything during the test: the next check is shown.
-        PRICE_REFRESH_INTERVAL_MS: '3600000',
+        // The default schedule, every hour at the 55th minute, which the page shows (the harness turns it off).
+        PRICE_REFRESH_INTERVAL_MS: '',
         CLIENT_UI_DIR: resolve(import.meta.dirname, '../../../frontend-client/dist'),
       },
     });
