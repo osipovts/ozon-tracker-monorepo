@@ -20,6 +20,11 @@ export interface AppConfigInterface {
   authSessionAbsoluteTtlMs: number;
   /** Whether the session cookie goes over HTTPS only. */
   authCookieSecure: boolean;
+  /** How many products a user may track. */
+  productsPerUserMax: number;
+  /** How many products a user may add per window, whatever the products. */
+  productAddMaxAttempts: number;
+  productAddWindowMs: number;
   /** How often the sessions that ended are deleted. */
   authSessionPurgeIntervalMs: number;
   /** The window the attempts of logging in and signing up are counted in. */

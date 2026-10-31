@@ -39,6 +39,13 @@ const configSchema = z.object({
     .int()
     .min(60_000)
     .default(30 * 24 * 3_600_000),
+  productsPerUserMax: z.coerce.number().int().min(1).default(100),
+  productAddMaxAttempts: z.coerce.number().int().min(1).default(30),
+  productAddWindowMs: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .default(60 * 60_000),
   authSessionPurgeIntervalMs: z.coerce
     .number()
     .int()
@@ -102,6 +109,9 @@ export class AppConfigParser {
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
+        productsPerUserMax: env['PRODUCTS_PER_USER_MAX'],
+        productAddMaxAttempts: env['PRODUCT_ADD_MAX_ATTEMPTS'],
+        productAddWindowMs: env['PRODUCT_ADD_WINDOW_MS'],
         authSessionPurgeIntervalMs: env['AUTH_SESSION_PURGE_INTERVAL_MS'],
         authRateLimitWindowMs: env['AUTH_RATE_LIMIT_WINDOW_MS'],
         authLoginMaxAttempts: env['AUTH_LOGIN_MAX_ATTEMPTS'],

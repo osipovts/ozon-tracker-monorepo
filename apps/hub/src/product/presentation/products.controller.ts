@@ -13,22 +13,18 @@ import {
   Res,
 } from '@nestjs/common';
 import {
-  ApiAcceptedResponse,
   ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
-import {
-  jobAcceptedResponseSchema,
-  type JobAcceptedResponseType,
-} from '../../shared/presentation/job-accepted.type.js';
 import {
   paginationQuerySchema,
   type PaginationQueryType,
@@ -39,18 +35,18 @@ import { AddProductUseCase } from '../application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
 import { RemoveProductUseCase } from '../application/remove-product.use-case.js';
-import { RequestPriceObservationUseCase } from '../application/request-price-observation.use-case.js';
 import type { PriceObservationInterface } from '../domain/price-observation.interface.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 import { priceHistoryResponseSchema, type PriceHistoryResponseType } from './price-history.type.js';
 import type { PriceObservationType } from './price-observation.type.js';
 import {
+  productAddedSchema,
+  type ProductAddedType,
   productCreateBodySchema,
   type ProductCreateBodyType,
   productIdParamSchema,
   productListResponseSchema,
   type ProductListResponseType,
-  productSchema,
   type ProductType,
 } from './product.type.js';
 
@@ -75,8 +71,6 @@ export class ProductsController {
   constructor(
     @Inject(AddProductUseCase) private readonly addProduct: AddProductUseCase,
     @Inject(ListProductsUseCase) private readonly listProducts: ListProductsUseCase,
-    @Inject(RequestPriceObservationUseCase)
-    private readonly requestObservation: RequestPriceObservationUseCase,
     @Inject(ListPriceHistoryUseCase) private readonly listHistory: ListPriceHistoryUseCase,
     @Inject(RemoveProductUseCase) private readonly removeProduct: RemoveProductUseCase,
   ) {}
@@ -101,45 +95,33 @@ export class ProductsController {
     summary: 'Track a product by its URL',
     description:
       'Any link to the product page works: it is canonicalized. The users share a product and its ' +
-      'price history, each one tracks it for themselves. ' +
-      'No price is read yet: use `POST /products/{id}/prices`.',
+      'price history, each one tracks it for themselves. A product that has no price yet gets the read ' +
+      'of its first price queued, which `jobId` names: follow it with `GET /jobs/{jobId}`. A user tracks ' +
+      'a limited number of products and adds them at a limited rate.',
   })
-  @ApiCreatedResponse({ standardSchema: productSchema, description: 'The product is tracked now' })
+  @ApiCreatedResponse({
+    standardSchema: productAddedSchema,
+    description: 'The product is tracked now',
+  })
   @ApiOkResponse({
-    standardSchema: productSchema,
+    standardSchema: productAddedSchema,
     description: 'The user tracked the product already',
   })
   @ApiBadRequestResponse({ description: 'Unsupported marketplace or product URL' })
+  @ApiForbiddenResponse({ description: 'The user tracks the most products the hub allows' })
+  @ApiTooManyRequestsResponse({ description: 'The user adds products too fast' })
   async add(
     @Body({ schema: productCreateBodySchema }) body: ProductCreateBodyType,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<ProductType> {
-    const { product, created } = await this.addProduct.execute(
+  ): Promise<ProductAddedType> {
+    const { product, created, jobId } = await this.addProduct.execute(
       requireIdentity(request).userId,
       body.url,
     );
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
 
-    return toProduct(product);
-  }
-
-  @Post(':id/prices')
-  @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({
-    summary: 'Queue a read of the fresh price',
-    description:
-      'Adds an item to the price history once a worker has read the product. ' +
-      'Follow the progress with `GET /jobs/{jobId}`: only you can read your job.',
-  })
-  @ApiAcceptedResponse({ standardSchema: jobAcceptedResponseSchema })
-  @ApiNotFoundResponse({ description: 'The product is not tracked' })
-  @ApiConflictResponse({ description: 'No alive proxies or sessions are available' })
-  request(
-    @Param('id', { schema: productIdParamSchema }) id: string,
-    @Req() request: Request,
-  ): Promise<JobAcceptedResponseType> {
-    return this.requestObservation.execute(requireIdentity(request).userId, id);
+    return { ...toProduct(product), jobId };
   }
 
   @Get(':id/prices')

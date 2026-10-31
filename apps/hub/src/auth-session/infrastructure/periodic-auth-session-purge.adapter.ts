@@ -35,6 +35,7 @@ export class PeriodicAuthSessionPurgeAdapter
     try {
       const purged = await this.purge.execute();
       if (purged > 0) this.logger.info(`Purged ${String(purged)} ended sessions`);
+      else this.logger.debug('No ended sessions to purge');
     } catch (error: unknown) {
       this.logger.warn(`Could not purge the ended sessions: ${errorMessage(error)}`);
     }

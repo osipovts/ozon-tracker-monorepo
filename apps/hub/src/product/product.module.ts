@@ -10,6 +10,7 @@ import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ProxyModule } from '../proxy/proxy.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
+import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddProductUseCase } from './application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from './application/list-price-history.use-case.js';
@@ -56,9 +57,33 @@ import { ProductsController } from './presentation/products.controller.js';
       useFactory: (
         resolve: ResolveProductReferenceUseCase,
         products: TrackedProductRepositoryPort,
+        observations: PriceObservationRepositoryPort,
+        requestObservation: RequestPriceObservationUseCase,
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
         logger: LoggerPort,
-      ): AddProductUseCase => new AddProductUseCase(resolve, products, logger.child('products')),
-      inject: [ResolveProductReferenceUseCase, TRACKED_PRODUCT_REPOSITORY, LOGGER],
+      ): AddProductUseCase =>
+        new AddProductUseCase(
+          resolve,
+          products,
+          observations,
+          requestObservation,
+          limiter,
+          {
+            maxProducts: config.productsPerUserMax,
+            add: { limit: config.productAddMaxAttempts, windowMs: config.productAddWindowMs },
+          },
+          logger.child('products'),
+        ),
+      inject: [
+        ResolveProductReferenceUseCase,
+        TRACKED_PRODUCT_REPOSITORY,
+        PRICE_OBSERVATION_REPOSITORY,
+        RequestPriceObservationUseCase,
+        RATE_LIMITER,
+        APP_CONFIG,
+        LOGGER,
+      ],
     },
     {
       provide: RemoveProductUseCase,

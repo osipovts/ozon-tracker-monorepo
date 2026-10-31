@@ -26,6 +26,13 @@ export const productSchema = z.object({
 
 export type ProductType = z.infer<typeof productSchema>;
 
+export const productAddedSchema = productSchema.extend({
+  /** The job that reads the first price: follow it with `GET /jobs/{jobId}`. Null if there is nothing to read, or no way to now. */
+  jobId: z.uuid().nullable(),
+});
+
+export type ProductAddedType = z.infer<typeof productAddedSchema>;
+
 export const productListItemSchema = productSchema.extend({
   /** The newest price observation, null until the first one is recorded. */
   latest: priceObservationSchema.nullable(),

@@ -3,9 +3,11 @@ import { test } from 'node:test';
 
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
+import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { AddProductUseCase } from './add-product.use-case.js';
+import { noPriceReads, unlimitedProducts } from './add-product-defaults.type.js';
 import { ListPriceHistoryUseCase } from './list-price-history.use-case.js';
 import { ListProductsUseCase } from './list-products.use-case.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
@@ -30,6 +32,10 @@ function setup(): {
     add: new AddProductUseCase(
       new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
       products,
+      observations,
+      noPriceReads,
+      new InMemoryRateLimiterAdapter(),
+      unlimitedProducts,
     ),
     remove: new RemoveProductUseCase(products),
     list: new ListProductsUseCase(products, observations),

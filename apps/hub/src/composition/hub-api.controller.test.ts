@@ -43,6 +43,7 @@ import { ProxiesController } from '../proxy/presentation/proxies.controller.js';
 import { ProxySourcesController } from '../proxy/presentation/proxy-sources.controller.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER } from '../shared/application/logger.port.js';
+import { InMemoryRateLimiterAdapter } from '../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../shared/presentation/application-error.filter.js';
 import { HttpLoggingInterceptor } from '../shared/presentation/http-logging.interceptor.js';
 
@@ -67,6 +68,13 @@ const queue: JobQueuePort = {
 };
 
 const scheduleJob = new ScheduleJobUseCase(queue, jobs);
+const requestObservation = new RequestPriceObservationUseCase(
+  products,
+  new ListBestProxyServersUseCase(proxies),
+  new ListMarketplaceSessionsUseCase(sessions),
+  scheduleJob,
+  { proxyCount: 3, timeoutMs: 30000 },
+);
 const listMarketplaceSessions = new ListMarketplaceSessionsUseCase(sessions);
 
 const operatorApiKey = 'operator-key-of-at-least-16-chars';
@@ -82,6 +90,9 @@ const config: AppConfigInterface = {
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
   authCookieSecure: false,
+  productsPerUserMax: 100,
+  productAddMaxAttempts: 1000,
+  productAddWindowMs: 60_000,
   authSessionPurgeIntervalMs: 60_000,
   authRateLimitWindowMs: 60_000,
   authLoginMaxAttempts: 1000,
@@ -141,20 +152,15 @@ before(async (): Promise<void> => {
         useValue: new AddProductUseCase(
           new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
           products,
+          observations,
+          requestObservation,
+          new InMemoryRateLimiterAdapter(),
+          { maxProducts: 100, add: { limit: 1000, windowMs: 60_000 } },
         ),
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
       { provide: RemoveProductUseCase, useValue: new RemoveProductUseCase(products) },
-      {
-        provide: RequestPriceObservationUseCase,
-        useValue: new RequestPriceObservationUseCase(
-          products,
-          new ListBestProxyServersUseCase(proxies),
-          listMarketplaceSessions,
-          scheduleJob,
-          { proxyCount: 3, timeoutMs: 30000 },
-        ),
-      },
+      { provide: RequestPriceObservationUseCase, useValue: requestObservation },
       {
         provide: ListPriceHistoryUseCase,
         useValue: new ListPriceHistoryUseCase(products, observations),
@@ -212,19 +218,19 @@ function post(body?: unknown): InitType {
 
 const productUrl = 'https://www.ozon.ru/product/4775581891/';
 
-async function addProduct(): Promise<string> {
-  const added = await call('/products', post({ url: productUrl }));
+async function addProduct(url = productUrl): Promise<{ id: string; jobId: string | null }> {
+  const added = await call('/products', post({ url }));
   assert.ok(added.status === 201 || added.status === 200);
+  const jobId = added.body['jobId'];
 
-  return String(added.body['id']);
+  return { id: String(added.body['id']), jobId: typeof jobId === 'string' ? jobId : null };
 }
 
-void test('adds a product without proxies but refuses to read its price', async (): Promise<void> => {
-  const id = await addProduct();
+void test('tracks a product though there is no way to read its price yet', async (): Promise<void> => {
+  const added = await call('/products', post({ url: productUrl }));
 
-  const response = await call(`/products/${id}/prices`, post());
-
-  assert.equal(response.status, 409);
+  assert.equal(added.status, 201);
+  assert.equal(added.body['jobId'], null);
   assert.equal(queued.length, 0);
 });
 
@@ -317,6 +323,7 @@ void test('tracks a product once whatever the link and lists it with its newest 
     url: productUrl,
     lastStatus: null,
     lastCheckedAt: null,
+    jobId: null,
   });
 
   const created = await call('/products', post({ url: 'https://ozon.ru/product/1/' }));
@@ -342,19 +349,24 @@ void test('tracks a product once whatever the link and lists it with its newest 
   );
 });
 
-void test('queues a read of the fresh price and serves an empty history meanwhile', async (): Promise<void> => {
-  const id = await addProduct();
-  const requested = await call(`/products/${id}/prices`, post());
-  assert.equal(requested.status, 202);
+void test('queues the read of the first price when a product is added, and serves an empty history meanwhile', async (): Promise<void> => {
+  const url = 'https://www.ozon.ru/product/9000/';
+  const { id, jobId } = await addProduct(url);
+  assert.ok(jobId !== null);
   assert.deepEqual(queued.at(-1), {
-    jobId: requested.body['jobId'],
+    jobId,
     routes: [
       { server: 'socks5://217.71.230.1:1080', session: null },
       { server: 'socks5://217.71.230.2:1080', session: null },
     ],
-    products: [{ trackedProductId: id, url: productUrl }],
+    products: [{ trackedProductId: id, url }],
     timeoutMs: 30000,
   });
+  const queuedBefore = queued.length;
+
+  // Adding it again does not queue it again.
+  assert.equal((await addProduct(url)).jobId, null);
+  assert.equal(queued.length, queuedBefore);
 
   const history = await call(`/products/${id}/prices`);
   assert.equal(history.status, 200);
@@ -362,8 +374,8 @@ void test('queues a read of the fresh price and serves an empty history meanwhil
     product: {
       id,
       marketplace: 'ozon',
-      externalId: '4775581891',
-      url: productUrl,
+      externalId: '9000',
+      url,
       lastStatus: null,
       lastCheckedAt: null,
     },
@@ -380,7 +392,6 @@ void test('rejects bad links, unknown and malformed product ids', async (): Prom
   assert.equal((await call('/products/nope/prices')).status, 400);
   const unknown = '/products/9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33/prices';
   assert.equal((await call(unknown)).status, 404);
-  assert.equal((await call(unknown, post())).status, 404);
 });
 
 void test('documents the endpoints and their zod schemas in Swagger', (): void => {
@@ -418,10 +429,16 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
   assert.ok(proxiesGet.responses['200']);
 
   const add = document.paths['/products']?.post;
-  assert.deepEqual(Object.keys(add?.responses ?? {}).toSorted(), ['200', '201', '400']);
+  assert.deepEqual(Object.keys(add?.responses ?? {}).toSorted(), [
+    '200',
+    '201',
+    '400',
+    '403',
+    '429',
+  ]);
   assert.ok(add?.requestBody);
   assert.ok(document.paths['/products']?.get?.responses['200']);
-  assert.ok(document.paths['/products/{id}/prices']?.post?.responses['202']);
+  assert.equal(document.paths['/products/{id}/prices']?.post, undefined);
 });
 
 const sessionFile = {
@@ -472,9 +489,8 @@ void test('imports, lists and deletes a session without exposing its cookies', a
 
 void test('the queued session goes to the worker first, then the job reports its progress', async (): Promise<void> => {
   await call('/sessions', post(sessionFile));
-  const productId = await addProduct();
-  const queuedProduct = await call(`/products/${productId}/prices`, post());
-  assert.equal(queuedProduct.status, 202);
+  const { id: productId, jobId } = await addProduct('https://www.ozon.ru/product/9100/');
+  assert.ok(jobId !== null);
 
   const request = queued.at(-1);
   assert.ok(typeof request === 'object' && request !== null && 'routes' in request);
@@ -484,7 +500,6 @@ void test('the queued session goes to the worker first, then the job reports its
     session: { ...sessionFile.session },
   });
 
-  const jobId = String(queuedProduct.body['jobId']);
   const queuedJob = await call(`/jobs/${jobId}`);
   assert.equal(queuedJob.status, 200);
   assert.equal(queuedJob.body['status'], 'queued');
@@ -550,7 +565,6 @@ void test('a proxy becomes ready once it has an active session', async (): Promi
 const userRoutes: Array<[string, string]> = [
   ['GET', '/products'],
   ['POST', '/products'],
-  ['POST', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
   ['GET', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
   ['DELETE', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
   ['GET', '/jobs/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
@@ -597,7 +611,7 @@ void test('the routes of the users take the cookie and no key, those of the oper
 });
 
 void test('a product is tracked per user: the others do not see it, and join it by adding the same link', async (): Promise<void> => {
-  const id = await addProduct();
+  const { id } = await addProduct();
   const other = { headers: { cookie: otherCookie } };
 
   assert.equal((await call('/products', other)).body['total'], 0);
@@ -618,7 +632,7 @@ void test('a product is tracked per user: the others do not see it, and join it 
 });
 
 void test('stops tracking a product: it goes for good with its last tracker, and not before', async (): Promise<void> => {
-  const id = await addProduct();
+  const { id } = await addProduct();
   await call('/products', {
     ...post({ url: productUrl }),
     headers: { cookie: otherCookie, 'content-type': 'application/json' },

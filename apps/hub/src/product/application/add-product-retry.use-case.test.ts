@@ -3,8 +3,11 @@ import { test } from 'node:test';
 
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
+import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
+import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { AddProductUseCase } from './add-product.use-case.js';
+import { noPriceReads, unlimitedProducts } from './add-product-defaults.type.js';
 import { ProductGoneError } from './product-gone.error.js';
 
 const jane = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
@@ -28,6 +31,10 @@ void test('tracks the product again when it was removed under the user, instead 
   const add = new AddProductUseCase(
     new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
     products,
+    new InMemoryPriceObservationRepositoryAdapter(),
+    noPriceReads,
+    new InMemoryRateLimiterAdapter(),
+    unlimitedProducts,
   );
 
   const { product, created } = await add.execute(jane, 'https://www.ozon.ru/product/1/');
@@ -45,6 +52,10 @@ void test('gives up when the product is gone again', async (): Promise<void> => 
   const add = new AddProductUseCase(
     new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
     products,
+    new InMemoryPriceObservationRepositoryAdapter(),
+    noPriceReads,
+    new InMemoryRateLimiterAdapter(),
+    unlimitedProducts,
   );
 
   await assert.rejects(add.execute(jane, 'https://www.ozon.ru/product/1/'), ProductGoneError);
