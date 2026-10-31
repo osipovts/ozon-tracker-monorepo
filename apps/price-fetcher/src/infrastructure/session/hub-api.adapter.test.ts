@@ -78,6 +78,7 @@ void test('asks the hub for alive Russian proxies without a session', async (): 
   assert.equal(requests.at(-1)?.authorization, `Bearer ${apiKey}`);
   assert.deepEqual(Object.fromEntries(query.searchParams), {
     alive: 'true',
+    disabled: 'false',
     country: 'RU',
     ready: 'false',
     marketplace: 'ozon',

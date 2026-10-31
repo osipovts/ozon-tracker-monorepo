@@ -20,6 +20,8 @@ export class HubApiAdapter implements HubSessionsPort {
     const url = new URL('/proxies', this.baseUrl);
     url.search = new URLSearchParams({
       alive: 'true',
+      // A proxy an administrator turned off is not to get a session either.
+      disabled: 'false',
       country: marketplaceExitCountries[marketplace],
       ready: 'false',
       marketplace,

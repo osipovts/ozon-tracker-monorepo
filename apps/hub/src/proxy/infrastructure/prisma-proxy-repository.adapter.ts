@@ -21,6 +21,7 @@ function toEntity(row: ProxyRow): ProxyEntity {
     checksTotal: row.checksTotal,
     checksAlive: row.checksAlive,
     lastCheckedAt: row.lastCheckedAt,
+    disabledAt: row.disabledAt,
   });
 }
 
@@ -48,6 +49,12 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
     );
   }
 
+  async delete(server: string): Promise<boolean> {
+    const { count } = await this.prisma.proxy.deleteMany({ where: { server } });
+
+    return count > 0;
+  }
+
   async list(
     filter: ProxyFilterInterface,
     pagination: PaginationInterface,
@@ -55,6 +62,9 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
     const where = {
       ...(filter.alive === undefined ? {} : { alive: filter.alive }),
       ...(filter.country === undefined ? {} : { country: filter.country }),
+      ...(filter.disabled === undefined
+        ? {}
+        : { disabledAt: filter.disabled ? { not: null } : null }),
       ...(filter.servers === undefined && filter.excludedServers === undefined
         ? {}
         : {

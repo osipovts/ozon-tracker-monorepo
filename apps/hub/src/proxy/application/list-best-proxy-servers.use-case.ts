@@ -12,7 +12,7 @@ export class ListBestProxyServersUseCase {
 
   async execute(query: BestProxyServersQueryInterface): Promise<string[]> {
     const best = await this.proxies.list(
-      { alive: true, country: query.country },
+      { alive: true, country: query.country, disabled: false },
       { page: 1, pageSize: query.limit },
     );
 

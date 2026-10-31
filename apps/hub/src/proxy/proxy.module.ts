@@ -7,11 +7,13 @@ import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
+import { DeleteProxyUseCase } from './application/delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from './application/list-best-proxy-servers.use-case.js';
 import { ListProxiesUseCase } from './application/list-proxies.use-case.js';
 import { PROXY_REPOSITORY, type ProxyRepositoryPort } from './application/proxy-repository.port.js';
 import { RecordProxyChecksUseCase } from './application/record-proxy-checks.use-case.js';
 import { RefreshProxySourceUseCase } from './application/refresh-proxy-source.use-case.js';
+import { SetProxyDisabledUseCase } from './application/set-proxy-disabled.use-case.js';
 import { PrismaProxyRepositoryAdapter } from './infrastructure/prisma-proxy-repository.adapter.js';
 import { ProxiesController } from './presentation/proxies.controller.js';
 import { ProxyResultsConsumer } from './presentation/proxy-results.consumer.js';
@@ -43,6 +45,18 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
         sessions: ListMarketplaceSessionsUseCase,
       ): ListProxiesUseCase => new ListProxiesUseCase(proxies, sessions),
       inject: [PROXY_REPOSITORY, ListMarketplaceSessionsUseCase],
+    },
+    {
+      provide: SetProxyDisabledUseCase,
+      useFactory: (proxies: ProxyRepositoryPort): SetProxyDisabledUseCase =>
+        new SetProxyDisabledUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
+    },
+    {
+      provide: DeleteProxyUseCase,
+      useFactory: (proxies: ProxyRepositoryPort): DeleteProxyUseCase =>
+        new DeleteProxyUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
     },
     {
       provide: ListBestProxyServersUseCase,

@@ -1,14 +1,37 @@
-import { Controller, Get, Inject, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Patch,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
+import { DeleteProxyUseCase } from '../application/delete-proxy.use-case.js';
 import { ListProxiesUseCase } from '../application/list-proxies.use-case.js';
+import { SetProxyDisabledUseCase } from '../application/set-proxy-disabled.use-case.js';
 import {
+  proxyDisabledBodySchema,
+  type ProxyDisabledBodyType,
   proxyListQuerySchema,
   type ProxyListQueryType,
   proxyListResponseSchema,
   type ProxyListResponseType,
+  proxyServerQuerySchema,
+  type ProxyServerQueryType,
 } from './proxy-list.type.js';
 
 @ApiBearerAuth()
@@ -16,7 +39,11 @@ import {
 @routeAccess('operator')
 @Controller('proxies')
 export class ProxiesController {
-  constructor(@Inject(ListProxiesUseCase) private readonly listProxies: ListProxiesUseCase) {}
+  constructor(
+    @Inject(ListProxiesUseCase) private readonly listProxies: ListProxiesUseCase,
+    @Inject(SetProxyDisabledUseCase) private readonly setDisabled: SetProxyDisabledUseCase,
+    @Inject(DeleteProxyUseCase) private readonly deleteProxy: DeleteProxyUseCase,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -30,7 +57,8 @@ export class ProxiesController {
   ): Promise<ProxyListResponseType> {
     const page = await this.listProxies.execute(
       {
-        alive: query.alive === 'true',
+        ...(query.alive === undefined ? {} : { alive: query.alive === 'true' }),
+        ...(query.disabled === undefined ? {} : { disabled: query.disabled === 'true' }),
         ...(query.country === undefined ? {} : { country: query.country }),
         marketplace: query.marketplace,
         ...(query.ready === undefined ? {} : { ready: query.ready === 'true' }),
@@ -49,6 +77,7 @@ export class ProxiesController {
       checksTotal: proxy.snapshot.checksTotal,
       lastCheckedAt: proxy.snapshot.lastCheckedAt.toISOString(),
       ready,
+      disabled: proxy.snapshot.disabledAt !== null,
       session:
         session === null
           ? null
@@ -59,5 +88,36 @@ export class ProxiesController {
               updatedAt: session.updatedAt.toISOString(),
             },
     }));
+  }
+
+  @Patch()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Turn a proxy off or on',
+    description:
+      'A proxy that is off stays in the list but is not given to the workers, and a check does not turn it on. The server goes in the query: it has slashes.',
+  })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'The proxy is unknown' })
+  async setProxyDisabled(
+    @Query({ schema: proxyServerQuerySchema }) query: ProxyServerQueryType,
+    @Body({ schema: proxyDisabledBodySchema }) body: ProxyDisabledBodyType,
+  ): Promise<void> {
+    await this.setDisabled.execute(query.server, body.disabled);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete a proxy',
+    description:
+      'The next refresh of its source finds it again if it is still listed there: turn it off instead to keep it away.',
+  })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'The proxy is unknown' })
+  async remove(
+    @Query({ schema: proxyServerQuerySchema }) query: ProxyServerQueryType,
+  ): Promise<void> {
+    await this.deleteProxy.execute(query.server);
   }
 }

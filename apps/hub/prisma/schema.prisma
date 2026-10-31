@@ -12,7 +12,7 @@ datasource db {
 
 model Proxy {
   /// Proxy URL without credentials, e.g. socks5://203.0.113.10:1080
-  server        String   @id
+  server        String    @id
   source        String
   country       String?
   exitIp        String?
@@ -20,11 +20,13 @@ model Proxy {
   alive         Boolean
   /// Latency of the last successful check, in milliseconds.
   latencyMs     Int?
-  checksTotal   Int      @default(0)
-  checksAlive   Int      @default(0)
+  checksTotal   Int       @default(0)
+  checksAlive   Int       @default(0)
   /// checksAlive / checksTotal, kept in the row to sort by it.
-  successRate   Float    @default(0)
+  successRate   Float     @default(0)
   lastCheckedAt DateTime
+  /// When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on.
+  disabledAt    DateTime?
 
   @@index([alive, successRate(sort: Desc), latencyMs])
   @@map("proxies")

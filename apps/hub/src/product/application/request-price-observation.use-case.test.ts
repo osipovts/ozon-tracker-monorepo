@@ -30,6 +30,7 @@ function proxy(server: string, alive: boolean, checksAlive: number): ProxyEntity
     checksTotal: 4,
     checksAlive,
     lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+    disabledAt: null,
   });
 }
 

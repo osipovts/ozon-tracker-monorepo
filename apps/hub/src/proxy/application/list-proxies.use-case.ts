@@ -12,6 +12,7 @@ import type { ProxyRepositoryPort } from './proxy-repository.port.js';
 export interface ProxyListFilterInterface {
   alive?: boolean;
   country?: string;
+  disabled?: boolean;
   /** The marketplace whose sessions make a proxy ready. */
   marketplace: string;
   /** Ready proxies have an active session of the marketplace. */
@@ -49,6 +50,7 @@ export class ListProxiesUseCase {
       {
         ...(filter.alive === undefined ? {} : { alive: filter.alive }),
         ...(filter.country === undefined ? {} : { country: filter.country }),
+        ...(filter.disabled === undefined ? {} : { disabled: filter.disabled }),
         ...(filter.ready === undefined
           ? {}
           : filter.ready

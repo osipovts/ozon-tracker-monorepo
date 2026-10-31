@@ -12,6 +12,8 @@ export interface ProxyInterface {
   checksTotal: number;
   checksAlive: number;
   lastCheckedAt: Date;
+  /** When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on. */
+  disabledAt: Date | null;
 }
 
 /** A check that found the proxy alive tells its values; a dead one leaves the last known ones. */
@@ -32,6 +34,15 @@ export class ProxyEntity {
     return checksTotal === 0 ? 0 : checksAlive / checksTotal;
   }
 
+  /** Turned off as of the time; one that is off already keeps the first time. */
+  disabled(at: Date): ProxyEntity {
+    return new ProxyEntity({ ...this.snapshot, disabledAt: this.snapshot.disabledAt ?? at });
+  }
+
+  enabled(): ProxyEntity {
+    return new ProxyEntity({ ...this.snapshot, disabledAt: null });
+  }
+
   static fromCheck(check: ProxyCheckInterface, previous?: ProxyEntity): ProxyEntity {
     const known = previous?.snapshot;
 
@@ -45,6 +56,7 @@ export class ProxyEntity {
       checksTotal: (known?.checksTotal ?? 0) + 1,
       checksAlive: (known?.checksAlive ?? 0) + (check.alive ? 1 : 0),
       lastCheckedAt: check.checkedAt,
+      disabledAt: known?.disabledAt ?? null,
     });
   }
 }

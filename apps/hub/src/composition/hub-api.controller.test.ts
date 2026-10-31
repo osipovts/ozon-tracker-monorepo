@@ -37,9 +37,11 @@ import { RequestPriceObservationUseCase } from '../product/application/request-p
 import { InMemoryPriceObservationRepositoryAdapter } from '../product/infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../product/infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { ProductsController } from '../product/presentation/products.controller.js';
+import { DeleteProxyUseCase } from '../proxy/application/delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ListProxiesUseCase } from '../proxy/application/list-proxies.use-case.js';
 import { RefreshProxySourceUseCase } from '../proxy/application/refresh-proxy-source.use-case.js';
+import { SetProxyDisabledUseCase } from '../proxy/application/set-proxy-disabled.use-case.js';
 import { ProxyEntity } from '../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
 import { ProxiesController } from '../proxy/presentation/proxies.controller.js';
@@ -178,6 +180,8 @@ before(async (): Promise<void> => {
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
       { provide: RemoveProductUseCase, useValue: new RemoveProductUseCase(products) },
+      { provide: SetProxyDisabledUseCase, useValue: new SetProxyDisabledUseCase(proxies) },
+      { provide: DeleteProxyUseCase, useValue: new DeleteProxyUseCase(proxies) },
       { provide: RequestPriceObservationUseCase, useValue: requestObservation },
       {
         provide: ListPriceHistoryUseCase,
@@ -219,7 +223,8 @@ async function call(
     ...init,
     headers: { ...credentials, ...init.headers },
   });
-  const body: unknown = await response.json();
+  const text = await response.text();
+  const body: unknown = text === '' ? {} : JSON.parse(text);
   assert.ok(typeof body === 'object' && body !== null);
 
   return { status: response.status, body: Object.fromEntries(Object.entries(body)) };
@@ -298,11 +303,15 @@ void test('lists proxies with pagination and validates the query', async (): Pro
           checksTotal: 1,
           checksAlive: index !== 3 ? 1 : 0,
           lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+          disabledAt: null,
         }),
     ),
   );
 
-  const alive = await call('/proxies?pageSize=1');
+  // With no `alive`, both the alive and the dead are listed.
+  assert.equal((await call('/proxies?pageSize=1')).body['total'], 3);
+
+  const alive = await call('/proxies?alive=true&pageSize=1');
   assert.equal(alive.status, 200);
   assert.equal(alive.body['total'], 2);
   assert.equal(alive.body['pageSize'], 1);
@@ -318,6 +327,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
       checksTotal: 1,
       lastCheckedAt: '2026-10-24T12:00:00.000Z',
       ready: false,
+      disabled: false,
       session: null,
     },
   ]);
@@ -442,7 +452,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     proxiesGet?.parameters
       ?.map((parameter) => ('name' in parameter ? parameter.name : '$ref'))
       .toSorted(),
-    ['alive', 'country', 'marketplace', 'page', 'pageSize', 'ready'],
+    ['alive', 'country', 'disabled', 'marketplace', 'page', 'pageSize', 'ready'],
   );
   assert.ok(proxiesGet.responses['200']);
 
@@ -591,6 +601,8 @@ const userRoutes: Array<[string, string]> = [
 const operatorRoutes: Array<[string, string]> = [
   ['GET', '/jobs'],
   ['GET', '/proxies'],
+  ['PATCH', '/proxies?server=socks5%3A%2F%2F203.0.113.50%3A1080'],
+  ['DELETE', '/proxies?server=socks5%3A%2F%2F203.0.113.50%3A1080'],
   ['POST', '/proxy-sources/github-free-proxy-list/refresh'],
   ['GET', '/sessions'],
   ['POST', '/sessions'],
@@ -673,4 +685,63 @@ void test('stops tracking a product: it goes for good with its last tracker, and
     404,
   );
   assert.equal((await call('/products/nope', { method: 'DELETE' })).status, 400);
+});
+
+void test('an administrator turns a proxy off and on, sees the ones that are off, and deletes one', async (): Promise<void> => {
+  const server = 'socks5://203.0.113.50:1080';
+  await proxies.saveMany([
+    new ProxyEntity({
+      server,
+      source: 'github-free-proxy-list',
+      country: 'RU',
+      exitIp: null,
+      alive: true,
+      latencyMs: 80,
+      checksTotal: 2,
+      checksAlive: 2,
+      lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+      disabledAt: null,
+    }),
+  ]);
+  const query = `server=${encodeURIComponent(server)}`;
+  const servers = async (filter: string): Promise<unknown[]> => {
+    const items: unknown = (await call(`/proxies?pageSize=100&${filter}`)).body['items'];
+    assert.ok(Array.isArray(items));
+
+    return items.map((item: unknown): unknown =>
+      typeof item === 'object' && item !== null && 'server' in item
+        ? [item.server, 'disabled' in item && item.disabled]
+        : item,
+    );
+  };
+
+  assert.equal(
+    (await call(`/proxies?${query}`, { ...post({ disabled: true }), method: 'PATCH' })).status,
+    204,
+  );
+  assert.deepEqual(await servers('disabled=true'), [[server, true]]);
+  assert.equal(
+    (await servers('disabled=false')).some(
+      (item): boolean => Array.isArray(item) && item[0] === server,
+    ),
+    false,
+  );
+
+  assert.equal(
+    (await call(`/proxies?${query}`, { ...post({ disabled: false }), method: 'PATCH' })).status,
+    204,
+  );
+  assert.deepEqual(await servers('disabled=true'), []);
+
+  assert.equal((await call(`/proxies?${query}`, { method: 'DELETE' })).status, 204);
+  assert.equal((await call(`/proxies?${query}`, { method: 'DELETE' })).status, 404);
+  assert.equal(
+    (await call(`/proxies?${query}`, { ...post({ disabled: true }), method: 'PATCH' })).status,
+    404,
+  );
+  assert.equal((await call('/proxies?server=not-a-proxy', { method: 'DELETE' })).status, 400);
+  assert.equal(
+    (await call(`/proxies?${query}`, { ...post({ disabled: 'yes' }), method: 'PATCH' })).status,
+    400,
+  );
 });

@@ -13,6 +13,7 @@ function matches({ snapshot }: ProxyEntity, filter: ProxyFilterInterface): boole
   return (
     (filter.alive === undefined || snapshot.alive === filter.alive) &&
     (filter.country === undefined || snapshot.country === filter.country) &&
+    (filter.disabled === undefined || (snapshot.disabledAt !== null) === filter.disabled) &&
     (filter.servers === undefined || filter.servers.includes(snapshot.server)) &&
     filter.excludedServers?.includes(snapshot.server) !== true
   );
@@ -44,6 +45,10 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     for (const proxy of proxies) this.proxies.set(proxy.snapshot.server, proxy);
 
     return Promise.resolve();
+  }
+
+  delete(server: string): Promise<boolean> {
+    return Promise.resolve(this.proxies.delete(server));
   }
 
   list(
