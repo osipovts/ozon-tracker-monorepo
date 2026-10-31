@@ -33,3 +33,13 @@ export async function promptCapture(
     controller.abort();
   }
 }
+
+/** Saves the session once the check is passed in the window: windows open together have no one terminal to ask. */
+export async function waitForPass(
+  step: Pick<CaptureStepInterface, 'capture'>,
+  waitMs: number,
+): Promise<CaptureDecisionType> {
+  await step.capture.waitUntilPassed(AbortSignal.timeout(waitMs));
+
+  return 'save';
+}

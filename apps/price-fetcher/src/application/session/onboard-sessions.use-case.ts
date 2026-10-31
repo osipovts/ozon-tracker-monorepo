@@ -42,18 +42,39 @@ export class OnboardSessionsUseCase {
     decide: (step: CaptureStepInterface) => Promise<CaptureDecisionType>,
     /** The routes to prepare instead of the proxies of the hub; null is the direct connection. */
     routes?: ReadonlyArray<string | null>,
+    /** How many windows are open at once. */
+    concurrency = 1,
   ): Promise<OnboardSummaryInterface> {
     const servers =
       routes ?? (await this.hub.listProxiesWithoutSession(this.capture.marketplace, limit));
     this.logger.info(`${String(servers.length)} routes need a session`);
 
+    const shown = servers.map((server): string | null =>
+      server === null ? null : redacted(server),
+    );
+    const reasons: Array<string | null> = servers.map((): null => null);
+    let next = 0;
+    // Each of the workers takes the next route as soon as its window is done.
+    const work = async (): Promise<void> => {
+      while (next < servers.length) {
+        signal.throwIfAborted();
+        const index = next;
+        next += 1;
+        reasons[index] = await this.prepare(
+          servers[index] ?? null,
+          shown[index] ?? null,
+          index,
+          servers.length,
+          decide,
+        );
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, servers.length) }, work));
+
     const summary: OnboardSummaryInterface = { ready: [], skipped: [] };
-    for (const [index, server] of servers.entries()) {
-      signal.throwIfAborted();
-      const shown = server === null ? null : redacted(server);
-      const reason = await this.prepare(server, shown, index, servers.length, decide);
-      if (reason === null) summary.ready.push(shown);
-      else summary.skipped.push({ server: shown, reason });
+    for (const [index, reason] of reasons.entries()) {
+      if (reason === null) summary.ready.push(shown[index] ?? null);
+      else summary.skipped.push({ server: shown[index] ?? null, reason });
     }
 
     return summary;

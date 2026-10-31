@@ -156,3 +156,58 @@ void test('prepares the given proxies with credentials and keeps the credentials
   assert.equal(JSON.stringify(summary).includes('secret'), false);
   assert.equal(uploaded.length, 1);
 });
+
+void test('keeps as many windows open at once as the concurrency allows, and reports in the order of the routes', async (): Promise<void> => {
+  const servers = [1, 2, 3, 4, 5].map((n): string => `socks5://217.71.230.${String(n)}:1080`);
+  let open = 0;
+  let peak = 0;
+  const capture: SessionCapturePort = {
+    marketplace: 'ozon',
+    open: (proxy: ProxyEndpointEntity | null): Promise<SessionCaptureInterface> => {
+      open += 1;
+      peak = Math.max(peak, open);
+
+      return Promise.resolve({
+        waitUntilPassed: (): Promise<void> => Promise.resolve(),
+        export: (): Promise<CapturedSessionInterface> =>
+          Promise.resolve({
+            marketplace: 'ozon',
+            proxy: proxy?.server ?? null,
+            session: {
+              id: '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11',
+              exitIp: '217.71.230.1',
+              userAgent: 'Mozilla/5.0',
+              storageState: { cookies: [], origins: [] },
+            },
+            createdAt: '2026-10-24T12:00:00.000Z',
+          }),
+        close: (): Promise<void> => {
+          open -= 1;
+
+          return Promise.resolve();
+        },
+      });
+    },
+  };
+  const hub: HubSessionsPort = {
+    listProxiesWithoutSession: (): Promise<string[]> => Promise.resolve([]),
+    uploadSession: (): Promise<void> => Promise.resolve(),
+  };
+
+  const summary = await new OnboardSessionsUseCase(hub, capture).execute(
+    5,
+    new AbortController().signal,
+    async (): Promise<CaptureDecisionType> => {
+      await new Promise((resolve): void => {
+        setImmediate(resolve);
+      });
+
+      return 'save';
+    },
+    servers,
+    3,
+  );
+
+  assert.equal(peak, 3);
+  assert.deepEqual(summary.ready, servers);
+});

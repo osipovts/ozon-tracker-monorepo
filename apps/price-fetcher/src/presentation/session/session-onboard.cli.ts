@@ -11,7 +11,7 @@ import { OzonSessionCaptureAdapter } from '../../infrastructure/ozon/ozon-sessio
 import { HubApiAdapter } from '../../infrastructure/session/hub-api.adapter.js';
 import { ChromiumOptionsFactory } from '../../infrastructure/shared/chromium-options.factory.js';
 import { GeoIpPageParser } from '../../infrastructure/shared/geo-ip-page.parser.js';
-import { promptCapture } from './capture-prompt.cli.js';
+import { promptCapture, waitForPass } from './capture-prompt.cli.js';
 
 /** Takes the hub proxies without a session, lets the person pass the check through each and uploads the sessions. */
 export async function runSessionOnboardCli(args: string[] = process.argv.slice(2)): Promise<void> {
@@ -21,6 +21,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     options: {
       hub: { type: 'string', default: process.env['HUB_URL'] ?? 'http://localhost:3000' },
       limit: { type: 'string', default: '5' },
+      concurrency: { type: 'string', default: '1' },
       direct: { type: 'boolean', default: false },
       proxy: { type: 'string', multiple: true },
       'wait-ms': { type: 'string', default: '600000' },
@@ -32,7 +33,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
 
   if (values.help === true) {
     console.log(
-      'Usage: HUB_API_KEY=<key of the hub> pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--direct] [--proxy http://user:password@host:port ...] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
+      'Usage: HUB_API_KEY=<key of the hub> pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--concurrency 1] [--direct] [--proxy http://user:password@host:port ...] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
     );
 
     return;
@@ -45,6 +46,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     .min(1, 'Set HUB_API_KEY to the API key of the hub')
     .parse(process.env['HUB_API_KEY']);
   const limit = z.coerce.number().int().min(1).max(100).parse(values.limit);
+  const concurrency = z.coerce.number().int().min(1).max(10).parse(values.concurrency);
   const waitMs = z.coerce.number().int().min(10_000).max(3_600_000).parse(values['wait-ms']);
   const timeoutMs = z.coerce.number().int().min(1000).max(600_000).parse(values['timeout-ms']);
 
@@ -83,8 +85,10 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     ).execute(
       limit,
       new AbortController().signal,
-      (step) => promptCapture(terminal, step, waitMs),
+      (step) =>
+        concurrency === 1 ? promptCapture(terminal, step, waitMs) : waitForPass(step, waitMs),
       routes,
+      concurrency,
     );
 
     logger.info(
