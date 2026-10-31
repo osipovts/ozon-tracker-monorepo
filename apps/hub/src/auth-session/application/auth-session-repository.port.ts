@@ -16,6 +16,11 @@ export interface AuthSessionRepositoryPort {
   findById(id: string): Promise<AuthSessionEntity | null>;
   /** The sessions of the user that are live at the time, the most recently used first. */
   listActiveByUser(userId: string, at: Date): Promise<AuthSessionEntity[]>;
+  /**
+   * Deletes the sessions that ended before the time, those that expired and those that were revoked;
+   * tells how many. A live session is never deleted.
+   */
+  deleteEndedBefore(before: Date): Promise<number>;
   /** Revokes the live sessions of the user but the one to keep, if any; tells how many it revoked. */
   revokeOthers(userId: string, keepSessionId: string | null, at: Date): Promise<number>;
 }

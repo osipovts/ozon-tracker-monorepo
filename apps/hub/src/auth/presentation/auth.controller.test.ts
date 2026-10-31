@@ -43,6 +43,7 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  authSessionPurgeIntervalMs: 60_000,
   authRateLimitWindowMs: 60_000,
   authLoginMaxAttempts: 1000,
   authLoginMaxAttemptsPerEmail: 1000,

@@ -53,6 +53,7 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     authSessionIdleTtlMs: 60_000,
     authSessionAbsoluteTtlMs: 120_000,
     authCookieSecure: false,
+    authSessionPurgeIntervalMs: 60_000,
     authRateLimitWindowMs: 60_000,
     authLoginMaxAttempts: 1000,
     authLoginMaxAttemptsPerEmail: 1000,

@@ -74,4 +74,14 @@ export class PrismaAuthSessionRepositoryAdapter implements AuthSessionRepository
 
     return count;
   }
+
+  async deleteEndedBefore(before: Date): Promise<number> {
+    // A session cannot be touched past its expiry, so `expiresAt` is where it ended if nothing ended it first.
+    const [expired, revoked] = await this.prisma.$transaction([
+      this.prisma.authSession.deleteMany({ where: { expiresAt: { lt: before } } }),
+      this.prisma.authSession.deleteMany({ where: { revokedAt: { lt: before } } }),
+    ]);
+
+    return expired.count + revoked.count;
+  }
 }

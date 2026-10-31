@@ -66,6 +66,21 @@ export class InMemoryAuthSessionRepositoryAdapter implements AuthSessionReposito
     return Promise.resolve(revoked);
   }
 
+  deleteEndedBefore(before: Date): Promise<number> {
+    let deleted = 0;
+    for (const [tokenHash, { snapshot }] of this.sessions) {
+      if (
+        snapshot.expiresAt < before ||
+        (snapshot.revokedAt !== null && snapshot.revokedAt < before)
+      ) {
+        this.sessions.delete(tokenHash);
+        deleted += 1;
+      }
+    }
+
+    return Promise.resolve(deleted);
+  }
+
   private replace(
     sessionId: string,
     change: (session: AuthSessionEntity) => AuthSessionEntity,

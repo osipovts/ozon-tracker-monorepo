@@ -101,3 +101,27 @@ void test(
     assert.deepEqual((await sessions.findById(id))?.snapshot.revokedAt, later);
   },
 );
+
+void test(
+  'deletes the sessions that ended before a time, those that expired and those that were revoked, and no live one',
+  { skip },
+  async (): Promise<void> => {
+    const [expired, revoked, live] = [newSession(), newSession(), newSession()];
+    for (const session of [expired, revoked, live]) await sessions.add(session);
+    const farLater = new Date(at.getTime() + 10 * 24 * 60 * 60_000);
+    const liveSession = AuthSessionEntity.start(
+      { id: randomUUID(), userId, tokenHash: randomUUID(), userAgent: null, ip: null },
+      policy,
+      farLater,
+    );
+    await sessions.add(liveSession);
+    await sessions.revoke(revoked.snapshot.id, at);
+
+    const purged = await sessions.deleteEndedBefore(new Date(farLater.getTime() - 1000));
+
+    assert.ok(purged >= 3);
+    assert.equal(await sessions.findById(expired.snapshot.id), null);
+    assert.equal(await sessions.findById(revoked.snapshot.id), null);
+    assert.notEqual(await sessions.findById(liveSession.snapshot.id), null);
+  },
+);
