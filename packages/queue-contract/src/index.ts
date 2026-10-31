@@ -1,4 +1,7 @@
 export * from './browser-session.type.js';
+export * from './handbook.type.js';
+export * from './handbook-fetch-job.type.js';
+export * from './handbook-fetch-result.type.js';
 export * from './job-lifecycle.type.js';
 export * from './job-progress.type.js';
 export * from './link-expand-job.type.js';

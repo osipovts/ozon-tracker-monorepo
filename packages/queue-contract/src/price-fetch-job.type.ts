@@ -13,7 +13,14 @@ export const priceFetchJobSchema = z.object({
   /** Routes in the order they are tried; a null server is a direct connection. */
   proxies: z.array(priceFetchRouteSchema).min(1),
   products: z
-    .array(z.object({ trackedProductId: z.uuid(), url: z.url() }))
+    .array(
+      z.object({
+        trackedProductId: z.uuid(),
+        url: z.url(),
+        /** The city whose price is read, by the id of the marketplace; none where it has no cities. */
+        cityId: z.string().min(1).optional(),
+      }),
+    )
     .min(1)
     .max(50),
   timeoutMs: z.number().int().min(1000).max(60000),

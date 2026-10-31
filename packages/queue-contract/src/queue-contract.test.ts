@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { handbookFetchJobSchema } from './handbook-fetch-job.type.js';
+import { handbookFetchResultSchema } from './handbook-fetch-result.type.js';
 import { priceFetchJobSchema } from './price-fetch-job.type.js';
 import { priceFetchResultSchema } from './price-fetch-result.type.js';
 import { proxyFetchJobSchema } from './proxy-fetch-job.type.js';
@@ -183,5 +185,70 @@ void test('validates a session export file', (): void => {
       createdAt: 'x',
     }).success,
     false,
+  );
+});
+
+void test('accepts the city of a product in a price fetch job, and no city', (): void => {
+  const job = (product: Record<string, unknown>): unknown => ({
+    jobId: uuid,
+    proxies: [{ server: null }],
+    products: [
+      {
+        trackedProductId: uuid,
+        url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+        ...product,
+      },
+    ],
+    timeoutMs: 15000,
+  });
+
+  assert.equal(priceFetchJobSchema.safeParse(job({})).success, true);
+  assert.equal(priceFetchJobSchema.safeParse(job({ cityId: uuid })).success, true);
+  assert.equal(priceFetchJobSchema.safeParse(job({ cityId: '' })).success, false);
+});
+
+void test('validates handbook fetch jobs: the handbook and the routes it is read through', (): void => {
+  const job = {
+    jobId: uuid,
+    handbook: 'dns-cities',
+    proxies: ['socks5://203.0.113.10:1080', null],
+  };
+
+  assert.equal(handbookFetchJobSchema.safeParse(job).success, true);
+  assert.equal(handbookFetchJobSchema.safeParse({ ...job, proxies: [] }).success, false);
+  assert.equal(handbookFetchJobSchema.safeParse({ ...job, handbook: 'unknown' }).success, false);
+});
+
+void test('validates the results of a handbook fetch: the cities and the lifecycle', (): void => {
+  const cities = {
+    type: 'handbook_cities',
+    jobId: uuid,
+    handbook: 'dns-cities',
+    cities: [
+      { id: '30b7c1f1-03fb-11dc-95ee-00151716f9f5', name: 'Иркутск', region: 'Иркутская область' },
+    ],
+  };
+
+  assert.equal(handbookFetchResultSchema.safeParse(cities).success, true);
+  assert.equal(
+    handbookFetchResultSchema.safeParse({
+      ...cities,
+      cities: [{ id: '', name: 'x', region: null }],
+    }).success,
+    false,
+  );
+  assert.equal(
+    handbookFetchResultSchema.safeParse({ type: 'job_done', jobId: uuid }).success,
+    true,
+  );
+  assert.equal(
+    handbookFetchResultSchema.safeParse({
+      type: 'job_progress',
+      jobId: uuid,
+      processed: 3,
+      total: 33,
+      succeeded: 3,
+    }).success,
+    true,
   );
 });

@@ -5,5 +5,11 @@ export class ProductReferenceEntity {
     readonly marketplace: MarketplaceType,
     readonly id: string,
     readonly url: string,
+    /** The city whose price is read, by the id the marketplace gives it; null where it has no cities. */
+    readonly cityId: string | null = null,
   ) {}
+
+  inCity(cityId: string | null): ProductReferenceEntity {
+    return new ProductReferenceEntity(this.marketplace, this.id, this.url, cityId);
+  }
 }
