@@ -12,6 +12,7 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { type ReactElement, useState } from 'react';
 
@@ -77,7 +78,13 @@ function RefreshSource(): ReactElement {
         </Button>
         {refresh.status !== null && <Badge>{refresh.status}</Badge>}
       </Group>
-      {running && refresh.percent !== null && <Progress value={refresh.percent} />}
+      {running && refresh.percent !== null && (
+        <Progress.Root size="xl" aria-label="Refresh progress">
+          <Progress.Section value={refresh.percent}>
+            <Progress.Label>{`${String(refresh.percent)}%`}</Progress.Label>
+          </Progress.Section>
+        </Progress.Root>
+      )}
       {refresh.error !== null && <ErrorAlert error={refresh.error} />}
     </Stack>
   );
@@ -134,6 +141,7 @@ export function ProxiesPage(): ReactElement {
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Latency</Table.Th>
                 <Table.Th>Success</Table.Th>
+                <Table.Th>Checked</Table.Th>
                 <Table.Th>Enabled</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -145,14 +153,27 @@ export function ProxiesPage(): ReactElement {
                   <Table.Td>{proxy.source}</Table.Td>
                   <Table.Td>{proxy.country ?? '-'}</Table.Td>
                   <Table.Td>
-                    <Badge color={proxy.alive ? 'green' : 'red'}>
-                      {proxy.alive ? 'alive' : 'dead'}
-                    </Badge>
+                    <Tooltip
+                      multiline
+                      w={260}
+                      label={
+                        proxy.alive
+                          ? 'The last check found it answering.'
+                          : 'The last check found it not answering. The workers are not given it; the next refresh of its source checks it again.'
+                      }
+                    >
+                      <Badge color={proxy.alive ? 'green' : 'red'}>
+                        {proxy.alive ? 'alive' : 'dead'}
+                      </Badge>
+                    </Tooltip>
                   </Table.Td>
                   <Table.Td>
                     {proxy.latencyMs === null ? '-' : `${String(proxy.latencyMs)} ms`}
                   </Table.Td>
-                  <Table.Td>{`${String(Math.round(proxy.successRate * 100))}%`}</Table.Td>
+                  <Table.Td>
+                    {`${String(Math.round(proxy.successRate * 100))}% of ${String(proxy.checksTotal)}`}
+                  </Table.Td>
+                  <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString()}</Table.Td>
                   <Table.Td>
                     <Switch
                       aria-label={`Enabled ${proxy.server}`}
