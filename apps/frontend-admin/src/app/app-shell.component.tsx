@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { NavLink as RouterLink, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe } from '../features/auth/use-me.hook.js';
+import { ColorSchemeControl } from './color-scheme.component.js';
 
 const sections = [
   { to: '/', label: 'Dashboard', end: true },
@@ -20,6 +21,7 @@ export function AdminShell(): ReactElement {
         <Group h="100%" px="md" justify="space-between">
           <Title order={4}>Hub admin</Title>
           <Group>
+            <ColorSchemeControl />
             <Text size="sm">{me.data?.email}</Text>
             <Button
               size="xs"

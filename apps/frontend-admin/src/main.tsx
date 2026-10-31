@@ -14,7 +14,7 @@ if (container === null) throw new Error('The page has no #root');
 
 createRoot(container).render(
   <StrictMode>
-    <MantineProvider>
+    <MantineProvider defaultColorScheme="auto">
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={createAppRouter(import.meta.env.BASE_URL.replace(/\/$/, ''))} />
       </QueryClientProvider>

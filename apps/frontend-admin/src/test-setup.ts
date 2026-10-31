@@ -15,6 +15,22 @@ vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
   dispatchEvent: (): boolean => false,
 }));
 
+// Nor does it measure elements: Mantine's segmented controls ask to be told when theirs change.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe(): void {
+      return undefined;
+    }
+    unobserve(): void {
+      return undefined;
+    }
+    disconnect(): void {
+      return undefined;
+    }
+  },
+);
+
 afterEach((): void => {
   cleanup();
 });
