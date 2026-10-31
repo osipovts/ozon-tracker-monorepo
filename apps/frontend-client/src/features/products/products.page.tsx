@@ -17,6 +17,7 @@ import { Link } from 'react-router';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
+import { DeleteProduct } from './delete-product.component.js';
 import { formatPrice } from './price-format.type.js';
 import { productPageSize, useAddProduct, useProducts } from './use-products.hook.js';
 
@@ -83,6 +84,7 @@ export function ProductsPage(): ReactElement {
                 <Table.Th>{t('products.product')}</Table.Th>
                 <Table.Th>{t('products.price')}</Table.Th>
                 <Table.Th>{t('products.checked')}</Table.Th>
+                <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -106,6 +108,16 @@ export function ProductsPage(): ReactElement {
                     {item.lastCheckedAt === null
                       ? '-'
                       : new Date(item.lastCheckedAt).toLocaleString(locale)}
+                  </Table.Td>
+                  <Table.Td>
+                    <DeleteProduct
+                      productId={item.id}
+                      title={item.latest?.title ?? `${item.marketplace} ${item.externalId}`}
+                      onDeleted={(): void => {
+                        // The last product of a page is gone: the page goes with it.
+                        if (data.items.length === 1 && page > 1) setPage(page - 1);
+                      }}
+                    />
                   </Table.Td>
                 </Table.Tr>
               ))}

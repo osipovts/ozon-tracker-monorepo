@@ -60,6 +60,20 @@ export function useAddProduct(): UseMutationResult<void, Error, string> {
   });
 }
 
+export function useDeleteProduct(): UseMutationResult<void, Error, string> {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      ensure(await api.DELETE('/products/{id}', { params: { path: { id } } }));
+    },
+    onSuccess: async (_data, id): Promise<void> => {
+      client.removeQueries({ queryKey: ['price-history', id] });
+      await client.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
 export function usePriceHistory(id: string): UseQueryResult<PriceHistoryInterface | undefined> {
   return useQuery({
     queryKey: ['price-history', id],

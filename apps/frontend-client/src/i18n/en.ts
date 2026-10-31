@@ -56,6 +56,11 @@ export const en = {
     inStock: 'in stock',
     outOfStock: 'out of stock',
     unknown: 'unknown',
+    delete: 'Delete',
+    deleteTitle: 'Stop tracking the product?',
+    deleteText:
+      '{{title}} goes from your list. Its prices stay for the others who track it, and are deleted with it when nobody does.',
+    cancel: 'Cancel',
   },
   chart: {
     noPriceYet: 'No price yet',

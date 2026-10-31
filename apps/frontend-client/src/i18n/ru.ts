@@ -58,6 +58,11 @@ export const ru: DictionaryType = {
     inStock: 'в наличии',
     outOfStock: 'нет в наличии',
     unknown: 'неизвестно',
+    delete: 'Удалить',
+    deleteTitle: 'Перестать отслеживать товар?',
+    deleteText:
+      '{{title}} уйдёт из вашего списка. Цены останутся у тех, кто его тоже отслеживает, а если таких нет - удалятся вместе с товаром.',
+    cancel: 'Отмена',
   },
   chart: {
     noPriceYet: 'Цены пока нет',

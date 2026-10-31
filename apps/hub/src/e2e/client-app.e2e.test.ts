@@ -144,6 +144,24 @@ void test('the hint of a point tells the average, the minimum, the maximum and t
   await tooltip.getByText(/Last known:/).waitFor();
 });
 
+void test('a product is deleted from its page after a confirmation, and goes for good with its last tracker', async (): Promise<void> => {
+  assert.equal(await database.trackedProduct.count(), 1);
+
+  await page.getByRole('button', { name: 'Delete' }).click();
+  // Asked first: nothing is gone before the confirmation.
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  assert.equal(await database.trackedProduct.count(), 1);
+
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+
+  await page.waitForURL(/\/app\/?$/);
+  await page.getByText('Nothing is tracked yet.').waitFor();
+  assert.equal(await database.trackedProduct.count(), 0);
+});
+
 void test('a visitor who logs out is sent to the login', async (): Promise<void> => {
   await page.getByRole('button', { name: 'Log out' }).click();
   await page.waitForURL('**/app/login');
