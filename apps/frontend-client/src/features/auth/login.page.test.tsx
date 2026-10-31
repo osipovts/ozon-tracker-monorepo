@@ -76,3 +76,14 @@ test('says that the login through a provider failed when the hub sends the user 
     'The login through the provider failed',
   );
 });
+
+test('has the links to the legal texts at its foot', async (): Promise<void> => {
+  stubHub([]);
+  openLogin();
+
+  expect(await screen.findByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+    'href',
+    '/privacy',
+  );
+  expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+});

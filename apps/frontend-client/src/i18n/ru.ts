@@ -19,6 +19,11 @@ export const ru: DictionaryType = {
   brand: {
     slogan: 'трекер цен',
   },
+  legal: {
+    privacy: 'Политика конфиденциальности',
+    terms: 'Условия использования',
+    back: 'Назад в приложение',
+  },
   login: {
     title: 'Нищебродская',
     logIn: 'Войти',

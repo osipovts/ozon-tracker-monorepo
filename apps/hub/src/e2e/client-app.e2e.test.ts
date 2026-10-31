@@ -379,3 +379,28 @@ void test('the language follows the browser, and a language that is picked is ke
   await other.getByText('price tracker', { exact: true }).waitFor();
   await german.close();
 });
+
+void test('the privacy policy and the terms are open without a login, and linked at the foot of the login page', async (): Promise<void> => {
+  const context = await browser.newContext();
+  const visitor = await context.newPage();
+
+  await visitor.goto(`${hub.baseUrl}/app/login`);
+  await visitor.getByRole('link', { name: 'Privacy Policy' }).click();
+  await visitor.waitForURL('**/app/privacy');
+  await visitor.getByRole('heading', { level: 1, name: 'Privacy Policy' }).waitFor();
+  await visitor.getByText(/Limited Use requirements/).waitFor();
+
+  // By the address, with no page of the app before it: this is what the consent screen of Google links to.
+  await visitor.goto(`${hub.baseUrl}/app/terms`);
+  await visitor.getByRole('heading', { level: 1, name: 'Terms of Service' }).waitFor();
+  assert.equal(new URL(visitor.url()).pathname, '/app/terms');
+
+  // And in Russian for a browser that asks for it.
+  const russian = await browser.newContext({ locale: 'ru-RU' });
+  const page = await russian.newPage();
+  await page.goto(`${hub.baseUrl}/app/privacy`);
+  await page.getByRole('heading', { level: 1, name: 'Политика конфиденциальности' }).waitFor();
+
+  await context.close();
+  await russian.close();
+});

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe, useResendVerification } from '../features/auth/use-me.hook.js';
+import { LegalFooter } from '../features/legal/legal-footer.component.js';
 
 export function ClientShell(): ReactElement {
   const { t } = useTranslation();
@@ -67,6 +68,7 @@ export function ClientShell(): ReactElement {
             </Alert>
           )}
           <Outlet />
+          <LegalFooter />
         </Container>
       </AppShell.Main>
     </AppShell>

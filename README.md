@@ -54,7 +54,7 @@
 http://localhost:5173/panel/ (порт `ADMIN_UI_PORT`) и проксирует запросы на хаб.
 Локально без Docker: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
 `HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
-Вход через Google и GitHub в клиентском приложении: на странице входа кнопки «Продолжить через …» для тех провайдеров, чьи
+Политика конфиденциальности и условия использования (английский и русский, по языку интерфейса) открыты без входа: `/app/privacy` и `/app/terms`, ссылки на них в подвале каждой страницы. Это адреса для экрана согласия Google (Branding: Privacy policy и Terms of service). Вход через Google и GitHub в клиентском приложении: на странице входа кнопки «Продолжить через …» для тех провайдеров, чьи
 OAuth-приложения заданы (`GET /auth/oauth/providers`). Callback-адреса: `<PUBLIC_URL>/auth/oauth/google/callback` и
 `<PUBLIC_URL>/auth/oauth/github/callback`; у Google в OAuth consent screen нужны scopes `openid`, `email`, `profile`, у GitHub
 хватает `user:email`. После входа пользователь попадает на `AUTH_SUCCESS_REDIRECT` (в compose `/app/`), после неудачного входа

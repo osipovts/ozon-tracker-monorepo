@@ -19,6 +19,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { LanguageControl } from '../../app/language.component.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
+import { LegalFooter } from '../legal/legal-footer.component.js';
 import {
   type OauthProviderType,
   useLogin,
@@ -151,6 +152,7 @@ export function LoginPage(): ReactElement {
         </form>
         <ProviderButtons />
       </Card>
+      <LegalFooter />
     </Container>
   );
 }

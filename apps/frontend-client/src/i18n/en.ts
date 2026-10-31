@@ -17,6 +17,11 @@ export const en = {
   brand: {
     slogan: 'price tracker',
   },
+  legal: {
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Service',
+    back: 'Back to the app',
+  },
   login: {
     title: 'Нищебродская',
     logIn: 'Log in',
