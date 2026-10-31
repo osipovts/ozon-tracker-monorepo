@@ -10,9 +10,12 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import type { TFunction } from 'i18next';
 import { type ReactElement, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
+import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { PriceChart } from './price-chart.component.js';
@@ -44,18 +47,20 @@ function toPoints(observations: ObservationType[]): PricePointInterface[] {
   });
 }
 
-function availabilityLabel(availability: ObservationType['availability']): string {
+function availabilityLabel(availability: ObservationType['availability'], t: TFunction): string {
   switch (availability) {
     case 'in_stock':
-      return 'in stock';
+      return t('product.inStock');
     case 'out_of_stock':
-      return 'out of stock';
+      return t('product.outOfStock');
     case 'unknown':
-      return 'unknown';
+      return t('product.unknown');
   }
 }
 
 export function ProductPage(): ReactElement {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const { id = '' } = useParams();
   const history = usePriceHistory(id);
   const [page, setPage] = useState(1);
@@ -73,9 +78,9 @@ export function ProductPage(): ReactElement {
   if (history.error instanceof ApiError && history.error.status === 404) {
     return (
       <Stack>
-        <Text>This product is not tracked.</Text>
+        <Text>{t('product.notTracked')}</Text>
         <Anchor component={Link} to="/">
-          Back to the products
+          {t('common.backToProducts')}
         </Anchor>
       </Stack>
     );
@@ -90,29 +95,39 @@ export function ProductPage(): ReactElement {
   return (
     <Stack>
       <Anchor component={Link} to="/" size="sm">
-        Back to the products
+        {t('common.backToProducts')}
       </Anchor>
       <Title order={2}>
         {newest?.title ?? `${data.product.marketplace} ${data.product.externalId}`}
       </Title>
       <Group>
-        <Title order={3}>{newestPrice === null ? 'No price yet' : formatPrice(newestPrice)}</Title>
-        {newest !== undefined && <Badge>{availabilityLabel(newest.availability)}</Badge>}
+        <Title order={3}>
+          {newestPrice === null ? t('product.noPriceYet') : formatPrice(newestPrice)}
+        </Title>
+        {newest !== undefined && <Badge>{availabilityLabel(newest.availability, t)}</Badge>}
         <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
-          Open on {data.product.marketplace}
+          {t('product.openOn', { marketplace: data.product.marketplace })}
         </Anchor>
       </Group>
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <PriceChart title="By hour, the last 48 hours" granularity="hour" buckets={series.hour} />
-        <PriceChart title="By day, the last 30 days" granularity="day" buckets={series.day} />
+        <PriceChart
+          title={t('product.hourlyTitle', { count: hoursShown })}
+          granularity="hour"
+          buckets={series.hour}
+        />
+        <PriceChart
+          title={t('product.dailyTitle', { count: daysShown })}
+          granularity="day"
+          buckets={series.day}
+        />
       </SimpleGrid>
-      <Title order={4}>History</Title>
+      <Title order={4}>{t('product.history')}</Title>
       <Table>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Observed</Table.Th>
-            <Table.Th>Price</Table.Th>
-            <Table.Th>Availability</Table.Th>
+            <Table.Th>{t('product.observed')}</Table.Th>
+            <Table.Th>{t('product.price')}</Table.Th>
+            <Table.Th>{t('product.availability')}</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -121,15 +136,15 @@ export function ProductPage(): ReactElement {
 
             return (
               <Table.Tr key={observation.id}>
-                <Table.Td>{new Date(observation.observedAt).toLocaleString()}</Table.Td>
+                <Table.Td>{new Date(observation.observedAt).toLocaleString(locale)}</Table.Td>
                 <Table.Td>{amountMinor === null ? '-' : formatPrice(amountMinor)}</Table.Td>
-                <Table.Td>{availabilityLabel(observation.availability)}</Table.Td>
+                <Table.Td>{availabilityLabel(observation.availability, t)}</Table.Td>
               </Table.Tr>
             );
           })}
         </Table.Tbody>
       </Table>
-      {data.observations.length === 0 && <Text c="dimmed">No prices have been read yet.</Text>}
+      {data.observations.length === 0 && <Text c="dimmed">{t('product.noHistory')}</Text>}
       <Pagination
         total={Math.max(1, Math.ceil(data.observations.length / tablePageSize))}
         value={page}

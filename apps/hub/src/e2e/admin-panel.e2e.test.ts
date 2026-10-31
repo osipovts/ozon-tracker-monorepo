@@ -110,6 +110,10 @@ void test('an administrator sees the dashboard, then works with the proxies', as
   await page.getByText(servers[0] ?? '').waitFor();
   await page.getByText(servers[1] ?? '').waitFor();
 
+  // No proxy has a session of the marketplace yet.
+  await page.getByRole('columnheader', { name: 'Session (ozon)' }).waitFor();
+  assert.equal(await page.getByText('none', { exact: true }).count(), 2);
+
   // Turned off: the hub keeps the proxy away from the workers, and the list says so.
   await page
     .getByRole('row', { name: new RegExp(servers[0] ?? '') })
@@ -141,4 +145,13 @@ void test('the panel is shut off from frames', async (): Promise<void> => {
   const reply = await fetch(`${hub.baseUrl}/panel/`);
 
   assert.equal(reply.headers.get('x-frame-options'), 'DENY');
+});
+
+void test('the panel speaks the language of the browser', async (): Promise<void> => {
+  const context = await browser.newContext({ locale: 'ru-RU' });
+  const page = await context.newPage();
+  await page.goto(`${hub.baseUrl}/panel/login`);
+
+  await page.getByRole('heading', { name: 'Админка хаба' }).waitFor();
+  await context.close();
 });

@@ -3,6 +3,11 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
+import { createI18n } from './i18n/i18n.js';
+
+// The tests read the interface in English, whatever the language of the machine they run on.
+createI18n('en');
+
 // jsdom has no media queries, and Mantine asks for the color scheme of the system.
 vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
   matches: false,

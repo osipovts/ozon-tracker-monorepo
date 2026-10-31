@@ -1,5 +1,6 @@
 import { SegmentedControl, useMantineColorScheme } from '@mantine/core';
 import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type ColorSchemeType = 'auto' | 'light' | 'dark';
 
@@ -9,17 +10,18 @@ function isColorScheme(value: string): value is ColorSchemeType {
 
 /** The theme follows the system until the person picks one; the pick is kept by the browser. */
 export function ColorSchemeControl(): ReactElement {
+  const { t } = useTranslation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   return (
     <SegmentedControl
       size="xs"
-      aria-label="Theme"
+      aria-label={t('common.theme')}
       value={colorScheme}
       data={[
-        { value: 'auto', label: 'Auto' },
-        { value: 'light', label: 'Light' },
-        { value: 'dark', label: 'Dark' },
+        { value: 'auto', label: t('common.auto') },
+        { value: 'light', label: t('common.light') },
+        { value: 'dark', label: t('common.dark') },
       ]}
       onChange={(next): void => {
         if (isColorScheme(next)) setColorScheme(next);

@@ -3,32 +3,40 @@ import {
   Button,
   Card,
   Container,
+  Group,
   PasswordInput,
   Stack,
   Tabs,
   TextInput,
   Title,
 } from '@mantine/core';
+import type { TFunction } from 'i18next';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
+import { LanguageControl } from '../../app/language.component.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { useLogin, useMe, useRegister } from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
-function explain(error: Error): string {
-  if (!(error instanceof ApiError)) return 'The hub could not be reached.';
-  if (error.status === 401) {
-    return 'The email or the password is wrong. If you have signed up just now with an email that already has an account, log in with the password of that account.';
-  }
+function explain(error: Error, t: TFunction): string {
+  if (!(error instanceof ApiError)) return t('errors.unreachable');
+  if (error.status === 401) return t('login.wrongCredentials');
   if (error.status === 429) {
-    return `Too many attempts.${error.retryAfterSeconds === null ? '' : ` Try again in ${String(error.retryAfterSeconds)} s.`}`;
+    const wait =
+      error.retryAfterSeconds === null
+        ? ''
+        : ` ${t('errors.tryAgain', { seconds: error.retryAfterSeconds })}`;
+
+    return `${t('login.tooManyAttempts')}${wait}`;
   }
 
   return error.message;
 }
 
 export function LoginPage(): ReactElement {
+  const { t } = useTranslation();
   const me = useMe();
   const login = useLogin();
   const register = useRegister();
@@ -56,15 +64,18 @@ export function LoginPage(): ReactElement {
       <Card withBorder padding="xl">
         <form onSubmit={submit}>
           <Stack>
-            <Title order={2}>Price tracker</Title>
+            <Group justify="space-between">
+              <Title order={2}>{t('login.title')}</Title>
+              <LanguageControl />
+            </Group>
             <Tabs value={mode} onChange={setMode}>
               <Tabs.List grow>
-                <Tabs.Tab value="login">Log in</Tabs.Tab>
-                <Tabs.Tab value="register">Sign up</Tabs.Tab>
+                <Tabs.Tab value="login">{t('login.logIn')}</Tabs.Tab>
+                <Tabs.Tab value="register">{t('login.signUp')}</Tabs.Tab>
               </Tabs.List>
             </Tabs>
             <TextInput
-              label="Email"
+              label={t('login.email')}
               type="email"
               autoComplete="username"
               required
@@ -74,7 +85,7 @@ export function LoginPage(): ReactElement {
               }}
             />
             <PasswordInput
-              label="Password"
+              label={t('login.password')}
               autoComplete={signingUp ? 'new-password' : 'current-password'}
               required
               value={password}
@@ -84,11 +95,11 @@ export function LoginPage(): ReactElement {
             />
             {failure !== null && (
               <Alert color="red" role="alert">
-                {explain(failure)}
+                {explain(failure, t)}
               </Alert>
             )}
             <Button type="submit" loading={login.isPending || register.isPending}>
-              {signingUp ? 'Sign up' : 'Log in'}
+              {signingUp ? t('login.signUp') : t('login.logIn')}
             </Button>
           </Stack>
         </form>

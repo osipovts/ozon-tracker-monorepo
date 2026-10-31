@@ -12,13 +12,16 @@ import {
   Title,
 } from '@mantine/core';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { formatPrice } from './price-format.type.js';
 import { productPageSize, useAddProduct, useProducts } from './use-products.hook.js';
 
 function AddProduct(): ReactElement {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const add = useAddProduct();
 
@@ -38,7 +41,7 @@ function AddProduct(): ReactElement {
           <Group align="flex-end">
             <TextInput
               flex={1}
-              label="Link to a product"
+              label={t('products.linkLabel')}
               placeholder="https://www.ozon.ru/product/..."
               type="url"
               required
@@ -48,7 +51,7 @@ function AddProduct(): ReactElement {
               }}
             />
             <Button type="submit" loading={add.isPending}>
-              Track
+              {t('products.track')}
             </Button>
           </Group>
           {add.error !== null && <ErrorAlert error={add.error} />}
@@ -59,13 +62,15 @@ function AddProduct(): ReactElement {
 }
 
 export function ProductsPage(): ReactElement {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const [page, setPage] = useState(1);
   const products = useProducts(page);
   const data = products.data;
 
   return (
     <Stack>
-      <Title order={2}>Products</Title>
+      <Title order={2}>{t('products.title')}</Title>
       <AddProduct />
       {products.isError && <ErrorAlert error={products.error} />}
       {data === undefined ? (
@@ -75,9 +80,9 @@ export function ProductsPage(): ReactElement {
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Product</Table.Th>
-                <Table.Th>Price</Table.Th>
-                <Table.Th>Checked</Table.Th>
+                <Table.Th>{t('products.product')}</Table.Th>
+                <Table.Th>{t('products.price')}</Table.Th>
+                <Table.Th>{t('products.checked')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -90,9 +95,9 @@ export function ProductsPage(): ReactElement {
                   </Table.Td>
                   <Table.Td>
                     {item.latest === null ? (
-                      <Badge color="gray">waiting for the first price</Badge>
+                      <Badge color="gray">{t('products.waiting')}</Badge>
                     ) : item.latest.prices[0] === undefined ? (
-                      <Badge color="yellow">no price</Badge>
+                      <Badge color="yellow">{t('products.noPrice')}</Badge>
                     ) : (
                       formatPrice(item.latest.prices[0].amountMinor)
                     )}
@@ -100,13 +105,13 @@ export function ProductsPage(): ReactElement {
                   <Table.Td>
                     {item.lastCheckedAt === null
                       ? '-'
-                      : new Date(item.lastCheckedAt).toLocaleString()}
+                      : new Date(item.lastCheckedAt).toLocaleString(locale)}
                   </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
-          {data.items.length === 0 && <Text c="dimmed">Nothing is tracked yet.</Text>}
+          {data.items.length === 0 && <Text c="dimmed">{t('products.empty')}</Text>}
           <Pagination
             total={Math.max(1, Math.ceil(data.total / productPageSize))}
             value={page}

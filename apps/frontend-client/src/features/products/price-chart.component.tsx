@@ -1,5 +1,6 @@
 import { Card, Text, Title } from '@mantine/core';
 import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
   Line,
@@ -10,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { useLocale } from '../../i18n/use-locale.hook.js';
 import { formatPrice } from './price-format.type.js';
 import type { GranularityType, PriceBucketInterface } from './price-series.type.js';
 
@@ -23,21 +25,21 @@ interface ChartRowInterface {
   bucket: PriceBucketInterface;
 }
 
-function labelOf(start: Date, granularity: GranularityType): string {
+function labelOf(start: Date, granularity: GranularityType, locale: string): string {
   return granularity === 'hour'
-    ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : start.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+    ? start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+    : start.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
 }
 
-function titleOf(start: Date, granularity: GranularityType): string {
+function titleOf(start: Date, granularity: GranularityType, locale: string): string {
   return granularity === 'hour'
-    ? start.toLocaleString([], {
+    ? start.toLocaleString(locale, {
         day: '2-digit',
         month: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
       })
-    : start.toLocaleDateString([], { day: '2-digit', month: 'long', year: 'numeric' });
+    : start.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 /** A gap is dashed together with the points on both of its sides, so that the line is not broken. */
@@ -80,16 +82,18 @@ function TooltipBody({
   row: ChartRowInterface;
   granularity: GranularityType;
 }): ReactElement {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const { bucket } = row;
 
   return (
     <Card withBorder padding="xs" shadow="sm">
       <Text size="sm" fw={600}>
-        {titleOf(bucket.start, granularity)}
+        {titleOf(bucket.start, granularity, locale)}
       </Text>
-      {bucket.value === null && <Text size="sm">No price yet</Text>}
+      {bucket.value === null && <Text size="sm">{t('chart.noPriceYet')}</Text>}
       {bucket.value !== null && !bucket.observed && (
-        <Text size="sm">Last known: {formatPrice(bucket.value)}</Text>
+        <Text size="sm">{t('chart.lastKnown', { price: formatPrice(bucket.value) })}</Text>
       )}
       {bucket.observed &&
         bucket.average !== null &&
@@ -97,10 +101,10 @@ function TooltipBody({
         bucket.max !== null &&
         bucket.last !== null && (
           <>
-            <Text size="sm">Average: {formatPrice(bucket.average)}</Text>
-            <Text size="sm">Min: {formatPrice(bucket.min)}</Text>
-            <Text size="sm">Max: {formatPrice(bucket.max)}</Text>
-            <Text size="sm">Last: {formatPrice(bucket.last)}</Text>
+            <Text size="sm">{t('chart.average', { price: formatPrice(bucket.average) })}</Text>
+            <Text size="sm">{t('chart.min', { price: formatPrice(bucket.min) })}</Text>
+            <Text size="sm">{t('chart.max', { price: formatPrice(bucket.max) })}</Text>
+            <Text size="sm">{t('chart.last', { price: formatPrice(bucket.last) })}</Text>
           </>
         )}
     </Card>
@@ -116,6 +120,7 @@ export function PriceChart({
   granularity: GranularityType;
   buckets: PriceBucketInterface[];
 }): ReactElement {
+  const locale = useLocale();
   const rows = toRows(buckets);
 
   return (
@@ -128,7 +133,7 @@ export function PriceChart({
           <CartesianGrid stroke="var(--mantine-color-default-border)" strokeDasharray="3 3" />
           <XAxis
             dataKey="key"
-            tickFormatter={(key: string): string => labelOf(new Date(key), granularity)}
+            tickFormatter={(key: string): string => labelOf(new Date(key), granularity, locale)}
             stroke="var(--mantine-color-dimmed)"
             tick={{ fontSize: 12 }}
             minTickGap={24}

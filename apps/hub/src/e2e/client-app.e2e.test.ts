@@ -148,3 +148,26 @@ void test('a visitor who logs out is sent to the login', async (): Promise<void>
   await page.getByRole('button', { name: 'Log out' }).click();
   await page.waitForURL('**/app/login');
 });
+
+void test('the language follows the browser, and a language that is picked is kept', async (): Promise<void> => {
+  // A browser that asks for Russian sends `Accept-Language: ru-RU` and reports it to the page.
+  const context = await browser.newContext({ locale: 'ru-RU' });
+  const russian = await context.newPage();
+  await russian.goto(`${hub.baseUrl}/app/login`);
+  await russian.getByRole('heading', { name: 'Трекер цен' }).waitFor();
+  assert.equal(await russian.locator('html').getAttribute('lang'), 'ru');
+
+  await russian.getByText('EN', { exact: true }).click();
+  await russian.getByRole('heading', { name: 'Price tracker' }).waitFor();
+
+  await russian.reload();
+  await russian.getByRole('heading', { name: 'Price tracker' }).waitFor();
+  await context.close();
+
+  // A browser with a language the app has no words in gets English.
+  const german = await browser.newContext({ locale: 'de-DE' });
+  const other = await german.newPage();
+  await other.goto(`${hub.baseUrl}/app/login`);
+  await other.getByRole('heading', { name: 'Price tracker' }).waitFor();
+  await german.close();
+});
