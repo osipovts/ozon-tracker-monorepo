@@ -14,7 +14,8 @@ import { formatPrice } from './price-format.type.js';
 import type { GranularityType, PriceBucketInterface } from './price-series.type.js';
 
 interface ChartRowInterface {
-  label: string;
+  /** Unique, since the axis takes equal keys for one place: the hours of two days have equal labels. */
+  key: string;
   /** Where the bucket has prices: drawn solid. */
   solid: number | null;
   /** Where it has none, and the points beside it: the last known price, drawn dashed. */
@@ -40,17 +41,14 @@ function titleOf(start: Date, granularity: GranularityType): string {
 }
 
 /** A gap is dashed together with the points on both of its sides, so that the line is not broken. */
-function toRows(
-  buckets: PriceBucketInterface[],
-  granularity: GranularityType,
-): ChartRowInterface[] {
+function toRows(buckets: PriceBucketInterface[]): ChartRowInterface[] {
   return buckets.map((bucket, index): ChartRowInterface => {
     const beside = [buckets[index - 1], buckets[index + 1]];
     const nearGap =
       !bucket.observed || beside.some((other): boolean => other !== undefined && !other.observed);
 
     return {
-      label: labelOf(bucket.start, granularity),
+      key: bucket.start.toISOString(),
       solid: bucket.observed ? bucket.value : null,
       dashed: nearGap ? bucket.value : null,
       bucket,
@@ -58,8 +56,21 @@ function toRows(
   });
 }
 
+/** The line keeps off the edges of the chart: it would run along the axis at the lowest price. */
+function paddedDomain(buckets: PriceBucketInterface[]): [number, number] | ['auto', 'auto'] {
+  const values = buckets.flatMap((bucket): number[] =>
+    bucket.value === null ? [] : [bucket.value],
+  );
+  if (values.length === 0) return ['auto', 'auto'];
+
+  const [min, max] = [Math.min(...values), Math.max(...values)];
+  const padding = Math.max((max - min) * 0.1, max * 0.02);
+
+  return [Math.floor(min - padding), Math.ceil(max + padding)];
+}
+
 function isRow(value: unknown): value is ChartRowInterface {
-  return typeof value === 'object' && value !== null && 'bucket' in value && 'label' in value;
+  return typeof value === 'object' && value !== null && 'bucket' in value && 'key' in value;
 }
 
 function TooltipBody({
@@ -105,7 +116,7 @@ export function PriceChart({
   granularity: GranularityType;
   buckets: PriceBucketInterface[];
 }): ReactElement {
-  const rows = toRows(buckets, granularity);
+  const rows = toRows(buckets);
 
   return (
     <Card withBorder>
@@ -116,7 +127,8 @@ export function PriceChart({
         <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="var(--mantine-color-default-border)" strokeDasharray="3 3" />
           <XAxis
-            dataKey="label"
+            dataKey="key"
+            tickFormatter={(key: string): string => labelOf(new Date(key), granularity)}
             stroke="var(--mantine-color-dimmed)"
             tick={{ fontSize: 12 }}
             minTickGap={24}
@@ -125,7 +137,7 @@ export function PriceChart({
             stroke="var(--mantine-color-dimmed)"
             tick={{ fontSize: 12 }}
             width={80}
-            domain={['auto', 'auto']}
+            domain={paddedDomain(buckets)}
             tickFormatter={(value: number): string => formatPrice(value)}
           />
           <Tooltip
