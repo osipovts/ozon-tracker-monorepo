@@ -8,8 +8,8 @@ import {
 } from '@tanstack/react-query';
 
 import { api, ensure } from '../../shared/api/api.client.js';
-import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.js';
 import type { operations } from '../../shared/api/schema.js';
+import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.js';
 
 export type ProxyPageType =
   operations['ProxiesController_list']['responses'][200]['content']['application/json'];
