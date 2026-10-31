@@ -1,0 +1,8 @@
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	# The hub has no page at the root: the app of the users is the one people come for.
+	redir / /app/ 302
+
+	reverse_proxy hub:3000
+}

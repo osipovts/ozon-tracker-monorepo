@@ -1,0 +1,38 @@
+# Staging behind Caddy, which takes ports 80 and 443 and gets the certificate of PUBLIC_DOMAIN itself.
+# Nothing else is published on the host: Postgres, Redis and the hub are reached through the network of
+# the stack only (other projects of the machine hold the usual ports).
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+# Needs PUBLIC_DOMAIN and PUBLIC_URL (https://<domain>) in .env, besides the settings of the README.
+services:
+  hub:
+    ports: !reset []
+    environment:
+      # Caddy stands in front: the address of a client is in X-Forwarded-For.
+      TRUST_PROXY: '1'
+
+  redis:
+    ports: !reset []
+
+  postgres:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?set PUBLIC_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      hub:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:
