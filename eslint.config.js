@@ -66,7 +66,7 @@ export default defineConfig(
       '**/coverage/**',
       '**/node_modules/**',
       '**/generated/**',
-      'apps/frontend-admin/src/shared/api/schema.d.ts',
+      'apps/frontend-*/src/shared/api/schema.d.ts',
     ],
   },
 
@@ -174,7 +174,7 @@ export default defineConfig(
 
   {
     // The panel runs in a browser, and its components are named in PascalCase.
-    files: ['apps/frontend-admin/**/*.{ts,tsx}'],
+    files: ['apps/frontend-*/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
     rules: {
       '@typescript-eslint/naming-convention': [

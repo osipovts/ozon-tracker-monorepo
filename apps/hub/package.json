@@ -18,7 +18,7 @@
     "start": "node dist/index.js",
     "dev": "node --watch --conditions=source --import @swc-node/register/esm-register src/index.ts",
     "migrate:deploy": "prisma migrate deploy",
-    "openapi": "pnpm build && node dist/openapi.js ../frontend-admin/openapi.json"
+    "openapi": "pnpm build && node dist/openapi.js openapi.json"
   },
   "keywords": [],
   "author": "",
