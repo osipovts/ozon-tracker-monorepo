@@ -69,3 +69,21 @@ void test(
     assert.equal(await proxies.delete('socks5://198.51.100.1:1080'), false);
   },
 );
+
+void test(
+  'lists proxies of equal quality in one order, whether they are turned off or not',
+  { skip },
+  async (): Promise<void> => {
+    await proxies.saveMany([10, 11, 12, 13].map((n): ProxyEntity => proxy(n, null)));
+    const order = async (): Promise<string[]> =>
+      (await proxies.list({ country }, { page: 1, pageSize: 10 })).items.map(
+        (item): string => item.snapshot.server,
+      );
+    const before = await order();
+
+    await proxies.saveMany([proxy(11, new Date('2026-10-31T11:00:00Z'))]);
+    assert.deepEqual(await order(), before);
+    await proxies.saveMany([proxy(11, null)]);
+    assert.deepEqual(await order(), before);
+  },
+);

@@ -108,6 +108,8 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
           { alive: 'desc' },
           { successRate: 'desc' },
           { latencyMs: { sort: 'asc', nulls: 'last' } },
+          // Equals stay in one order: without it a row that was updated jumps among its equals.
+          { server: 'asc' },
         ],
         skip: pageOffset(pagination),
         take: pagination.pageSize,

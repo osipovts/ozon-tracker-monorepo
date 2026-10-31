@@ -20,12 +20,13 @@ function matches({ snapshot }: ProxyEntity, filter: ProxyFilterInterface): boole
   );
 }
 
-/** The best first: alive ones, then the most reliable, then the fastest. */
+/** The best first: alive ones, then the most reliable, then the fastest, then by address. */
 function byQuality(a: ProxyEntity, b: ProxyEntity): number {
   return (
     Number(b.snapshot.alive) - Number(a.snapshot.alive) ||
     b.successRate - a.successRate ||
-    (a.snapshot.latencyMs ?? Infinity) - (b.snapshot.latencyMs ?? Infinity)
+    (a.snapshot.latencyMs ?? Infinity) - (b.snapshot.latencyMs ?? Infinity) ||
+    a.snapshot.server.localeCompare(b.snapshot.server)
   );
 }
 
