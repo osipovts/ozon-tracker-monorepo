@@ -40,16 +40,20 @@ function link(): EmailVerificationEntity {
   );
 }
 
-void test('keeps one link per user: a new one replaces the earlier, and is found by its hash', { skip }, async (): Promise<void> => {
-  const [first, second] = [link(), link()];
+void test(
+  'keeps one link per user: a new one replaces the earlier, and is found by its hash',
+  { skip },
+  async (): Promise<void> => {
+    const [first, second] = [link(), link()];
 
-  await verifications.replaceForUser(first);
-  await verifications.replaceForUser(second);
+    await verifications.replaceForUser(first);
+    await verifications.replaceForUser(second);
 
-  assert.equal(await verifications.findByTokenHash(first.snapshot.tokenHash), null);
-  const found = await verifications.findByTokenHash(second.snapshot.tokenHash);
-  assert.ok(found);
-  assert.equal(found.snapshot.userId, userId);
-  assert.deepEqual(found.snapshot.expiresAt, second.snapshot.expiresAt);
-  assert.equal(await prisma.emailVerification.count({ where: { userId } }), 1);
-});
+    assert.equal(await verifications.findByTokenHash(first.snapshot.tokenHash), null);
+    const found = await verifications.findByTokenHash(second.snapshot.tokenHash);
+    assert.ok(found);
+    assert.equal(found.snapshot.userId, userId);
+    assert.deepEqual(found.snapshot.expiresAt, second.snapshot.expiresAt);
+    assert.equal(await prisma.emailVerification.count({ where: { userId } }), 1);
+  },
+);
