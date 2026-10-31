@@ -17,7 +17,8 @@
     "test:e2e": "pnpm generate && tsc && node --test \"dist/e2e/**/*.test.js\"",
     "start": "node dist/index.js",
     "dev": "tsx watch --conditions=source src/index.ts",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "openapi": "pnpm build && node dist/openapi.js ../frontend-admin/openapi.json"
   },
   "keywords": [],
   "author": "",
