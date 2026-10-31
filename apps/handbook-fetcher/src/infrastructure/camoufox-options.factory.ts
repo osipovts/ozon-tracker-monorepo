@@ -9,18 +9,18 @@ export interface CamoufoxLaunchSettingsInterface {
 
 /** Browser settings shared by the workers: Camoufox gives every launch its own fingerprint, so no session is kept. */
 export class CamoufoxOptionsFactory {
-  /** A Russian visitor: the language and the time zone are set in the browser itself, not in a context. */
+  /** A Russian visitor: the language is set in the browser itself, and the time zone and the place follow the address it comes from. */
   launch(settings: CamoufoxLaunchSettingsInterface): LaunchOptions {
     return {
       headless: !settings.headed,
       humanize: true,
       locale: ['ru-RU'],
-      config: { timezone: 'Europe/Moscow' },
-      // The option is named so by camoufox-js.
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+      geoip: true,
       ...(settings.executablePath === undefined
         ? {}
-        : { executable_path: settings.executablePath }),
+        : // The option is named so by camoufox-js.
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          { executable_path: settings.executablePath }),
     };
   }
 
