@@ -30,6 +30,23 @@ services:
       target: dev
     command: ['sh', '-c', 'pnpm --filter hub generate && exec pnpm --filter hub dev']
 
+  # The admin panel with hot reload at http://localhost:5173/panel/; its requests go to the hub.
+  frontend-admin:
+    <<: *dev
+    image: price-tracker/hub:dev
+    build:
+      target: dev
+    command: ['pnpm', '--filter', 'frontend-admin', 'dev', '--host', '0.0.0.0']
+    environment:
+      HOME: /tmp
+      NODE_ENV: development
+      pnpm_config_verify_deps_before_run: 'false'
+      HUB_URL: http://hub:3000
+    ports:
+      - '127.0.0.1:${ADMIN_UI_PORT:-5173}:5173'
+    depends_on:
+      - hub
+
   proxy-fetcher:
     <<: *dev
     image: price-tracker/proxy-fetcher:dev

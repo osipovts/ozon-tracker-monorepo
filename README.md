@@ -50,7 +50,9 @@
 Панель администратора (`apps/frontend-admin`: React, Mantine, типы API из OpenAPI): вход, дашборд, прокси
 (список с фильтрами, включение и выключение, удаление, обновление источника). Хаб отдаёт собранную панель
 по `/panel`, если задан `ADMIN_UI_DIR`; в образе `hub-prod` она уже собрана и включена.
-Локально: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
+В dev-режиме Docker (`docker-compose.dev.yml`) сервис `frontend-admin` поднимает Vite на
+http://localhost:5173/panel/ (порт `ADMIN_UI_PORT`) и проксирует запросы на хаб.
+Локально без Docker: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
 `HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
 Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api`.
 
