@@ -6,20 +6,38 @@ beforeEach((): void => {
   sessionStorage.clear();
 });
 
-test('gives back the link that is being added, until it is forgotten', (): void => {
+test('gives back the link that is being added, with its city, until it is forgotten', (): void => {
   expect(readPendingAdd()).toBeNull();
 
-  rememberPendingAdd('https://ozon.ru/t/AbC');
-  expect(readPendingAdd()).toBe('https://ozon.ru/t/AbC');
+  rememberPendingAdd({ url: 'https://ozon.ru/t/AbC', cityId: null });
+  expect(readPendingAdd()).toEqual({ url: 'https://ozon.ru/t/AbC', cityId: null });
+
+  rememberPendingAdd({
+    url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+    cityId: 'irkutsk',
+  });
+  expect(readPendingAdd()).toEqual({
+    url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+    cityId: 'irkutsk',
+  });
 
   forgetPendingAdd();
   expect(readPendingAdd()).toBeNull();
 });
 
 test('ignores a record that is too old or malformed', (): void => {
-  rememberPendingAdd('https://ozon.ru/t/AbC');
+  rememberPendingAdd({ url: 'https://ozon.ru/t/AbC', cityId: null });
   expect(readPendingAdd(Date.now() + 10 * 60_000)).toBeNull();
 
   sessionStorage.setItem('products.pendingAdd', 'not json');
   expect(readPendingAdd()).toBeNull();
+});
+
+test('reads a record made before the city was kept as a link without a city', (): void => {
+  sessionStorage.setItem(
+    'products.pendingAdd',
+    JSON.stringify({ url: 'https://ozon.ru/t/AbC', startedAt: Date.now() }),
+  );
+
+  expect(readPendingAdd()).toEqual({ url: 'https://ozon.ru/t/AbC', cityId: null });
 });

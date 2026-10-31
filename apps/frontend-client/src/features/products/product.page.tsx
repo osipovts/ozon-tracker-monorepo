@@ -113,6 +113,9 @@ export function ProductPage(): ReactElement {
               {newestPrice === null ? t('product.noPriceYet') : formatPrice(newestPrice)}
             </Title>
             {newest !== undefined && <Badge>{availabilityLabel(newest.availability, t)}</Badge>}
+            {data.product.cityName !== null && (
+              <Badge variant="light">{t('products.cityOf', { name: data.product.cityName })}</Badge>
+            )}
             <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
               {t('product.openOn', { marketplace: data.product.marketplace })}
             </Anchor>

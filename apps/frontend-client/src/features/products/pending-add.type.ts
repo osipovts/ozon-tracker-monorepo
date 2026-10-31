@@ -2,10 +2,16 @@ const storageKey = 'products.pendingAdd';
 /** The hub gives up on a link in about a minute: an older record is of an add that is over. */
 const maxAgeMs = 5 * 60_000;
 
+export interface PendingAddInterface {
+  url: string;
+  /** The city asked for, by the id of the marketplace; null when none was. */
+  cityId: string | null;
+}
+
 /** The link that is being added, kept in the tab so that a reload can ask for it again: the hub joins the add in progress. */
-export function rememberPendingAdd(url: string): void {
+export function rememberPendingAdd(add: PendingAddInterface): void {
   try {
-    sessionStorage.setItem(storageKey, JSON.stringify({ url, startedAt: Date.now() }));
+    sessionStorage.setItem(storageKey, JSON.stringify({ ...add, startedAt: Date.now() }));
   } catch {
     /* The storage may be blocked: the reload then forgets the add. */
   }
@@ -19,8 +25,8 @@ export function forgetPendingAdd(): void {
   }
 }
 
-/** The link whose add was cut short by a reload; null when there is none or it is too old. */
-export function readPendingAdd(now: number = Date.now()): string | null {
+/** The add that was cut short by a reload; null when there is none or it is too old. */
+export function readPendingAdd(now: number = Date.now()): PendingAddInterface | null {
   try {
     const raw = sessionStorage.getItem(storageKey);
     const value: unknown = raw === null ? null : JSON.parse(raw);
@@ -28,9 +34,10 @@ export function readPendingAdd(now: number = Date.now()): string | null {
       return null;
 
     const { url, startedAt } = value;
+    const cityId = 'cityId' in value && typeof value.cityId === 'string' ? value.cityId : null;
 
     return typeof url === 'string' && typeof startedAt === 'number' && now - startedAt < maxAgeMs
-      ? url
+      ? { url, cityId }
       : null;
   } catch {
     return null;

@@ -124,7 +124,7 @@ test('sends again the link whose add was cut short by a reload', async (): Promi
       return new Promise<Response>(() => undefined);
     }),
   );
-  rememberPendingAdd('https://ozon.ru/t/AbC');
+  rememberPendingAdd({ url: 'https://ozon.ru/t/AbC', cityId: null });
 
   render(
     <MantineProvider>
@@ -142,4 +142,109 @@ test('sends again the link whose add was cut short by a reload', async (): Promi
   await waitFor((): void => {
     expect(sent).toEqual([JSON.stringify({ url: 'https://ozon.ru/t/AbC' })]);
   });
+});
+
+const dnsLink = 'https://www.dns-shop.ru/product/0463bb2411a1d582/156-noutbuk/';
+
+test('asks for the city of a link of a marketplace that has cities, searches it by name, and sends its id', async (): Promise<void> => {
+  const sent: string[] = [];
+  const searched: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (request: Request | string | URL): Promise<Response> => {
+      if (typeof request === 'string' || request instanceof URL)
+        return Response.json({ items: [], page: 1, pageSize: 20, total: 0 });
+      if (request.method === 'GET') {
+        const { pathname, searchParams } = new URL(request.url);
+        if (pathname === '/marketplaces/dns/cities') {
+          searched.push(searchParams.get('query') ?? '');
+
+          return Response.json({
+            items: [{ id: 'irkutsk-id', name: 'Иркутск', region: 'Иркутская область' }],
+          });
+        }
+
+        return Response.json({ items: [], page: 1, pageSize: 20, total: 0 });
+      }
+
+      sent.push(JSON.stringify(await request.json()));
+
+      return new Promise<Response>(() => undefined);
+    }),
+  );
+  render(
+    <MantineProvider env="test">
+      <MemoryRouter>
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <ProductsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </MantineProvider>,
+  );
+  const user = userEvent.setup();
+
+  expect(screen.queryByLabelText('City', { selector: 'input' })).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText(/link/i), 'https://ozon.ru/t/AbC');
+  expect(screen.queryByLabelText('City', { selector: 'input' })).not.toBeInTheDocument();
+
+  await user.clear(screen.getByLabelText(/link/i));
+  await user.type(screen.getByLabelText(/link/i), dnsLink);
+  await user.type(screen.getByLabelText('City', { selector: 'input' }), 'Ирк');
+  await user.click(await screen.findByRole('option', { name: /Иркутск/ }));
+  await user.click(screen.getByRole('button', { name: 'Track' }));
+
+  await waitFor((): void => {
+    expect(sent).toEqual([JSON.stringify({ url: dnsLink, cityId: 'irkutsk-id' })]);
+  });
+  expect(searched).toContain('Ирк');
+});
+
+test('shows the city of a product on its card', async (): Promise<void> => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((): Promise<Response> =>
+      Promise.resolve(
+        Response.json({
+          items: [
+            {
+              ...product,
+              marketplace: 'dns',
+              id: '33333333-3333-4333-8333-333333333333',
+              externalId: '0463bb2411a1d582',
+              cityId: 'irkutsk-id',
+              cityName: 'Иркутск',
+              latest: observation,
+            },
+            {
+              ...product,
+              id: '44444444-4444-4444-8444-444444444444',
+              externalId: '2',
+              cityId: null,
+              cityName: null,
+              latest: observation,
+            },
+          ],
+          page: 1,
+          pageSize: 20,
+          total: 2,
+        }),
+      ),
+    ),
+  );
+  render(
+    <MantineProvider>
+      <MemoryRouter>
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <ProductsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </MantineProvider>,
+  );
+
+  expect(await screen.findByText('City: Иркутск')).toBeInTheDocument();
+  expect(screen.getAllByText(/^City: /)).toHaveLength(1);
 });

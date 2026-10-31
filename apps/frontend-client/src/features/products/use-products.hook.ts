@@ -8,7 +8,11 @@ import {
 
 import { api, ensure } from '../../shared/api/api.client.js';
 import type { operations } from '../../shared/api/schema.js';
-import { forgetPendingAdd, rememberPendingAdd } from './pending-add.type.js';
+import {
+  forgetPendingAdd,
+  type PendingAddInterface,
+  rememberPendingAdd,
+} from './pending-add.type.js';
 
 export type ProductPageType =
   operations['ProductsController_list']['responses'][200]['content']['application/json'];
@@ -61,13 +65,17 @@ export function useProducts(page: number): UseQueryResult<ProductPageType | unde
   });
 }
 
-export function useAddProduct(): UseMutationResult<void, Error, string> {
+export function useAddProduct(): UseMutationResult<void, Error, PendingAddInterface> {
   const client = useQueryClient();
 
   return useMutation({
-    mutationFn: async (url: string): Promise<void> => {
-      rememberPendingAdd(url);
-      ensure(await api.POST('/products', { body: { url } }));
+    mutationFn: async (add: PendingAddInterface): Promise<void> => {
+      rememberPendingAdd(add);
+      ensure(
+        await api.POST('/products', {
+          body: add.cityId === null ? { url: add.url } : { url: add.url, cityId: add.cityId },
+        }),
+      );
     },
     onSuccess: (): Promise<void> => client.invalidateQueries({ queryKey: ['products'] }),
     // Here, not in the call: the page that made it may be gone by then.
@@ -112,5 +120,24 @@ export function usePriceHistory(id: string): UseQueryResult<PriceHistoryInterfac
       return product === undefined ? undefined : { product, observations };
     },
     refetchInterval: 60_000,
+  });
+}
+
+export type CityType =
+  operations['CitiesController_list']['responses'][200]['content']['application/json']['items'][number];
+
+/** The cities of DNS whose names have the query in them, for the user to choose from. */
+export function useCities(query: string, enabled: boolean): UseQueryResult<CityType[] | undefined> {
+  return useQuery({
+    queryKey: ['cities', 'dns', query],
+    queryFn: async (): Promise<CityType[] | undefined> =>
+      ensure(
+        await api.GET('/marketplaces/{marketplace}/cities', {
+          params: { path: { marketplace: 'dns' }, query: { query, limit: 20 } },
+        }),
+      )?.items,
+    enabled,
+    staleTime: 5 * 60_000,
+    placeholderData: (previous): CityType[] | undefined => previous,
   });
 }

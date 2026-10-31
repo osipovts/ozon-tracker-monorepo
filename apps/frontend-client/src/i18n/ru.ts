@@ -89,7 +89,12 @@ export const ru: DictionaryType = {
   products: {
     title: 'Мои товары',
     linkLabel: 'Ссылка на товар',
-    supported: 'Поддерживаемые маркетплейсы: ozon.ru',
+    supported: 'Поддерживаемые маркетплейсы: ozon.ru, dns-shop.ru',
+    city: 'Город',
+    cityHint: 'Цены DNS зависят от города. Если не выбрать, будет Москва.',
+    cityPlaceholder: 'Начните вводить название города',
+    cityNothing: 'Город не найден',
+    cityOf: 'Город: {{name}}',
     noPicture: 'Нет картинки',
     track: 'Отслеживать',
     product: 'Товар',

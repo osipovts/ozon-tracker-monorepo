@@ -6,7 +6,9 @@ import {
   Card,
   Group,
   Loader,
+  type OptionsFilter,
   Pagination,
+  Select,
   SimpleGrid,
   Stack,
   Text,
@@ -19,16 +21,18 @@ import { Link } from 'react-router';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
+import { linkHasCities } from './city-link.type.js';
 import { DeleteProduct } from './delete-product.component.js';
 import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
-import { readPendingAdd } from './pending-add.type.js';
+import { type PendingAddInterface, readPendingAdd } from './pending-add.type.js';
 import { formatPrice } from './price-format.type.js';
 import { ProductThumbnail } from './product-thumbnail.component.js';
 import {
   type ProductListItemType,
   productPageSize,
   useAddProduct,
+  useCities,
   useProducts,
 } from './use-products.hook.js';
 
@@ -39,9 +43,61 @@ function titleOf(item: ProductListItemType): string {
   return item.latest?.title ?? `${item.marketplace} ${item.externalId}`;
 }
 
+/** The hub gives the cities that match, the best first: the list is not filtered again here. */
+const keepAll: OptionsFilter = ({ options }) => options;
+
+function cityLabel(city: { name: string; region: string | null }): string {
+  return city.region === null ? city.name : `${city.name} (${city.region})`;
+}
+
+/** Searches the cities of the marketplace by what is typed, and tells the one that is chosen. */
+function CityField({
+  disabled,
+  chosen,
+  onChoose,
+}: {
+  disabled: boolean;
+  chosen: { value: string; label: string } | null;
+  onChoose: (city: { value: string; label: string } | null) => void;
+}): ReactElement {
+  const { t } = useTranslation();
+  const [search, setSearch] = useState('');
+  const cities = useCities(search, true);
+  const found = (cities.data ?? []).map((city): { value: string; label: string } => ({
+    value: city.id,
+    label: cityLabel(city),
+  }));
+  // The chosen city stays among the options when the search moves on, or the field would lose its name.
+  const options =
+    chosen === null || found.some((city): boolean => city.value === chosen.value)
+      ? found
+      : [chosen, ...found];
+
+  return (
+    <Select
+      label={t('products.city')}
+      description={t('products.cityHint')}
+      placeholder={t('products.cityPlaceholder')}
+      nothingFoundMessage={t('products.cityNothing')}
+      searchable
+      clearable
+      disabled={disabled}
+      data={options}
+      value={chosen?.value ?? null}
+      searchValue={search}
+      filter={keepAll}
+      onSearchChange={setSearch}
+      onChange={(value, option): void => {
+        onChoose(value === null || option === null ? null : { value, label: option.label });
+      }}
+    />
+  );
+}
+
 function AddProduct(): ReactElement {
   const { t } = useTranslation();
   const [url, setUrl] = useState('');
+  const [city, setCity] = useState<{ value: string; label: string } | null>(null);
   const add = useAddProduct();
   const [slow, setSlow] = useState(false);
 
@@ -58,17 +114,18 @@ function AddProduct(): ReactElement {
     };
   }, [add.isPending]);
 
-  const track = (value: string): void => {
-    add.mutate(value, {
+  const track = (adding: PendingAddInterface): void => {
+    add.mutate(adding, {
       onSuccess: (): void => {
         setUrl('');
+        setCity(null);
       },
     });
   };
 
   const submit = (event: SyntheticEvent): void => {
     event.preventDefault();
-    track(url);
+    track({ url, cityId: linkHasCities(url) ? (city?.value ?? null) : null });
   };
 
   // A reload cut the add short, not stopped it: the hub joins it when the same link is sent again.
@@ -76,7 +133,7 @@ function AddProduct(): ReactElement {
     const pending = readPendingAdd();
     if (pending === null) return;
 
-    setUrl(pending);
+    setUrl(pending.url);
     track(pending);
     // Once, when the page opens.
   }, []);
@@ -102,6 +159,9 @@ function AddProduct(): ReactElement {
               {t('products.track')}
             </Button>
           </Group>
+          {linkHasCities(url) && (
+            <CityField disabled={add.isPending} chosen={city} onChoose={setCity} />
+          )}
           <Text size="xs" c="dimmed">
             {t('products.supported')}
           </Text>
@@ -180,6 +240,11 @@ function ProductCards({
               >
                 {titleOf(item)}
               </Text>
+              {item.cityName !== null && (
+                <Text size="xs" c="dimmed">
+                  {t('products.cityOf', { name: item.cityName })}
+                </Text>
+              )}
               <Text fw={600} size="lg">
                 <Price item={item} />
               </Text>

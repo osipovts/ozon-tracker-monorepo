@@ -91,7 +91,7 @@ void test('a visitor signs up, and is logged in', async (): Promise<void> => {
   await page.getByRole('button', { name: 'Account', exact: true }).waitFor();
 
   // Under the field of the link: what can be tracked. One page of products has no paginator.
-  await page.getByText('Supported marketplaces: ozon.ru').waitFor();
+  await page.getByText('Supported marketplaces: ozon.ru, dns-shop.ru').waitFor();
   assert.equal(await page.locator('.mantine-Pagination-root').count(), 0);
 });
 
