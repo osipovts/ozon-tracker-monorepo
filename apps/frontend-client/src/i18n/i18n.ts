@@ -47,12 +47,37 @@ export function createI18n(language?: LanguageType): i18n {
   return instance;
 }
 
-/** The person picks a language: it is used now, and kept for the next visit. */
-export async function chooseLanguage(instance: i18n, language: LanguageType): Promise<void> {
+/** A language to use, or `auto`: whatever the browser asks for. */
+export type LanguageChoiceType = LanguageType | 'auto';
+
+/** The first language the browser asks for that the interface has words in; else English. */
+export function browserLanguage(): LanguageType {
+  for (const tag of navigator.languages) {
+    const base = tag.split('-')[0]?.toLowerCase() ?? '';
+    if (isLanguage(base)) return base;
+  }
+
+  return 'en';
+}
+
+/** What the person picked before; `auto` when they have not, or have asked to follow the browser. */
+export function storedLanguageChoice(): LanguageChoiceType {
   try {
-    localStorage.setItem(languageStorageKey, language);
+    const stored = localStorage.getItem(languageStorageKey);
+
+    return stored !== null && isLanguage(stored) ? stored : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+/** The person picks a language: it is used now, and kept for the next visit. `auto` forgets the pick. */
+export async function chooseLanguage(instance: i18n, choice: LanguageChoiceType): Promise<void> {
+  try {
+    if (choice === 'auto') localStorage.removeItem(languageStorageKey);
+    else localStorage.setItem(languageStorageKey, choice);
   } catch {
     // The pick is not kept; it holds until the page is closed.
   }
-  await instance.changeLanguage(language);
+  await instance.changeLanguage(choice === 'auto' ? browserLanguage() : choice);
 }

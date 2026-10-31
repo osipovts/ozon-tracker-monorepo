@@ -28,10 +28,19 @@ export const ru: DictionaryType = {
   },
   shell: {
     title: 'Трекер цен',
+    settings: 'Настройки',
     confirmTitle: 'Подтвердите почту',
     confirmText: 'Мы отправили ссылку на {{email}}.',
     sendAgain: 'Отправить снова',
     sent: 'Отправлено',
+  },
+  settings: {
+    title: 'Настройки',
+    appearance: 'Оформление',
+    appearanceHint: 'Тема приложения. Авто повторяет тему вашего устройства.',
+    language: 'Язык',
+    languageHint: 'Авто берёт язык вашего браузера.',
+    kept: 'Хранится в этом браузере.',
   },
   products: {
     title: 'Товары',

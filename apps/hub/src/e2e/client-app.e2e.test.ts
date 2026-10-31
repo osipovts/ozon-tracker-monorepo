@@ -220,6 +220,31 @@ void test('a product is deleted from its page after a confirmation, and goes for
   assert.equal(await database.trackedProduct.count(), 0);
 });
 
+void test('the theme and the language are set on the page of the settings, and kept by the browser', async (): Promise<void> => {
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('heading', { name: 'Settings', level: 2 }).waitFor();
+
+  // Nothing of the kind is in the header any more.
+  assert.equal(await page.locator('header').getByText('Dark').count(), 0);
+
+  await page.getByRole('radiogroup', { name: 'Theme' }).getByText('Dark').click();
+  assert.equal(await page.locator('html').getAttribute('data-mantine-color-scheme'), 'dark');
+
+  await page.getByRole('radiogroup', { name: 'Language' }).getByText('RU', { exact: true }).click();
+  await page.getByRole('heading', { name: 'Настройки', level: 2 }).waitFor();
+
+  // Both survive a reload.
+  await page.reload();
+  await page.getByRole('heading', { name: 'Настройки', level: 2 }).waitFor();
+  assert.equal(await page.locator('html').getAttribute('data-mantine-color-scheme'), 'dark');
+  assert.equal(await page.evaluate((): string | null => localStorage.getItem('language')), 'ru');
+
+  // Auto goes back to the browser, which asks for English here.
+  await page.getByRole('radiogroup', { name: 'Язык' }).getByText('Авто').click();
+  await page.getByRole('heading', { name: 'Settings', level: 2 }).waitFor();
+  assert.equal(await page.evaluate((): string | null => localStorage.getItem('language')), null);
+});
+
 void test('a visitor who logs out is sent to the login', async (): Promise<void> => {
   await page.getByRole('button', { name: 'Log out' }).click();
   await page.waitForURL('**/app/login');

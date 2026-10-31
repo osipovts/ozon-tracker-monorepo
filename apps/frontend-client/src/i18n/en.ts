@@ -26,10 +26,19 @@ export const en = {
   },
   shell: {
     title: 'Price tracker',
+    settings: 'Settings',
     confirmTitle: 'Confirm your email',
     confirmText: 'We sent a link to {{email}}.',
     sendAgain: 'Send again',
     sent: 'Sent',
+  },
+  settings: {
+    title: 'Settings',
+    appearance: 'Appearance',
+    appearanceHint: 'The theme of the app. Auto follows the one of your device.',
+    language: 'Language',
+    languageHint: 'Auto follows the language of your browser.',
+    kept: 'Kept in this browser.',
   },
   products: {
     title: 'Products',

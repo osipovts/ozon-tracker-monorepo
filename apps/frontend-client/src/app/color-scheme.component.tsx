@@ -9,13 +9,13 @@ function isColorScheme(value: string): value is ColorSchemeType {
 }
 
 /** The theme follows the system until the person picks one; the pick is kept by the browser. */
-export function ColorSchemeControl(): ReactElement {
+export function ColorSchemeControl({ size = 'sm' }: { size?: 'xs' | 'sm' }): ReactElement {
   const { t } = useTranslation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   return (
     <SegmentedControl
-      size="xs"
+      size={size}
       aria-label={t('common.theme')}
       value={colorScheme}
       data={[
