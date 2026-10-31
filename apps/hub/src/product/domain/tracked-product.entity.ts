@@ -9,6 +9,8 @@ export interface TrackedProductInterface {
   /** Status of the last fetch, including failed ones. */
   lastStatus: string | null;
   lastCheckedAt: Date | null;
+  /** When a read of the price was last queued, by a user or by the schedule. */
+  lastRequestedAt: Date | null;
 }
 
 export class TrackedProductEntity {

@@ -41,7 +41,11 @@ before(
 
     hub = await startHub({
       stack: infrastructure,
-      env: { CLIENT_UI_DIR: resolve(import.meta.dirname, '../../../frontend-client/dist') },
+      env: {
+        // The schedule is on, and looks too rarely to read anything during the test: the next check is shown.
+        PRICE_REFRESH_INTERVAL_MS: '3600000',
+        CLIENT_UI_DIR: resolve(import.meta.dirname, '../../../frontend-client/dist'),
+      },
     });
     browser = await chromium.launch();
     page = await (await browser.newContext()).newPage();
@@ -82,6 +86,27 @@ void test('a product is added by its link, and shows its first price when a work
   assert.equal(worker.jobs.length, 1);
 });
 
+void test('a long title takes one line of the list, and is whole in its hint', async (): Promise<void> => {
+  const longTitle = `ASUS ${'ROG Strix gaming laptop with a very long name '.repeat(12)}`.trim();
+  const original = (await database.priceObservation.findFirstOrThrow()).title;
+  await database.priceObservation.updateMany({ data: { title: longTitle } });
+  await page.reload();
+
+  const link = page.getByRole('link', { name: /ASUS ROG/ });
+  await link.waitFor();
+  assert.equal(await link.getAttribute('title'), longTitle);
+
+  const box = await link.boundingBox();
+  assert.ok(box);
+  // One line, and not wider than the limit.
+  assert.ok(box.height < 40);
+  assert.ok(box.width <= 521);
+  assert.ok(await link.evaluate((node): boolean => node.scrollWidth > node.clientWidth));
+
+  // The next tests read the page of the product, where a title this long would push the charts down.
+  await database.priceObservation.updateMany({ data: { title: original } });
+});
+
 void test('the page of the product has the price, two charts side by side, and the history', async (): Promise<void> => {
   // Older prices with gaps between them, as the schedule would have left in a day.
   const product = await database.trackedProduct.findFirstOrThrow();
@@ -100,6 +125,7 @@ void test('the page of the product has the price, two charts side by side, and t
   await page.getByRole('link', { name: /.+/ }).filter({ hasText: /\S/ }).first().waitFor();
   await page.goto(`${hub.baseUrl}/app/products/${product.id}`);
   await page.getByRole('heading', { level: 3, name: /1\s299,00/ }).waitFor();
+  await page.getByText(/Next price check: about/).waitFor();
 
   const charts = page.locator('.recharts-wrapper');
   await charts.nth(1).waitFor();

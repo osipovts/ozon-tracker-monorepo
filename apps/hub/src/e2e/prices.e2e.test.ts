@@ -105,6 +105,14 @@ void test('adding a product queues the read of its first price, a worker answers
   assert.equal(history.total, 1);
   assert.equal(history.items[0]?.prices[0]?.amountMinor, 129_900);
 
+  // The schedule reads the price again a minute after the last read, which this test sets as the maximum age.
+  const shown = z
+    .object({ product: z.object({ nextCheckAt: z.iso.datetime().nullable() }) })
+    .parse((await jane.request(`/products/${productId}/prices`)).body);
+  assert.ok(shown.product.nextCheckAt !== null);
+  const wait = Date.parse(shown.product.nextCheckAt) - Date.now();
+  assert.ok(wait > 0 && wait <= 60_000, `the next check is in ${String(wait)} ms`);
+
   // The worker was given the canonical link and the proxy the hub had alive for it.
   assert.equal(worker.jobs.length, 1);
   const [taken] = worker.jobs;

@@ -32,6 +32,7 @@ function toEntity(row: TrackedProductRow): TrackedProductEntity {
     url: row.url,
     lastStatus: row.lastStatus,
     lastCheckedAt: row.lastCheckedAt,
+    lastRequestedAt: row.lastRequestedAt,
   });
 }
 

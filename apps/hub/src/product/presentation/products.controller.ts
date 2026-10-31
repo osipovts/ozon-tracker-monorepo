@@ -26,6 +26,10 @@ import {
 import type { Request, Response } from 'express';
 
 import {
+  APP_CONFIG,
+  type AppConfigInterface,
+} from '../../shared/application/app-config.interface.js';
+import {
   paginationQuerySchema,
   type PaginationQueryType,
   toPageResponse,
@@ -34,6 +38,7 @@ import { requireIdentity } from '../../shared/presentation/request-identity.type
 import { AddProductUseCase } from '../application/add-product.use-case.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
+import { nextPriceCheckAt } from '../application/next-price-check.type.js';
 import { RemoveProductUseCase } from '../application/remove-product.use-case.js';
 import type { PriceObservationInterface } from '../domain/price-observation.interface.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
@@ -49,10 +54,6 @@ import {
   type ProductListResponseType,
   type ProductType,
 } from './product.type.js';
-
-function toProduct({ snapshot }: TrackedProductEntity): ProductType {
-  return { ...snapshot, lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null };
-}
 
 function toObservation(observation: PriceObservationInterface): PriceObservationType {
   return {
@@ -73,7 +74,29 @@ export class ProductsController {
     @Inject(ListProductsUseCase) private readonly listProducts: ListProductsUseCase,
     @Inject(ListPriceHistoryUseCase) private readonly listHistory: ListPriceHistoryUseCase,
     @Inject(RemoveProductUseCase) private readonly removeProduct: RemoveProductUseCase,
+    @Inject(APP_CONFIG) private readonly config: AppConfigInterface,
   ) {}
+
+  private toProduct({ snapshot }: TrackedProductEntity): ProductType {
+    const next = nextPriceCheckAt(
+      snapshot,
+      {
+        intervalMs: this.config.priceRefreshIntervalMs,
+        maxAgeMs: this.config.priceRefreshMaxAgeMs,
+      },
+      new Date(),
+    );
+
+    return {
+      id: snapshot.id,
+      marketplace: snapshot.marketplace,
+      externalId: snapshot.externalId,
+      url: snapshot.url,
+      lastStatus: snapshot.lastStatus,
+      lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null,
+      nextCheckAt: next?.toISOString() ?? null,
+    };
+  }
 
   @Get()
   @ApiOperation({ summary: 'List tracked products with their newest price, the newest first' })
@@ -85,7 +108,7 @@ export class ProductsController {
     const page = await this.listProducts.execute(requireIdentity(request).userId, query);
 
     return toPageResponse(page, query, ({ product, latest }) => ({
-      ...toProduct(product),
+      ...this.toProduct(product),
       latest: latest === null ? null : toObservation(latest),
     }));
   }
@@ -121,7 +144,7 @@ export class ProductsController {
     );
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
 
-    return { ...toProduct(product), jobId };
+    return { ...this.toProduct(product), jobId };
   }
 
   @Get(':id/prices')
@@ -139,7 +162,7 @@ export class ProductsController {
       query,
     );
 
-    return { product: toProduct(product), ...toPageResponse(page, query, toObservation) };
+    return { product: this.toProduct(product), ...toPageResponse(page, query, toObservation) };
   }
 
   @Delete(':id')

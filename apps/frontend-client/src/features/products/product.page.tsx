@@ -19,6 +19,7 @@ import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { DeleteProduct } from './delete-product.component.js';
+import { describeNextCheck } from './next-check.type.js';
 import { PriceChart } from './price-chart.component.js';
 import { formatPrice } from './price-format.type.js';
 import {
@@ -92,6 +93,7 @@ export function ProductPage(): ReactElement {
 
   const [newest] = data.observations;
   const newestPrice = newest === undefined ? null : priceOf(newest);
+  const next = describeNextCheck(data.product.nextCheckAt, new Date(), locale);
   const rows = data.observations.slice((page - 1) * tablePageSize, page * tablePageSize);
 
   return (
@@ -116,6 +118,11 @@ export function ProductPage(): ReactElement {
           onDeleted={(): void => void navigate('/')}
         />
       </Group>
+      {next !== null && (
+        <Text size="sm" c="dimmed">
+          {next.soon ? t('product.nextCheckSoon') : t('product.nextCheck', { when: next.when })}
+        </Text>
+      )}
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <PriceChart
           title={t('product.hourlyTitle', { count: hoursShown })}

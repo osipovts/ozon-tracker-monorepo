@@ -34,6 +34,7 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
       ...reference,
       lastStatus: null,
       lastCheckedAt: null,
+      lastRequestedAt: null,
     });
     this.products.set(product.snapshot.id, product);
 
@@ -81,7 +82,15 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
   }
 
   markRequested(productIds: string[], at: Date): Promise<void> {
-    for (const id of productIds) this.requested.set(id, at);
+    for (const id of productIds) {
+      this.requested.set(id, at);
+      const product = this.products.get(id);
+      if (product !== undefined)
+        this.products.set(
+          id,
+          new TrackedProductEntity({ ...product.snapshot, lastRequestedAt: at }),
+        );
+    }
 
     return Promise.resolve();
   }

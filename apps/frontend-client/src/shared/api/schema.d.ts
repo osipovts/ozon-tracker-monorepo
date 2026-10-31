@@ -524,6 +524,8 @@ export interface operations {
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;
+              /** Format: date-time */
+              nextCheckAt: string | null;
               latest: {
                 /** Format: uuid */
                 id: string;
@@ -579,6 +581,8 @@ export interface operations {
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
+            /** Format: date-time */
+            nextCheckAt: string | null;
             /** Format: uuid */
             jobId: string | null;
           };
@@ -599,6 +603,8 @@ export interface operations {
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
+            /** Format: date-time */
+            nextCheckAt: string | null;
             /** Format: uuid */
             jobId: string | null;
           };
@@ -674,6 +680,8 @@ export interface operations {
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;
+              /** Format: date-time */
+              nextCheckAt: string | null;
             };
           };
         };

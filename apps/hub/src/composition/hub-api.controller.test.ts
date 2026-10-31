@@ -353,6 +353,8 @@ void test('tracks a product once whatever the link and lists it with its newest 
     url: productUrl,
     lastStatus: null,
     lastCheckedAt: null,
+    // The schedule is off in this test.
+    nextCheckAt: null,
     jobId: null,
   });
 
@@ -408,6 +410,7 @@ void test('queues the read of the first price when a product is added, and serve
       url,
       lastStatus: null,
       lastCheckedAt: null,
+      nextCheckAt: null,
     },
     items: [],
     page: 1,

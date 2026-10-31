@@ -22,6 +22,8 @@ export const productSchema = z.object({
   /** Status of the last fetch, including failed ones. */
   lastStatus: z.string().nullable(),
   lastCheckedAt: z.iso.datetime().nullable(),
+  /** About when the schedule reads the price again; a time that has passed means it is overdue and waits for the next look of the schedule. Null when the schedule is off. */
+  nextCheckAt: z.iso.datetime().nullable(),
 });
 
 export type ProductType = z.infer<typeof productSchema>;

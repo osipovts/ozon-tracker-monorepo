@@ -18,8 +18,19 @@ import { Link } from 'react-router';
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { DeleteProduct } from './delete-product.component.js';
+import { describeNextCheck } from './next-check.type.js';
 import { formatPrice } from './price-format.type.js';
 import { productPageSize, useAddProduct, useProducts } from './use-products.hook.js';
+
+function NextCheck({ at }: { at: string | null }): ReactElement {
+  const { t } = useTranslation();
+  const locale = useLocale();
+  const next = describeNextCheck(at, new Date(), locale);
+
+  if (next === null) return <>-</>;
+
+  return <>{next.soon ? t('products.soon') : next.when}</>;
+}
 
 function AddProduct(): ReactElement {
   const { t } = useTranslation();
@@ -84,6 +95,7 @@ export function ProductsPage(): ReactElement {
                 <Table.Th>{t('products.product')}</Table.Th>
                 <Table.Th>{t('products.price')}</Table.Th>
                 <Table.Th>{t('products.checked')}</Table.Th>
+                <Table.Th>{t('products.nextCheck')}</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
@@ -91,7 +103,16 @@ export function ProductsPage(): ReactElement {
               {data.items.map((item): ReactElement => (
                 <Table.Tr key={item.id}>
                   <Table.Td>
-                    <Text component={Link} to={`/products/${item.id}`} fw={500}>
+                    {/* A title can be a paragraph: one line of the table, the whole of it in the hint. */}
+                    <Text
+                      component={Link}
+                      to={`/products/${item.id}`}
+                      fw={500}
+                      display="block"
+                      maw={520}
+                      truncate="end"
+                      title={item.latest?.title ?? `${item.marketplace} ${item.externalId}`}
+                    >
                       {item.latest?.title ?? `${item.marketplace} ${item.externalId}`}
                     </Text>
                   </Table.Td>
@@ -108,6 +129,9 @@ export function ProductsPage(): ReactElement {
                     {item.lastCheckedAt === null
                       ? '-'
                       : new Date(item.lastCheckedAt).toLocaleString(locale)}
+                  </Table.Td>
+                  <Table.Td>
+                    <NextCheck at={item.nextCheckAt} />
                   </Table.Td>
                   <Table.Td>
                     <DeleteProduct
