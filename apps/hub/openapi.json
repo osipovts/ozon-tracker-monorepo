@@ -2180,6 +2180,37 @@
         "tags": ["auth"]
       }
     },
+    "/auth/oauth/providers": {
+      "get": {
+        "operationId": "OauthController_providers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["google", "github"]
+                      }
+                    }
+                  },
+                  "required": ["providers"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The providers a user can log in through",
+        "tags": ["auth"]
+      }
+    },
     "/auth/oauth/{provider}/start": {
       "get": {
         "description": "Open it in the browser, not as an API call. Google and GitHub, when their OAuth apps are set up; the provider sends the user back to the callback, which logs them in.",

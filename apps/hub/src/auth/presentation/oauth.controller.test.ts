@@ -32,6 +32,7 @@ import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memor
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { CompleteOauthLoginUseCase } from '../application/complete-oauth-login.use-case.js';
+import { ListOauthProvidersUseCase } from '../application/list-oauth-providers.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
 import type { OauthProvidersType } from '../application/oauth-provider.port.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
@@ -74,6 +75,7 @@ const config: AppConfigInterface = {
   publicUrl: 'http://hub.test',
   authAllowedOrigins: [],
   authSuccessRedirect: '/auth/me',
+  authFailureRedirect: null,
   googleOauth: null,
   githubOauth: null,
   adminEmails: [],
@@ -109,6 +111,10 @@ before(async (): Promise<void> => {
       { provide: APP_FILTER, useClass: ApplicationErrorFilter },
       { provide: APP_GUARD, useClass: AccessGuard },
       { provide: APP_CONFIG, useValue: config },
+      {
+        provide: ListOauthProvidersUseCase,
+        useValue: new ListOauthProvidersUseCase(providers),
+      },
       {
         provide: StartOauthLoginUseCase,
         useValue: new StartOauthLoginUseCase(providers),
@@ -276,6 +282,32 @@ void test('refuses a callback that does not answer a login of this browser, and 
 void test('knows only the providers that are set up', async (): Promise<void> => {
   assert.equal((await call('/auth/oauth/github/start')).status, 404);
   assert.equal((await call('/auth/oauth/facebook/start')).status, 400);
+});
+
+void test('names the providers that are set up, to everybody', async (): Promise<void> => {
+  const reply = await call('/auth/oauth/providers');
+
+  assert.equal(reply.status, 200);
+  assert.deepEqual(reply.body, { providers: ['google'] });
+});
+
+void test('sends a user whose login failed back to the page of the app when there is one, and shows the error when there is none', async (): Promise<void> => {
+  const { cookie, state } = await startLogin();
+  const failing = `/auth/oauth/google/callback?error=access_denied&state=${state}`;
+
+  config.authFailureRedirect = '/app/login';
+  try {
+    const reply = await call(failing, cookie);
+
+    assert.equal(reply.status, 302);
+    assert.equal(reply.location, '/app/login?error=oauth');
+    assert.ok(!reply.setCookie.some((item): boolean => item.startsWith('session=')));
+  } finally {
+    config.authFailureRedirect = null;
+  }
+
+  // The error of a request that did not come from a login of this browser is an error still, for an API.
+  assert.equal((await call(failing, cookie)).status, 401);
 });
 
 void test('gives a password account of an email to the provider that proves it, and ends the way in of whoever signed up with it', async (): Promise<void> => {

@@ -21,6 +21,7 @@ import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { ChangePasswordUseCase } from './application/change-password.use-case.js';
 import { CompleteOauthLoginUseCase } from './application/complete-oauth-login.use-case.js';
+import { ListOauthProvidersUseCase } from './application/list-oauth-providers.use-case.js';
 import { LogInUseCase } from './application/log-in.use-case.js';
 import type { OauthProviderPort, OauthProvidersType } from './application/oauth-provider.port.js';
 import { ResendEmailVerificationUseCase } from './application/resend-email-verification.use-case.js';
@@ -156,6 +157,12 @@ const noticeIntervalMs = 60 * 60_000;
         return providers;
       },
       inject: [APP_CONFIG],
+    },
+    {
+      provide: ListOauthProvidersUseCase,
+      useFactory: (providers: OauthProvidersType): ListOauthProvidersUseCase =>
+        new ListOauthProvidersUseCase(providers),
+      inject: [OAUTH_PROVIDERS],
     },
     {
       provide: StartOauthLoginUseCase,

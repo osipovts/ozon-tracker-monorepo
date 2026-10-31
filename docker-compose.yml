@@ -14,6 +14,9 @@ x-hub-env: &hub-env
   PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
   SMTP_URL: ${SMTP_URL:-}
   MAIL_FROM: ${MAIL_FROM:-Price Tracker <no-reply@localhost>}
+  # A login through a provider lands the user in the client app, which the image of the hub serves.
+  AUTH_SUCCESS_REDIRECT: ${AUTH_SUCCESS_REDIRECT:-/app/}
+  AUTH_FAILURE_REDIRECT: ${AUTH_FAILURE_REDIRECT:-/app/login}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}

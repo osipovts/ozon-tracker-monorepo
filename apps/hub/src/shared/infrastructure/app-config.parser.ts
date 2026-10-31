@@ -136,6 +136,10 @@ const configSchema = z.object({
     // Not `//host`, nor `/\host`: a browser reads a backslash as a slash.
     .regex(/^\/(?![/\\])/)
     .default('/auth/me'),
+  authFailureRedirect: z
+    .string()
+    .regex(/^\/(?![/\\])/)
+    .nullable(),
   googleOauth: oauthClientSchema,
   githubOauth: oauthClientSchema,
   adminEmails: z
@@ -194,6 +198,10 @@ export class AppConfigParser {
         publicUrl: env['PUBLIC_URL'],
         authAllowedOrigins: env['AUTH_ALLOWED_ORIGINS'],
         authSuccessRedirect: env['AUTH_SUCCESS_REDIRECT'],
+        authFailureRedirect:
+          env['AUTH_FAILURE_REDIRECT'] === undefined || env['AUTH_FAILURE_REDIRECT'] === ''
+            ? null
+            : env['AUTH_FAILURE_REDIRECT'],
         googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
         githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
         adminEmails: env['ADMIN_EMAILS'],

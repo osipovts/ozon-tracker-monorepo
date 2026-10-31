@@ -54,6 +54,12 @@
 http://localhost:5173/panel/ (порт `ADMIN_UI_PORT`) и проксирует запросы на хаб.
 Локально без Docker: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
 `HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
+Вход через Google и GitHub в клиентском приложении: на странице входа кнопки «Продолжить через …» для тех провайдеров, чьи
+OAuth-приложения заданы (`GET /auth/oauth/providers`). Callback-адреса: `<PUBLIC_URL>/auth/oauth/google/callback` и
+`<PUBLIC_URL>/auth/oauth/github/callback`; у Google в OAuth consent screen нужны scopes `openid`, `email`, `profile`, у GitHub
+хватает `user:email`. После входа пользователь попадает на `AUTH_SUCCESS_REDIRECT` (в compose `/app/`), после неудачного входа
+на `AUTH_FAILURE_REDIRECT` (в compose `/app/login`) с сообщением. Почта от провайдера используется только подтверждённая.
+
 На странице `/settings` клиентского приложения также аккаунт (email, смена пароля) и список устройств с выходом на одном или на всех остальных. Клиентское приложение хранит настройки пользователя (тема, язык) в localStorage браузера на странице `/settings`: у языка есть вариант «Авто», который возвращает выбор по языкам браузера. Оба приложения на английском и русском: язык берётся из языков браузера (`Accept-Language`, то есть `navigator.languages`), иначе английский; выбранный в переключателе EN/RU язык запоминается. Тексты ошибок хаба приходят на английском. В списке прокси админки есть колонка и фильтр наличия сессии маркетплейса (`ready`, статус и причина устаревания в подсказке).
 
 Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api && pnpm --filter frontend-client generate:api`

@@ -53,6 +53,7 @@ const config: AppConfigInterface = {
   trustProxy: 0,
   publicUrl: 'https://hub.example.com',
   authSuccessRedirect: '/auth/me',
+  authFailureRedirect: null,
   authAllowedOrigins: ['https://app.example.com'],
   googleOauth: null,
   githubOauth: null,

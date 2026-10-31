@@ -76,6 +76,8 @@ export interface AppConfigInterface {
   authAllowedOrigins: string[];
   /** Where the user lands after a login through a provider: a path of the hub. */
   authSuccessRedirect: string;
+  /** Where the user lands when a login through a provider fails, with `?error=oauth`; the error is shown as it is without one. */
+  authFailureRedirect: string | null;
   /** The OAuth app of Google; the login through it is off without one. */
   googleOauth: OauthClientConfigInterface | null;
   githubOauth: OauthClientConfigInterface | null;

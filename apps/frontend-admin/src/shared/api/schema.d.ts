@@ -377,6 +377,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/oauth/providers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The providers a user can log in through */
+    get: operations['OauthController_providers'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/oauth/{provider}/start': {
     parameters: {
       query?: never;
@@ -1421,6 +1438,27 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  OauthController_providers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            providers: ('google' | 'github')[];
+          };
+        };
       };
     };
   };

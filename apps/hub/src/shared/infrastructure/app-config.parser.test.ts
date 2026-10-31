@@ -167,3 +167,15 @@ void test('keeps the pictures in S3 when it has an endpoint and keys, with defau
   // An endpoint without keys is a mistake to report.
   assert.throws(() => parser.parse(env(['S3_ENDPOINT', 'http://minio:9000'])));
 });
+
+void test('sends a user whose login through a provider failed to a page of the app, when it is told which', (): void => {
+  assert.equal(parser.parse(env()).authFailureRedirect, null);
+  assert.equal(parser.parse(env(['AUTH_FAILURE_REDIRECT', ''])).authFailureRedirect, null);
+  assert.equal(
+    parser.parse(env(['AUTH_FAILURE_REDIRECT', '/app/login'])).authFailureRedirect,
+    '/app/login',
+  );
+  // A page of the hub, not another host.
+  assert.throws(() => parser.parse(env(['AUTH_FAILURE_REDIRECT', '//evil.example'])));
+  assert.throws(() => parser.parse(env(['AUTH_FAILURE_REDIRECT', 'https://evil.example/'])));
+});

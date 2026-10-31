@@ -91,6 +91,7 @@ function configWith(operatorApiKey: string | null): AppConfigInterface {
     publicUrl: 'http://localhost:3000',
     authAllowedOrigins: [],
     authSuccessRedirect: '/auth/me',
+    authFailureRedirect: null,
     googleOauth: null,
     githubOauth: null,
     adminEmails: ['boss@example.com', 'second@example.com'],

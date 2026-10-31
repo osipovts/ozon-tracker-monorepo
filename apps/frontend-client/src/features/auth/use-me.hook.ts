@@ -71,3 +71,19 @@ export function useResendVerification(): ReturnType<typeof useMutation<void, Err
     },
   });
 }
+
+export type OauthProviderType = 'google' | 'github';
+
+function isOauthProvider(value: string): value is OauthProviderType {
+  return value === 'google' || value === 'github';
+}
+
+/** The providers the hub has set up; none while they are not known, or when the hub does not say. */
+export function useOauthProviders(): ReturnType<typeof useQuery<OauthProviderType[]>> {
+  return useQuery({
+    queryKey: ['oauth-providers'],
+    queryFn: async (): Promise<OauthProviderType[]> =>
+      (ensure(await api.GET('/auth/oauth/providers'))?.providers ?? []).filter(isOauthProvider),
+    staleTime: 5 * 60_000,
+  });
+}

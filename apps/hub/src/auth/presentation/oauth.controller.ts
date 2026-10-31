@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Param, Query, Redirect, Req, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 
@@ -10,9 +10,11 @@ import {
 } from '../../shared/application/app-config.interface.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { CompleteOauthLoginUseCase } from '../application/complete-oauth-login.use-case.js';
+import { ListOauthProvidersUseCase } from '../application/list-oauth-providers.use-case.js';
 import { OauthLoginFailedError } from '../application/oauth-login-failed.error.js';
 import { StartOauthLoginUseCase } from '../application/start-oauth-login.use-case.js';
 import { cookieOptionsOf } from './cookie-options.type.js';
+import { oauthProvidersResponseSchema, type OauthProvidersResponseType } from './oauth.type.js';
 import {
   oauthLoginCookieMaxAgeMs,
   oauthLoginCookieName,
@@ -39,9 +41,17 @@ export class OauthController {
   constructor(
     @Inject(StartOauthLoginUseCase) private readonly startLogin: StartOauthLoginUseCase,
     @Inject(CompleteOauthLoginUseCase) private readonly completeLogin: CompleteOauthLoginUseCase,
+    @Inject(ListOauthProvidersUseCase) private readonly listProviders: ListOauthProvidersUseCase,
     @Inject(OauthLoginCookieParser) private readonly loginCookies: OauthLoginCookieParser,
     @Inject(APP_CONFIG) private readonly config: AppConfigInterface,
   ) {}
+
+  @Get('providers')
+  @ApiOperation({ summary: 'The providers a user can log in through' })
+  @ApiOkResponse({ standardSchema: oauthProvidersResponseSchema })
+  providers(): OauthProvidersResponseType {
+    return { providers: this.listProviders.execute() };
+  }
 
   @Get(':provider/start')
   @Redirect()
@@ -89,6 +99,27 @@ export class OauthController {
       path: oauthLoginCookiePath,
     });
 
+    try {
+      await this.logIn(provider, query, secret, request, response);
+    } catch (error: unknown) {
+      // Where there is a page of the app to say so, the user is sent back to it: the error of an API is no page.
+      if (error instanceof OauthLoginFailedError && this.config.authFailureRedirect !== null) {
+        return { url: `${this.config.authFailureRedirect}?error=oauth` };
+      }
+
+      throw error;
+    }
+
+    return { url: this.config.authSuccessRedirect };
+  }
+
+  private async logIn(
+    provider: OauthProviderType,
+    query: CallbackQueryType,
+    secret: ReturnType<OauthLoginCookieParser['parse']>,
+    request: Request,
+    response: Response,
+  ): Promise<void> {
     if (query.error !== undefined) {
       throw new OauthLoginFailedError(`the provider answered ${query.error}`);
     }
@@ -112,8 +143,6 @@ export class OauthController {
       ...cookieOptionsOf(this.config),
       expires: expiresAt,
     });
-
-    return { url: this.config.authSuccessRedirect };
   }
 
   private callbackUrl(provider: OauthProviderType): string {

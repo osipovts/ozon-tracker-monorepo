@@ -48,6 +48,7 @@ const config: AppConfigInterface = {
   publicUrl: 'http://localhost:3000',
   authAllowedOrigins: [],
   authSuccessRedirect: '/auth/me',
+  authFailureRedirect: null,
   googleOauth: null,
   githubOauth: null,
   adminEmails: [],

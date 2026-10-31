@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Container,
+  Divider,
   Group,
   PasswordInput,
   Stack,
@@ -14,11 +15,17 @@ import {
 import type { TFunction } from 'i18next';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { LanguageControl } from '../../app/language.component.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
-import { useLogin, useMe, useRegister } from './use-me.hook.js';
+import {
+  type OauthProviderType,
+  useLogin,
+  useMe,
+  useOauthProviders,
+  useRegister,
+} from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
 function explain(error: Error, t: TFunction): string {
@@ -36,6 +43,32 @@ function explain(error: Error, t: TFunction): string {
   return error.message;
 }
 
+const providerNames: Record<OauthProviderType, string> = { google: 'Google', github: 'GitHub' };
+
+/** Buttons that take the browser to the login of a provider, which brings it back logged in. */
+function ProviderButtons(): ReactElement | null {
+  const { t } = useTranslation();
+  const providers = useOauthProviders();
+
+  if (providers.data === undefined || providers.data.length === 0) return null;
+
+  return (
+    <Stack gap="xs" mt="md">
+      <Divider label={t('login.or')} labelPosition="center" />
+      {providers.data.map((provider): ReactElement => (
+        <Button
+          key={provider}
+          component="a"
+          href={`/auth/oauth/${provider}/start`}
+          variant="default"
+        >
+          {t('login.continueWith', { provider: providerNames[provider] })}
+        </Button>
+      ))}
+    </Stack>
+  );
+}
+
 export function LoginPage(): ReactElement {
   const { t } = useTranslation();
   const me = useMe();
@@ -46,6 +79,8 @@ export function LoginPage(): ReactElement {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const signingUp = mode === 'register';
+  const [params] = useSearchParams();
+  const oauthFailed = params.get('error') === 'oauth';
   const failure = signingUp ? (register.error ?? login.error) : login.error;
 
   if (me.data !== null && me.data !== undefined) return <Navigate to="/" replace />;
@@ -99,6 +134,11 @@ export function LoginPage(): ReactElement {
                 setPassword(event.currentTarget.value);
               }}
             />
+            {oauthFailed && failure === null && (
+              <Alert color="red" role="alert">
+                {t('login.oauthFailed')}
+              </Alert>
+            )}
             {failure !== null && (
               <Alert color="red" role="alert">
                 {explain(failure, t)}
@@ -109,6 +149,7 @@ export function LoginPage(): ReactElement {
             </Button>
           </Stack>
         </form>
+        <ProviderButtons />
       </Card>
     </Container>
   );

@@ -26,6 +26,10 @@ export const en = {
     wrongCredentials:
       'The email or the password is wrong. If you have signed up just now with an email that already has an account, log in with the password of that account.',
     tooManyAttempts: 'Too many attempts.',
+    or: 'or',
+    continueWith: 'Continue with {{provider}}',
+    oauthFailed:
+      'The login through the provider failed. Try again, or log in with the email and the password.',
   },
   shell: {
     title: 'Нищебродская',
