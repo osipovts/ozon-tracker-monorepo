@@ -61,13 +61,19 @@ const hubContextPatterns = (unit, layer) =>
 
 export default defineConfig(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/generated/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/generated/**',
+      'apps/frontend-admin/src/shared/api/schema.d.ts',
+    ],
   },
 
   js.configs.recommended,
 
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    files: ['**/*.{js,mjs,cjs,ts,tsx,mts,cts}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -98,7 +104,7 @@ export default defineConfig(
   },
 
   {
-    files: ['**/*.{ts,mts,cts}'],
+    files: ['**/*.{ts,tsx,mts,cts}'],
     extends: [tseslint.configs.strictTypeChecked, tseslint.configs.stylisticTypeChecked],
     languageOptions: {
       parserOptions: {
@@ -162,6 +168,19 @@ export default defineConfig(
         'error',
         ...namingConvention,
         { selector: ['objectLiteralProperty', 'typeProperty'], format: null },
+      ],
+    },
+  },
+
+  {
+    // The panel runs in a browser, and its components are named in PascalCase.
+    files: ['apps/frontend-admin/**/*.{ts,tsx}'],
+    languageOptions: { globals: globals.browser },
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        ...namingConvention,
+        { selector: 'function', format: ['camelCase', 'PascalCase'] },
       ],
     },
   },
