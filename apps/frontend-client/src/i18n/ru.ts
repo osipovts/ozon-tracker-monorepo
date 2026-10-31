@@ -40,6 +40,7 @@ export const ru: DictionaryType = {
   },
   shell: {
     title: 'Нищебродская',
+    account: 'Аккаунт',
     settings: 'Настройки',
     confirmTitle: 'Подтвердите почту',
     confirmText: 'Мы отправили ссылку на {{email}}.',
@@ -56,6 +57,7 @@ export const ru: DictionaryType = {
     linkedHint:
       'Способы входа. Отвязанного провайдера можно привязать снова, войдя через него с той же почтой.',
     passwordWay: 'Пароль',
+    createdOn: 'Создан: {{when}}',
     linkedOn: 'Привязан {{when}}',
     unlink: 'Отвязать',
     onlyWay: 'Единственный способ входа',
@@ -95,6 +97,7 @@ export const ru: DictionaryType = {
     checked: 'Проверка',
     nextCheck: 'Следующая',
     soon: 'скоро',
+    nextAt: 'в {{when}}',
     waiting: 'ждём первую цену',
     noPrice: 'нет цены',
     empty: 'Пока ничего не отслеживается.',

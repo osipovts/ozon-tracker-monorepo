@@ -67,6 +67,7 @@ export class AccountController {
     return {
       email: user.email,
       emailVerified: user.emailVerifiedAt !== null,
+      createdAt: user.createdAt.toISOString(),
       hasPassword,
       identities: identities.map(({ provider, linkedAt }) => ({
         provider,

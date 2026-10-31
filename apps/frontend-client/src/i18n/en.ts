@@ -38,6 +38,7 @@ export const en = {
   },
   shell: {
     title: 'Нищебродская',
+    account: 'Account',
     settings: 'Settings',
     confirmTitle: 'Confirm your email',
     confirmText: 'We sent a link to {{email}}.',
@@ -54,6 +55,7 @@ export const en = {
     linkedHint:
       'The ways you log in. A provider you unlink can be linked again by logging in through it with the same email.',
     passwordWay: 'Password',
+    createdOn: 'Created: {{when}}',
     linkedOn: 'Linked {{when}}',
     unlink: 'Unlink',
     onlyWay: 'The only way to log in',
@@ -94,6 +96,7 @@ export const en = {
     checked: 'Checked',
     nextCheck: 'Next check',
     soon: 'soon',
+    nextAt: 'at {{when}}',
     waiting: 'waiting for the first price',
     noPrice: 'no price',
     empty: 'Nothing is tracked yet.',

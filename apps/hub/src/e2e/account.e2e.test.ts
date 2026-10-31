@@ -25,6 +25,7 @@ let database: ReturnType<typeof connectDatabase>;
 const accountSchema = z.object({
   email: z.string(),
   emailVerified: z.boolean(),
+  createdAt: z.iso.datetime(),
   hasPassword: z.boolean(),
   identities: z.array(z.object({ provider: z.string(), linkedAt: z.string() })),
 });
@@ -77,12 +78,15 @@ async function passwordUser(email: string): Promise<HttpClientAdapter> {
 
 void test('shows how the user logs in, and unlinks a provider that is not the last way in', async (): Promise<void> => {
   const jane = await passwordUser('jane@example.com');
-  assert.deepEqual(await accountOf(jane), {
+  const { createdAt, ...account } = await accountOf(jane);
+  assert.deepEqual(account, {
     email: 'jane@example.com',
     emailVerified: true,
     hasPassword: true,
     identities: [],
   });
+  // The day the account was made: a moment ago.
+  assert.ok(Date.now() - Date.parse(createdAt) < 60_000);
 
   // Google proves the same email: the login through it joins the account.
   provider.profile = { subject: 'g-1', email: 'jane@example.com', emailVerified: true };

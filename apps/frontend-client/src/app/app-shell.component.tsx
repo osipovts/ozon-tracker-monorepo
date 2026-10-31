@@ -1,10 +1,39 @@
-import { Alert, Anchor, AppShell, Button, Container, Group, Text, Title } from '@mantine/core';
+import {
+  Alert,
+  Anchor,
+  AppShell,
+  Button,
+  Container,
+  Group,
+  Menu,
+  Text,
+  Title,
+} from '@mantine/core';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe, useResendVerification } from '../features/auth/use-me.hook.js';
 import { LegalFooter } from '../features/legal/legal-footer.component.js';
+
+/** The arrow of a button that opens a menu. */
+function ChevronDown(): ReactElement {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
 
 export function ClientShell(): ReactElement {
   const { t } = useTranslation();
@@ -27,24 +56,30 @@ export function ClientShell(): ReactElement {
               {t('brand.slogan')}
             </Text>
           </Group>
-          <Group gap="xs" wrap="nowrap">
-            <Text size="sm" visibleFrom="sm">
-              {me.data?.email}
-            </Text>
-            <Button size="xs" variant="subtle" component={Link} to="/settings">
-              {t('shell.settings')}
-            </Button>
-            <Button
-              size="xs"
-              variant="default"
-              loading={logout.isPending}
-              onClick={(): void => {
-                logout.mutate(undefined, { onSuccess: (): void => void navigate('/login') });
-              }}
-            >
-              {t('common.logOut')}
-            </Button>
-          </Group>
+          {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
+          <Menu position="bottom-end" width={260}>
+            <Menu.Target>
+              <Button size="xs" variant="default" rightSection={<ChevronDown />}>
+                {t('shell.account')}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label style={{ overflowWrap: 'anywhere' }}>{me.data?.email}</Menu.Label>
+              <Menu.Item component={Link} to="/settings">
+                {t('shell.settings')}
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item
+                color="red"
+                disabled={logout.isPending}
+                onClick={(): void => {
+                  logout.mutate(undefined, { onSuccess: (): void => void navigate('/login') });
+                }}
+              >
+                {t('common.logOut')}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </AppShell.Header>
       <AppShell.Main>

@@ -1189,6 +1189,8 @@ export interface operations {
           'application/json': {
             email: string;
             emailVerified: boolean;
+            /** Format: date-time */
+            createdAt: string;
             hasPassword: boolean;
             identities: {
               /** @enum {string} */

@@ -31,6 +31,11 @@ let database: ReturnType<typeof connectDatabase>;
 let browser: Browser;
 let page: Page;
 
+/** The email, the settings and the way out are in one menu of the header: it is opened to reach any of them. */
+async function openAccountMenu(on: Page): Promise<void> {
+  await on.getByRole('button', { name: 'Account', exact: true }).click();
+}
+
 before(
   async (): Promise<void> => {
     const infrastructure = await stack.start({ s3: true });
@@ -83,7 +88,7 @@ void test('a visitor signs up, and is logged in', async (): Promise<void> => {
   await page.getByRole('button', { name: 'Sign up' }).click();
 
   await page.getByRole('heading', { name: 'Products' }).waitFor();
-  await page.getByRole('button', { name: 'Log out' }).waitFor();
+  await page.getByRole('button', { name: 'Account', exact: true }).waitFor();
 
   // Under the field of the link: what can be tracked. One page of products has no paginator.
   await page.getByText('Supported marketplaces: ozon.ru').waitFor();
@@ -97,6 +102,9 @@ void test('a product is added by its link, and shows its first price when a work
   // The list follows the job by itself: no reload.
   await page.getByText(/1\s299,00/).waitFor({ timeout: 20_000 });
   assert.equal(worker.jobs.length, 1);
+
+  // The next read of the card is a time of day, with the preposition: "Next check: at 02:55 PM".
+  await page.getByText(/Next check: at \d{1,2}:\d{2}/).waitFor();
 
   // The picture is kept by the hub in S3 and handed out by an address that is signed.
   // The first write to the storage can take a while: the picture comes after the price.
@@ -274,11 +282,20 @@ void test('a product is deleted from its page after a confirmation, and goes for
 });
 
 void test('the theme and the language are set on the page of the settings, and kept by the browser', async (): Promise<void> => {
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await openAccountMenu(page);
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
   await page.getByRole('heading', { name: 'Settings', level: 2 }).waitFor();
 
   // The note that the settings are kept by the browser is gone, and the sign-out of the others is a red button.
   assert.equal(await page.getByText('Kept in this browser').count(), 0);
+
+  // The password is listed among the ways to log in, with the day the account was made.
+  await page.getByRole('heading', { name: 'Linked accounts' }).waitFor();
+  const linked = page
+    .locator('.mantine-Card-root')
+    .filter({ has: page.getByRole('heading', { name: 'Linked accounts' }) });
+  await linked.getByText('Password', { exact: true }).waitFor();
+  await linked.getByText(/^Created: /).waitFor();
 
   // Nothing of the kind is in the header any more.
   assert.equal(await page.locator('header').getByText('Dark').count(), 0);
@@ -304,7 +321,10 @@ void test('the theme and the language are set on the page of the settings, and k
 void test('the settings show the account and the devices, and sign the other devices out', async (): Promise<void> => {
   await page.goto(`${hub.baseUrl}/app/settings`);
   await page.getByRole('heading', { name: 'Account', level: 4, exact: true }).waitFor();
-  await page.getByText(email, { exact: true }).first().waitFor();
+  // The email of the account is the label of the menu.
+  await openAccountMenu(page);
+  await page.getByRole('menu').getByText(email, { exact: true }).waitFor();
+  await page.keyboard.press('Escape');
 
   // The same person on a second device.
   const other = await browser.newContext();
@@ -353,7 +373,8 @@ void test('the password is changed with the current one, and the old one stops w
 });
 
 void test('a visitor who logs out is sent to the login', async (): Promise<void> => {
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await openAccountMenu(page);
+  await page.getByRole('menuitem', { name: 'Log out' }).click();
   await page.waitForURL('**/app/login');
 });
 

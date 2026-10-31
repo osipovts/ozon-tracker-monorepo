@@ -43,7 +43,12 @@ function stubHub(account: AccountStubInterface = passwordAndGoogle): void {
       }
       if (pathname === '/auth/account' && request.method === 'GET') {
         return Promise.resolve(
-          Response.json({ email: 'jane@example.com', emailVerified: true, ...account }),
+          Response.json({
+            email: 'jane@example.com',
+            emailVerified: true,
+            createdAt: '2026-10-29T10:00:00.000Z',
+            ...account,
+          }),
         );
       }
       if (request.method === 'DELETE' && pathname === '/auth/account') {
@@ -177,6 +182,13 @@ test('shows the password and the providers linked, and unlinks one of them', asy
   expect(await screen.findByRole('heading', { name: 'Linked accounts' })).toBeInTheDocument();
   expect(await screen.findByText('Google')).toBeInTheDocument();
   expect(screen.getByText('GitHub')).toBeInTheDocument();
+  // The password is a row like the others: its name and the day the account was created.
+  const section = (
+    await screen.findByRole('heading', { name: 'Linked accounts' })
+  ).closest<HTMLElement>('.mantine-Card-root');
+  if (section === null) throw new Error('The section of the linked accounts is not a card');
+  expect(within(section).getByText('Password')).toBeInTheDocument();
+  expect(within(section).getByText(/^Created: /)).toBeInTheDocument();
 
   const unlinkButtons = await screen.findAllByRole('button', { name: 'Unlink' });
   expect(unlinkButtons).toHaveLength(2);

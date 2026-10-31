@@ -84,7 +84,7 @@ function NextCheck({ at }: { at: string | null }): ReactElement {
 
   if (next === null) return <>-</>;
 
-  return <>{next.soon ? t('products.soon') : next.when}</>;
+  return <>{next.soon ? t('products.soon') : t('products.nextAt', { when: next.when })}</>;
 }
 
 function Price({ item }: { item: ProductListItemType }): ReactElement {
@@ -137,8 +137,8 @@ function ProductCards({
               <Text fw={600} size="lg">
                 <Price item={item} />
               </Text>
-              {/* The gap above is 6: this block is 9 away from the price (one and a half times) and its lines 3 apart (half). */}
-              <Stack gap={3} mt={3}>
+              {/* The gap above is 6: this block is 9 away from the price (one and a half times) and its lines 1 apart (a third). */}
+              <Stack gap={1} mt={3}>
                 <Text size="sm" c="dimmed">
                   {t('products.checked')}:{' '}
                   {item.lastCheckedAt === null ? '-' : formatMoment(item.lastCheckedAt, locale)}

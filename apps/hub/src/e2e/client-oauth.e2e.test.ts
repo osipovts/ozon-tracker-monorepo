@@ -81,7 +81,8 @@ void test('the login page offers both providers, and a login through one lands t
 
   await page.waitForURL(/\/app\/?$/);
   await page.getByRole('heading', { name: 'Products' }).waitFor();
-  await page.getByText('jane@example.com', { exact: true }).first().waitFor();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menu').getByText('jane@example.com', { exact: true }).waitFor();
   await context.close();
 });
 
@@ -109,7 +110,8 @@ void test('a first login through GitHub signs a new user up, and they are in the
   await page.getByRole('link', { name: 'Continue with GitHub' }).click();
 
   await page.waitForURL(/\/app\/?$/);
-  await page.getByText('sam@example.com', { exact: true }).first().waitFor();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menu').getByText('sam@example.com', { exact: true }).waitFor();
   await context.close();
 });
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
-import { ProviderIcon } from '../auth/provider-icon.component.js';
+import { PasswordIcon, ProviderIcon } from '../auth/provider-icon.component.js';
 import { providerName } from '../auth/provider-name.type.js';
 import { formatMoment } from '../products/moment-format.type.js';
 import { type LinkedProviderType, useAccountInfo, useUnlinkProvider } from './use-account.hook.js';
@@ -54,6 +54,7 @@ function ProviderRow({
 /** The ways the person logs in: the password, and the accounts at the providers, which they can unlink. */
 export function LinkedAccountsSection(): ReactElement {
   const { t } = useTranslation();
+  const locale = useLocale();
   const account = useAccountInfo();
   const data = account.data;
   // The last way in cannot be taken away: the account would be lost to its owner.
@@ -72,9 +73,15 @@ export function LinkedAccountsSection(): ReactElement {
         ) : (
           <>
             {data.hasPassword && (
-              <Group gap="xs">
-                <Text fw={500}>{t('settings.passwordWay')}</Text>
-              </Group>
+              <Stack gap={2}>
+                <Group gap="xs">
+                  <PasswordIcon />
+                  <Text fw={500}>{t('settings.passwordWay')}</Text>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  {t('settings.createdOn', { when: formatMoment(data.createdAt, locale) })}
+                </Text>
+              </Stack>
             )}
             {data.identities.map((identity): ReactElement => (
               <ProviderRow

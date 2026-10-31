@@ -5,6 +5,8 @@ import { oauthProviders } from '../../account/application/index.js';
 export const accountResponseSchema = z.strictObject({
   email: z.string(),
   emailVerified: z.boolean(),
+  /** When the account was created. */
+  createdAt: z.iso.datetime(),
   /** Whether the user can log in with a password. */
   hasPassword: z.boolean(),
   /** The accounts at the providers the user logs in through. */
