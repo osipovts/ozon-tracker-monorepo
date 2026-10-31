@@ -37,7 +37,8 @@ import { OauthLoginCookieParser } from './presentation/oauth-login-cookie.parser
 import { OriginGuard } from './presentation/origin.guard.js';
 import { SessionCookieParser } from './presentation/session-cookie.parser.js';
 
-const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
+/** The providers of the login, by name; a test of the whole hub swaps it for adapters of a provider it runs. */
+export const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
 
 /** The holder of an email is told at most this often that somebody signed up with it. */
 const noticeIntervalMs = 60 * 60_000;

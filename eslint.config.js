@@ -151,7 +151,11 @@ export default defineConfig(
 
   {
     // What the providers send and expect is snake_case, and Prisma queries say `OR` and `AND`: those names are theirs.
-    files: ['apps/hub/src/auth/infrastructure/*.ts', 'apps/hub/src/*/infrastructure/prisma-*.ts'],
+    files: [
+      'apps/hub/src/auth/infrastructure/*.ts',
+      'apps/hub/src/*/infrastructure/prisma-*.ts',
+      'apps/hub/src/e2e/**/*.ts',
+    ],
     rules: {
       '@typescript-eslint/naming-convention': [
         'error',

@@ -13,7 +13,8 @@
     "generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://localhost:5432/hub}\" prisma generate",
     "build": "pnpm generate && tsc -p tsconfig.build.json",
     "typecheck": "pnpm generate && tsc --noEmit",
-    "test": "pnpm generate && tsc && node --test \"dist/**/*.test.js\"",
+    "test": "pnpm generate && tsc && node --test \"dist/!(e2e)/**/*.test.js\"",
+    "test:e2e": "pnpm generate && tsc && node --test \"dist/e2e/**/*.test.js\"",
     "start": "node dist/index.js",
     "dev": "tsx watch --conditions=source src/index.ts",
     "migrate:deploy": "prisma migrate deploy"
@@ -24,8 +25,12 @@
   "devDependencies": {
     "@nestjs/testing": "12.2.0",
     "@types/express": "^5.0.0",
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "mailparser": "^3.14.1",
+    "smtp-server": "^3.21.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   },

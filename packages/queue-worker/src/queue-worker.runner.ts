@@ -66,12 +66,17 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
     );
   }
 
+  /** Stops taking jobs, lets the one in progress finish, and closes the queues. */
+  async close(): Promise<void> {
+    await this.worker?.close();
+    await this.results.close();
+  }
+
   /** Stops taking jobs on SIGINT or SIGTERM, then releases the other resources with `cleanup`. */
   stopOnSignals(cleanup: () => Promise<void> = (): Promise<void> => Promise.resolve()): void {
     const stop = async (): Promise<void> => {
       this.logger.info('Shutting down');
-      await this.worker?.close();
-      await this.results.close();
+      await this.close();
       await cleanup();
     };
 
