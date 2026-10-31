@@ -36,7 +36,7 @@ RUN pnpm config set store-dir /pnpm-store
 FROM base AS fetch
 # better-sqlite3 of camoufox-js has no binary for this Node.js and is compiled.
 # The headers come with the Node.js image: node-gyp need not download them.
-ENV npm_config_nodedir=/usr/local
+ENV NODEDIR=/usr/local
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 make g++ && \
     rm -rf /var/lib/apt/lists/*
