@@ -1,0 +1,9 @@
+# Development behind the domain: the staging Caddy with the Caddyfile.dev, which sends /app/ and /panel/ to Vite.
+#   DEV_USER=0:0 docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.staging.yml \
+#     -f docker-compose.caddy-dev.yml up -d --build
+services:
+  caddy:
+    volumes: !override
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config

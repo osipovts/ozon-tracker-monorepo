@@ -1,0 +1,23 @@
+# Development behind Caddy at PUBLIC_DOMAIN: /app/ and /panel/ go to the Vite servers instead of the built apps of the hub.
+# Used with docker-compose.caddy-dev.yml, see there.
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	redir / /app/ 302
+
+	@pictures path /thumbnails/*
+	reverse_proxy @pictures s3:9000
+
+	# Vite checks the Host header: pass the name it knows.
+	@client path /app /app/*
+	reverse_proxy @client frontend-client:5174 {
+		header_up Host localhost:5174
+	}
+
+	@admin path /panel /panel/*
+	reverse_proxy @admin frontend-admin:5173 {
+		header_up Host localhost:5173
+	}
+
+	reverse_proxy hub:3000
+}
