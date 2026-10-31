@@ -74,10 +74,22 @@ FROM base AS dev
 ENV NODE_ENV=development
 
 ################################
+# Admin panel (static files the hub serves)
+################################
+FROM fetch AS admin-ui-build
+COPY apps/frontend-admin ./apps/frontend-admin
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter frontend-admin...
+RUN pnpm --filter frontend-admin build
+
+################################
 # Hub
 ################################
 FROM runtime AS hub-prod
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    ADMIN_UI_DIR=/app/panel
+COPY --from=admin-ui-build /app/apps/frontend-admin/dist ./panel
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/dist ./dist
 COPY --from=build /deploy/prisma ./prisma

@@ -47,6 +47,13 @@
 Админка (для администраторов из `ADMIN_EMAILS`): `GET /admin/dashboard` - цифры по пользователям, товарам,
 прокси, браузерным сессиям и задачам за сутки с последними неудачами.
 
+Панель администратора (`apps/frontend-admin`: React, Mantine, типы API из OpenAPI): вход, дашборд, прокси
+(список с фильтрами, включение и выключение, удаление, обновление источника). Хаб отдаёт собранную панель
+по `/panel`, если задан `ADMIN_UI_DIR`; в образе `hub-prod` она уже собрана и включена.
+Локально: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
+`HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
+Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api`.
+
 Подтверждение почты: при регистрации на почту уходит письмо со ссылкой `GET /auth/verify-email?token=...`
 (работает сутки, повторное открытие безвредно); ещё раз выслать - `POST /auth/verify-email/resend`.
 `GET /auth/me` показывает `emailVerified`. Подтверждённая почта защищена от «захвата» через провайдера входа.
