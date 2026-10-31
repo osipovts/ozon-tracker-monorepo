@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
 
 import { LoginPage } from '../features/auth/login.page.js';
 import { DashboardPage } from '../features/dashboard/dashboard.page.js';
+import { HandbooksPage } from '../features/handbooks/handbooks.page.js';
 import { ProxiesPage } from '../features/proxies/proxies.page.js';
 import { AdminShell } from './app-shell.component.js';
 import { ProtectedRoute } from './protected-route.component.js';
@@ -18,6 +19,7 @@ export function createAppRouter(basename: string): ReturnType<typeof createBrows
             children: [
               { index: true, element: <DashboardPage /> },
               { path: 'proxies', element: <ProxiesPage /> },
+              { path: 'handbooks', element: <HandbooksPage /> },
             ],
           },
         ],

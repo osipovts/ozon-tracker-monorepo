@@ -16,12 +16,12 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import type { TFunction } from 'i18next';
 import { type ReactElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
+import { jobStatusLabel } from '../jobs/job-status-label.js';
 import {
   proxyPageSize,
   proxySources,
@@ -43,24 +43,6 @@ function toFilter(choice: ChoiceType): 'true' | 'false' | undefined {
 
 function isChoice(value: string): value is ChoiceType {
   return value === 'all' || value === 'true' || value === 'false';
-}
-
-/** The status of a job as the hub names it; one it does not know is shown as it is. */
-function jobStatusLabel(status: string, t: TFunction): string {
-  switch (status) {
-    case 'queued':
-      return t('proxies.jobStatus.queued');
-    case 'running':
-      return t('proxies.jobStatus.running');
-    case 'retrying':
-      return t('proxies.jobStatus.retrying');
-    case 'completed':
-      return t('proxies.jobStatus.completed');
-    case 'failed':
-      return t('proxies.jobStatus.failed');
-    default:
-      return status;
-  }
 }
 
 function Choice({

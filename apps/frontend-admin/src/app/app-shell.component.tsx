@@ -10,6 +10,7 @@ import { LanguageControl } from './language.component.js';
 const sections = [
   { to: '/', label: 'shell.dashboard', end: true },
   { to: '/proxies', label: 'shell.proxies', end: false },
+  { to: '/handbooks', label: 'shell.handbooks', end: false },
 ] as const;
 
 export function AdminShell(): ReactElement {

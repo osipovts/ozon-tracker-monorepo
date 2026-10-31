@@ -32,6 +32,7 @@ export const ru: DictionaryType = {
     title: 'Админка хаба',
     dashboard: 'Дашборд',
     proxies: 'Прокси',
+    handbooks: 'Справочники',
   },
   dashboard: {
     title: 'Дашборд',
@@ -107,12 +108,29 @@ export const ru: DictionaryType = {
     deleteAllTitle: 'Удалить все прокси?',
     deleteAllText:
       'Все прокси уйдут из списка. Следующее обновление источника найдёт снова те, что там ещё есть.',
-    jobStatus: {
+  },
+  jobs: {
+    status: {
       queued: 'в очереди',
       running: 'выполняется',
       retrying: 'повтор',
       completed: 'завершена',
       failed: 'с ошибкой',
     },
+  },
+  handbooks: {
+    title: 'Справочники',
+    dnsCities: 'Города DNS',
+    dnsCitiesHint: 'Города, которые можно выбрать на dns-shop.ru: цены DNS зависят от города.',
+    updated: 'Обновлён: {{when}}',
+    never: 'Ещё не читался',
+    refresh: 'Обновить',
+    progress: 'Ход чтения',
+    search: 'Поиск по названию или региону',
+    total: 'Городов: {{count}}',
+    name: 'Город',
+    region: 'Регион',
+    id: 'Идентификатор на dns-shop.ru',
+    none: 'Городов нет.',
   },
 };

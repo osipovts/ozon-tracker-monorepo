@@ -30,6 +30,7 @@ export const en = {
     title: 'Hub admin',
     dashboard: 'Dashboard',
     proxies: 'Proxies',
+    handbooks: 'Handbooks',
   },
   dashboard: {
     title: 'Dashboard',
@@ -106,12 +107,30 @@ export const en = {
     deleteAllTitle: 'Delete all proxies?',
     deleteAllText:
       'Every proxy goes from the list. The next refresh of a source finds the ones still listed there again.',
-    jobStatus: {
+  },
+  jobs: {
+    status: {
       queued: 'queued',
       running: 'running',
       retrying: 'retrying',
       completed: 'completed',
       failed: 'failed',
     },
+  },
+  handbooks: {
+    title: 'Handbooks',
+    dnsCities: 'Cities of DNS',
+    dnsCitiesHint:
+      'The cities a visitor of dns-shop.ru can choose: the prices of DNS depend on the city.',
+    updated: 'Updated: {{when}}',
+    never: 'Never read',
+    refresh: 'Refresh',
+    progress: 'Progress of the read',
+    search: 'Search by name or region',
+    total: 'Cities: {{count}}',
+    name: 'City',
+    region: 'Region',
+    id: 'Id on dns-shop.ru',
+    none: 'No cities.',
   },
 } as const;
