@@ -15,6 +15,7 @@
 
 - `apps/hub` - оркестратор и хранилище данных
 - `apps/proxy-fetcher` - собирает и проверяет прокси
+- `apps/handbook-fetcher` - собирает справочники маркетплейсов (пока города DNS) через прокси
 - `apps/price-fetcher` - читает цены
 - `packages/*` - общий код
 
@@ -164,6 +165,9 @@ pnpm --filter hub migrate:deploy
 set -a; source apps/hub/.env; set +a; pnpm --filter hub start
 # proxy-fetcher
 pnpm --filter proxy-fetcher start
+
+# handbook-fetcher
+pnpm --filter handbook-fetcher start
 # price-fetcher
 set -a; source apps/price-fetcher/.env; set +a
 xvfb-run -a pnpm --filter price-fetcher start:worker

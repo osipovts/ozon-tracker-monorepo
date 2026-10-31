@@ -123,6 +123,17 @@ USER node
 CMD ["node", "dist/index.js"]
 
 ################################
+# Handbook fetcher
+################################
+FROM runtime AS handbook-fetcher-prod
+ENV NODE_ENV=production
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/dist ./dist
+COPY --from=build /deploy/package.json ./package.json
+USER node
+CMD ["node", "dist/index.js"]
+
+################################
 # Chromium for the price fetcher
 ################################
 FROM install AS playwright-version

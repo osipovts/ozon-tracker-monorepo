@@ -90,6 +90,17 @@ services:
     environment: *app-env
     depends_on: *depends-on-redis
 
+  handbook-fetcher:
+    <<: *app
+    image: price-tracker/handbook-fetcher:prod
+    build:
+      context: .
+      target: handbook-fetcher-prod
+      args:
+        APP_NAME: handbook-fetcher
+    environment: *app-env
+    depends_on: *depends-on-redis
+
   # Scales with `docker compose up -d --scale price-fetcher-worker=<count>`.
   price-fetcher-worker:
     <<: *app

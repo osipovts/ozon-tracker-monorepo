@@ -1,0 +1,34 @@
+{
+  "name": "handbook-fetcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "start": "node dist/index.js",
+    "dev": "tsx watch --conditions=source src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "https-proxy-agent": "^9.1.0",
+    "logger": "workspace:*",
+    "proxy-endpoint": "workspace:*",
+    "queue-contract": "workspace:*",
+    "queue-worker": "workspace:*",
+    "socks-proxy-agent": "^10.1.0",
+    "zod": "^4.6.7"
+  }
+}

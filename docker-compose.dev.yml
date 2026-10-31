@@ -75,6 +75,13 @@ services:
       target: dev
     command: ['pnpm', '--filter', 'proxy-fetcher', 'dev']
 
+  handbook-fetcher:
+    <<: *dev
+    image: price-tracker/handbook-fetcher:dev
+    build:
+      target: dev
+    command: ['pnpm', '--filter', 'handbook-fetcher', 'dev']
+
   price-fetcher-worker:
     <<: *dev
     image: price-tracker/price-fetcher:dev
