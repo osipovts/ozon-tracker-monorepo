@@ -112,6 +112,23 @@ void test('an interval of the refresh takes the place of the hourly schedule, an
   assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', ''])).priceRefreshIntervalMs, null);
 });
 
+void test('refreshes the proxies every hour, of 200 candidates a source, and 0 turns it off', (): void => {
+  const config = parser.parse(env());
+
+  assert.equal(config.proxyRefreshIntervalMinutes, 60);
+  assert.equal(config.proxyRefreshMaxCandidates, 200);
+  assert.equal(config.proxyRefreshProbeTimeoutMs, 10000);
+  assert.equal(
+    parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '15'])).proxyRefreshIntervalMinutes,
+    15,
+  );
+  assert.equal(
+    parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '0'])).proxyRefreshIntervalMinutes,
+    0,
+  );
+  assert.throws(() => parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '-1'])));
+});
+
 void test('takes the administrators of the hub from a list of emails, normalized', (): void => {
   assert.deepEqual(parser.parse(env()).adminEmails, []);
   assert.deepEqual(

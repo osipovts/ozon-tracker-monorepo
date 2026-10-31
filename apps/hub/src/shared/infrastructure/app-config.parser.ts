@@ -70,6 +70,9 @@ const configSchema = z.object({
     .min(60_000)
     .default(60 * 60_000),
   priceRefreshBatchSize: z.coerce.number().int().min(1).max(5000).default(200),
+  proxyRefreshIntervalMinutes: z.coerce.number().int().min(0).default(60),
+  proxyRefreshMaxCandidates: z.coerce.number().int().min(1).max(5000).default(200),
+  proxyRefreshProbeTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(10000),
   authSessionIdleTtlMs: z.coerce
     .number()
     .int()
@@ -180,6 +183,9 @@ export class AppConfigParser {
         priceRefreshMinute: env['PRICE_REFRESH_MINUTE'],
         priceRefreshMaxAgeMs: env['PRICE_REFRESH_MAX_AGE_MS'],
         priceRefreshBatchSize: env['PRICE_REFRESH_BATCH_SIZE'],
+        proxyRefreshIntervalMinutes: env['PROXY_REFRESH_INTERVAL_MINUTES'],
+        proxyRefreshMaxCandidates: env['PROXY_REFRESH_MAX_CANDIDATES'],
+        proxyRefreshProbeTimeoutMs: env['PROXY_REFRESH_PROBE_TIMEOUT_MS'],
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],

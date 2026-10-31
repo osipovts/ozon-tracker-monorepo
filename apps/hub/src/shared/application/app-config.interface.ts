@@ -55,6 +55,12 @@ export interface AppConfigInterface {
   priceRefreshMaxAgeMs: number;
   /** How many products one run of the refresh queues at most. */
   priceRefreshBatchSize: number;
+  /** How often, in minutes, the proxies of every source are refreshed; 0 turns it off. */
+  proxyRefreshIntervalMinutes: number;
+  /** Upper bound of the candidates a refresh takes from a source. */
+  proxyRefreshMaxCandidates: number;
+  /** Timeout of a single proxy check of a refresh, in milliseconds. */
+  proxyRefreshProbeTimeoutMs: number;
   /** How often the sessions that ended are deleted. */
   authSessionPurgeIntervalMs: number;
   /** The window the attempts of logging in and signing up are counted in. */

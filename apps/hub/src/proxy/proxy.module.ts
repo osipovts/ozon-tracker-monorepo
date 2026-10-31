@@ -5,7 +5,9 @@ import { BrowserSessionModule } from '../browser-session/browser-session.module.
 import { PrismaClient } from '../generated/prisma/client.js';
 import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
+import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
+import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddManualProxyUseCase } from './application/add-manual-proxy.use-case.js';
 import { DeleteAllProxiesUseCase } from './application/delete-all-proxies.use-case.js';
@@ -17,6 +19,7 @@ import { PROXY_REPOSITORY, type ProxyRepositoryPort } from './application/proxy-
 import { RecordProxyChecksUseCase } from './application/record-proxy-checks.use-case.js';
 import { RefreshProxySourceUseCase } from './application/refresh-proxy-source.use-case.js';
 import { SetProxyDisabledUseCase } from './application/set-proxy-disabled.use-case.js';
+import { PeriodicProxyRefreshAdapter } from './infrastructure/periodic-proxy-refresh.adapter.js';
 import { PrismaProxyRepositoryAdapter } from './infrastructure/prisma-proxy-repository.adapter.js';
 import { ProxiesController } from './presentation/proxies.controller.js';
 import { ProxyResultsConsumer } from './presentation/proxy-results.consumer.js';
@@ -40,6 +43,26 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
       ): RefreshProxySourceUseCase =>
         new RefreshProxySourceUseCase(scheduleJob, logger.child('proxies')),
       inject: [ScheduleJobUseCase, LOGGER],
+    },
+    {
+      provide: PeriodicProxyRefreshAdapter,
+      useFactory: (
+        refresh: RefreshProxySourceUseCase,
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
+        logger: LoggerPort,
+      ): PeriodicProxyRefreshAdapter =>
+        new PeriodicProxyRefreshAdapter(
+          refresh,
+          limiter,
+          {
+            intervalMs: config.proxyRefreshIntervalMinutes * 60_000,
+            maxCandidates: config.proxyRefreshMaxCandidates,
+            probeTimeoutMs: config.proxyRefreshProbeTimeoutMs,
+          },
+          logger.child('proxy-refresh'),
+        ),
+      inject: [RefreshProxySourceUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
     },
     {
       provide: ListProxiesUseCase,
