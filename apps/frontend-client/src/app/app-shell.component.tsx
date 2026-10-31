@@ -57,14 +57,16 @@ export function ClientShell(): ReactElement {
             </Text>
           </Group>
           {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
-          <Menu position="bottom-end" width={260}>
+          <Menu position="bottom-end" width={260} shadow="md">
             <Menu.Target>
               <Button size="xs" variant="default" rightSection={<ChevronDown />}>
                 {t('shell.account')}
               </Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label style={{ overflowWrap: 'anywhere' }}>{me.data?.email}</Menu.Label>
+              <Menu.Label mb="xs" style={{ overflowWrap: 'anywhere' }}>
+                {me.data?.email}
+              </Menu.Label>
               <Menu.Item component={Link} to="/settings">
                 {t('shell.settings')}
               </Menu.Item>
