@@ -1,8 +1,7 @@
 import { ProxyEndpointEntity } from 'proxy-endpoint';
-import { marketplaceSchema, proxyServerSchema } from 'queue-contract';
+import { proxyServerSchema } from 'queue-contract';
 import { z } from 'zod';
 
-import { sessionStatuses } from '../../browser-session/application/index.js';
 import {
   pageResponseSchema,
   paginationQuerySchema,
@@ -18,10 +17,6 @@ export const proxyListQuerySchema = paginationQuerySchema.extend({
     .string()
     .regex(/^[A-Z]{2}$/)
     .optional(),
-  /** The marketplace whose sessions make a proxy ready. */
-  marketplace: marketplaceSchema.default('ozon'),
-  /** `false` lists the proxies that still need a session. */
-  ready: z.enum(['true', 'false']).optional(),
 });
 
 export type ProxyListQueryType = z.infer<typeof proxyListQuerySchema>;
@@ -38,19 +33,8 @@ export const proxyItemSchema = z.object({
   successRate: z.number(),
   checksTotal: z.number().int(),
   lastCheckedAt: z.iso.datetime(),
-  /** True if the proxy has an active session of the marketplace. */
-  ready: z.boolean(),
   /** Turned off by an administrator: the workers are not given it. */
   disabled: z.boolean(),
-  /** The session of the marketplace bound to the proxy, whatever its status. */
-  session: z
-    .object({
-      id: z.uuid(),
-      status: z.enum(sessionStatuses),
-      staleReason: z.string().nullable(),
-      updatedAt: z.iso.datetime(),
-    })
-    .nullable(),
 });
 
 export const proxyListResponseSchema = pageResponseSchema(proxyItemSchema);

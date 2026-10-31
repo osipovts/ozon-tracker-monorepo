@@ -30,10 +30,7 @@ export class BullmqProductLinkExpanderAdapter implements ProductLinkExpanderPort
   async expand(request: ProductLinkExpansionInterface): Promise<string> {
     const data = linkExpandJobSchema.parse({
       url: request.url,
-      proxies: request.routes.map((route) => ({
-        server: route.server,
-        ...(route.session === null ? {} : { session: route.session }),
-      })),
+      proxies: request.routes,
       timeoutMs: request.timeoutMs,
     });
     const job = await this.queue.add('link-expand', data, {

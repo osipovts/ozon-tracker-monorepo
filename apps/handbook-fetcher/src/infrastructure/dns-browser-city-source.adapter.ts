@@ -1,5 +1,5 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
-import type { Browser, BrowserContext, Page } from 'playwright';
+import type { Browser, BrowserContext, Page } from 'playwright-core';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 import { z } from 'zod';
 
@@ -8,7 +8,7 @@ import type {
   CitySourceSessionInterface,
 } from '../application/city-source.port.js';
 import type { CityInterface } from '../domain/city.interface.js';
-import type { ChromiumOptionsFactory } from './chromium-options.factory.js';
+import type { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 
 const answerSchema = z.object({
   data: z.object({
@@ -30,7 +30,7 @@ const answerSchema = z.object({
 export class DnsBrowserCitySourceAdapter implements CitySourcePort {
   constructor(
     private readonly browser: Pick<Browser, 'newContext'>,
-    private readonly options: ChromiumOptionsFactory,
+    private readonly options: CamoufoxOptionsFactory,
     private readonly timeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,
     private readonly siteUrl = 'https://www.dns-shop.ru/',

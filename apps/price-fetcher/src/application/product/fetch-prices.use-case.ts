@@ -8,19 +8,11 @@ import type {
   ProductAttemptInterface,
   TrackingResultInterface,
 } from '../../domain/product/product-snapshot.interface.js';
-import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
-import type {
-  JobSessionStorePort,
-  SessionMismatchInterface,
-  SessionRouteInterface,
-  SessionUpdateInterface,
-} from '../session/job-session-store.port.js';
-import type { SessionStorePort } from '../session/session-store.port.js';
 import type { ProductReaderPort } from './product-reader.port.js';
 
 export interface FetchPricesJobInterface {
   /** Routes in the order they are tried; a null server is a direct connection. */
-  routes: ReadonlyArray<{ server: string | null; session: BrowserSessionInterface | null }>;
+  routes: ReadonlyArray<{ server: string | null }>;
   products: ReadonlyArray<{ trackedProductId: string; url: string; cityId?: string | undefined }>;
   timeoutMs: number;
 }
@@ -28,29 +20,19 @@ export interface FetchPricesJobInterface {
 export interface ProductFetchResultInterface {
   trackedProductId: string;
   status: TrackingResultInterface['status'] | 'invalid_url';
-  attempts: Array<ProductAttemptInterface & { sessionId?: string }>;
+  attempts: ProductAttemptInterface[];
 }
 
 export interface FetchPricesListenerInterface {
   onProgress(progress: { processed: number; total: number; succeeded: number }): Promise<void>;
   onProduct(result: ProductFetchResultInterface): Promise<void>;
-  /** The state of a session was refreshed by the site during a read. */
-  onSessionUpdate(update: SessionUpdateInterface): Promise<void>;
-  /** The route exits through another address than the session was created with. */
-  onSessionMismatch(mismatch: SessionMismatchInterface): Promise<void>;
 }
 
 /** Reads the prices of the products of a job through its routes and reports what happened. */
 export class FetchPricesUseCase {
   constructor(
     private readonly resolveReference: ResolveProductReferenceUseCase,
-    private readonly createSessions: (
-      routes: readonly SessionRouteInterface[],
-    ) => JobSessionStorePort,
-    private readonly createReader: (
-      sessions: SessionStorePort,
-      timeoutMs: number,
-    ) => ProductReaderPort,
+    private readonly createReader: (timeoutMs: number) => ProductReaderPort,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
@@ -60,7 +42,6 @@ export class FetchPricesUseCase {
     listener: FetchPricesListenerInterface,
   ): Promise<void> {
     const candidates: Array<ProxyEndpointEntity | null> = [];
-    const sessionRoutes: SessionRouteInterface[] = [];
     for (const route of job.routes) {
       let proxy: ProxyEndpointEntity | null = null;
       try {
@@ -72,11 +53,9 @@ export class FetchPricesUseCase {
       }
 
       candidates.push(proxy);
-      if (route.session !== null) sessionRoutes.push({ proxy, session: route.session });
     }
 
-    const sessions = this.createSessions(sessionRoutes);
-    const reader = this.createReader(sessions, job.timeoutMs);
+    const reader = this.createReader(job.timeoutMs);
     const total = job.products.length;
     let processed = 0;
     let succeeded = 0;
@@ -84,24 +63,12 @@ export class FetchPricesUseCase {
 
     for (const product of job.products) {
       signal.throwIfAborted();
-      const result = await this.fetchProduct(product, candidates, reader, sessions, signal);
+      const result = await this.fetchProduct(product, candidates, reader, signal);
       await listener.onProduct(result);
 
       processed += 1;
       if (result.status === 'success' || result.status === 'partial') succeeded += 1;
       await listener.onProgress({ processed, total, succeeded });
-    }
-
-    for (const update of sessions.drainUpdates()) {
-      this.logger.info(`Session ${update.sessionId}: refreshed state is reported`);
-      await listener.onSessionUpdate(update);
-    }
-
-    for (const mismatch of sessions.drainMismatches()) {
-      this.logger.warn(
-        `Session ${mismatch.sessionId}: exit IP ${mismatch.actualIp} differs from ${mismatch.expectedIp}, the session was not used`,
-      );
-      await listener.onSessionMismatch(mismatch);
     }
   }
 
@@ -109,7 +76,6 @@ export class FetchPricesUseCase {
     product: { trackedProductId: string; url: string; cityId?: string | undefined },
     candidates: ReadonlyArray<ProxyEndpointEntity | null>,
     reader: ProductReaderPort,
-    sessions: JobSessionStorePort,
     signal: AbortSignal,
   ): Promise<ProductFetchResultInterface> {
     let reference: ProductReferenceEntity;
@@ -132,11 +98,7 @@ export class FetchPricesUseCase {
     return {
       trackedProductId: product.trackedProductId,
       status: result.status,
-      attempts: result.attempts.map((attempt): ProductFetchResultInterface['attempts'][number] => {
-        const sessionId = sessions.findByServer(attempt.proxy)?.id;
-
-        return sessionId === undefined ? attempt : { ...attempt, sessionId };
-      }),
+      attempts: result.attempts,
     };
   }
 

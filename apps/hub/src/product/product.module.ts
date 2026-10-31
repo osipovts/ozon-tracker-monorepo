@@ -6,8 +6,6 @@ import {
   ResolveProductReferenceUseCase,
 } from 'product-reference';
 
-import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
-import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { FindCityUseCase } from '../handbook/application/index.js';
 import { HandbookModule } from '../handbook/handbook.module.js';
@@ -70,7 +68,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
 }
 
 @Module({
-  imports: [PrismaModule, JobModule, BrowserSessionModule, ProxyModule, HandbookModule],
+  imports: [PrismaModule, JobModule, ProxyModule, HandbookModule],
   controllers: [ProductsController],
   providers: [
     {
@@ -212,11 +210,10 @@ function refreshScheduleSettings(config: AppConfigInterface): {
       provide: ChoosePriceRoutesUseCase,
       useFactory: (
         proxyServers: ListBestProxyServersUseCase,
-        sessions: ListMarketplaceSessionsUseCase,
         config: AppConfigInterface,
       ): ChoosePriceRoutesUseCase =>
-        new ChoosePriceRoutesUseCase(proxyServers, sessions, config.priceProxyCount),
-      inject: [ListBestProxyServersUseCase, ListMarketplaceSessionsUseCase, APP_CONFIG],
+        new ChoosePriceRoutesUseCase(proxyServers, config.priceProxyCount),
+      inject: [ListBestProxyServersUseCase, APP_CONFIG],
     },
     {
       provide: RequestPriceObservationUseCase,

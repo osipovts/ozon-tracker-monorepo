@@ -39,7 +39,7 @@ export function DashboardPage(): ReactElement {
   if (dashboard.isError) return <ErrorAlert error={dashboard.error} />;
   if (data === undefined) return <Loader />;
 
-  const { users, products, proxies, sessions, jobs } = data;
+  const { users, products, proxies, jobs } = data;
   const counts = jobs.lastDay;
 
   return (
@@ -63,11 +63,6 @@ export function DashboardPage(): ReactElement {
           title={t('dashboard.proxiesAlive')}
           value={`${String(proxies.alive)} / ${String(proxies.total)}`}
           note={t('dashboard.proxiesNote', { disabled: proxies.disabled })}
-        />
-        <Stat
-          title={t('dashboard.sessions')}
-          value={String(sessions.active)}
-          note={t('dashboard.sessionsNote', { stale: sessions.stale })}
         />
       </SimpleGrid>
       <Card withBorder>

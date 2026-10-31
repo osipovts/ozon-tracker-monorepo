@@ -107,16 +107,6 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
       ...(filter.manual === undefined
         ? {}
         : { source: filter.manual ? manualProxySource : { not: manualProxySource } }),
-      ...(filter.servers === undefined && filter.excludedServers === undefined
-        ? {}
-        : {
-            server: {
-              ...(filter.servers === undefined ? {} : { in: [...filter.servers] }),
-              ...(filter.excludedServers === undefined
-                ? {}
-                : { notIn: [...filter.excludedServers] }),
-            },
-          }),
     };
 
     const [rows, total] = await this.prisma.$transaction([

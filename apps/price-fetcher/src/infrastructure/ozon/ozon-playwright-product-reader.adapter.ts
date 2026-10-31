@@ -1,13 +1,11 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
-import type { Browser, BrowserContext, Page, Response } from 'playwright';
+import type { Browser, BrowserContext, Page, Response } from 'playwright-core';
 import { marketplaceExitCountries, type ProductReferenceEntity } from 'product-reference';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
-import type { SessionStorePort } from '../../application/session/session-store.port.js';
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
-import type { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import type { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import type { OzonChallengeParser } from './ozon-challenge.parser.js';
 import type { OzonPageParser } from './ozon-page.parser.js';
@@ -23,10 +21,9 @@ export interface OzonReaderParsersInterface {
 export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
   constructor(
     private readonly browser: Pick<Browser, 'newContext'>,
-    private readonly options: ChromiumOptionsFactory,
+    private readonly options: CamoufoxOptionsFactory,
     private readonly parsers: OzonReaderParsersInterface,
     private readonly timeoutMs: number,
-    private readonly sessions?: SessionStorePort,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
@@ -37,16 +34,10 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
   ): Promise<ReadProductResultType> {
     signal.throwIfAborted();
     const route = proxy?.server ?? 'direct connection';
-    const session = this.sessions?.find(proxy) ?? null;
-    this.logger.debug(
-      `Opening a browser context via ${route}, ${session === null ? 'no session' : `session ${session.id}`}`,
-    );
+    this.logger.debug(`Opening a browser context via ${route}`);
 
     const context = await this.browser.newContext({
       ...this.options.context(proxy),
-      ...(session === null
-        ? {}
-        : { userAgent: session.userAgent, storageState: session.storageState }),
       acceptDownloads: false,
     });
     const abort = (): void => {
@@ -59,7 +50,7 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
     context.setDefaultNavigationTimeout(this.timeoutMs);
 
     try {
-      return await this.readPage(reference, proxy, session, context);
+      return await this.readPage(reference, proxy, context);
     } catch (error: unknown) {
       signal.throwIfAborted();
       this.logger.warn(`Browser error via ${route}: ${errorMessage(error).split('\n')[0] ?? ''}`);
@@ -74,11 +65,9 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
   private async readPage(
     reference: ProductReferenceEntity,
     proxy: ProxyEndpointEntity | null,
-    session: BrowserSessionInterface | null,
     context: BrowserContext,
   ): Promise<ReadProductResultType> {
     const page = await context.newPage();
-    let activeSession = session;
     let exitIp: string | null = null;
 
     if (proxy !== null) {
@@ -92,16 +81,13 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
 
       exitIp = exit.ip;
       this.logger.debug(`Exit IP through ${proxy.server} is ${exitIp} (${country})`);
-      activeSession = await this.checkSession(activeSession, exitIp, context);
     }
 
     const lastResponse = await this.open(page, reference);
     const document = await this.parsers.pages.parse(page);
     const response = lastResponse();
     if (this.parsers.challenges.isChallenge(document.title, document.body)) {
-      this.logger.warn(
-        `The site check appeared via ${proxy?.server ?? 'direct connection'}${activeSession === null ? '' : ` despite the session ${activeSession.id}`}`,
-      );
+      this.logger.warn(`The site check appeared via ${proxy?.server ?? 'direct connection'}`);
 
       return { status: 'challenge_required' };
     }
@@ -123,8 +109,6 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
     this.logger.debug(
       `Parsed "${snapshot.title.slice(0, 60)}": ${String(snapshot.prices.length)} prices, ${snapshot.availability}`,
     );
-    if (activeSession !== null)
-      this.sessions?.update(activeSession.id, await context.storageState());
 
     return {
       // A card without a price is read too: the product may be out of stock.
@@ -132,23 +116,6 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
       snapshot,
       exitIp,
     };
-  }
-
-  /** A session is only valid on the exit address it was created with; returns the usable one. */
-  private async checkSession(
-    session: BrowserSessionInterface | null,
-    exitIp: string,
-    context: BrowserContext,
-  ): Promise<BrowserSessionInterface | null> {
-    if (session === null || session.exitIp === exitIp) return session;
-
-    this.logger.warn(
-      `Session ${session.id} was created at ${session.exitIp}, the exit is ${exitIp}: ignoring the session`,
-    );
-    this.sessions?.reject(session.id, exitIp);
-    await context.setStorageState({ cookies: [], origins: [] });
-
-    return null;
   }
 
   /**

@@ -1,4 +1,4 @@
-import type { BrowserSessionType, HandbookType, ProxySourceType } from 'queue-contract';
+import type { HandbookType, ProxySourceType } from 'queue-contract';
 
 export const JOB_QUEUE = Symbol('JobQueuePort');
 
@@ -12,7 +12,6 @@ export interface ProxyFetchRequestInterface {
 export interface RouteInterface {
   /** Proxy URL in the order of trying; null is a direct connection. */
   server: string | null;
-  session: BrowserSessionType | null;
 }
 
 export interface PriceFetchRequestInterface {

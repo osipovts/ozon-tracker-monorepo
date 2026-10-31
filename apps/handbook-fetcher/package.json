@@ -23,8 +23,9 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "camoufox-js": "^0.13.0",
     "logger": "workspace:*",
-    "playwright": "^1.64.1",
+    "playwright-core": "~1.62.1",
     "proxy-endpoint": "workspace:*",
     "queue-contract": "workspace:*",
     "queue-worker": "workspace:*",

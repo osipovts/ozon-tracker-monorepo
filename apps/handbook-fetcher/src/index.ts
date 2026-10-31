@@ -1,11 +1,11 @@
+import { Camoufox } from 'camoufox-js';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
-import { chromium } from 'playwright';
 import { type HandbookFetchResultType, queueNames } from 'queue-contract';
 import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
 import { FetchCitiesUseCase } from './application/fetch-cities.use-case.js';
-import { ChromiumOptionsFactory } from './infrastructure/chromium-options.factory.js';
+import { CamoufoxOptionsFactory } from './infrastructure/camoufox-options.factory.js';
 import { DnsBrowserCitySourceAdapter } from './infrastructure/dns-browser-city-source.adapter.js';
 import { HandbookFetchController } from './presentation/handbook-fetch.controller.js';
 
@@ -30,19 +30,18 @@ const logger = new ConsoleLoggerAdapter(
   'handbook-fetcher',
 );
 
-const options = new ChromiumOptionsFactory();
-logger.info(`Launching Chromium (${env.headed ? 'with a window' : 'headless'})`);
-const browser = await chromium.launch({
+const options = new CamoufoxOptionsFactory();
+logger.info(`Launching Camoufox (${env.headed ? 'with a window' : 'headless'})`);
+const browser = await Camoufox({
   ...options.launch({
     headed: env.headed,
-    timeoutMs: env.timeoutMs,
     ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
   }),
   // The runner closes the browser on a signal, after the job in progress.
   handleSIGINT: false,
   handleSIGTERM: false,
 });
-logger.info(`Chromium ${browser.version()} is running`);
+logger.info(`Firefox ${browser.version()} is running`);
 
 let stopping = false;
 browser.on('disconnected', (): void => {

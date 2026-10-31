@@ -7,13 +7,12 @@ import {
   ResolveProductReferenceUseCase,
 } from 'product-reference';
 
-import { InMemorySessionStoreAdapter } from '../../infrastructure/session/in-memory-session-store.adapter.js';
 import { ExpandLinkUseCase } from './expand-link.use-case.js';
 import type { LinkExpanderPort } from './link-expander.port.js';
 
 const job = {
   url: 'https://ozon.ru/t/AbC123',
-  routes: [{ server: null, session: null }],
+  routes: [{ server: null }],
   timeoutMs: 5000,
 };
 
@@ -21,7 +20,6 @@ function useCaseOf(expander: LinkExpanderPort): ExpandLinkUseCase {
   return new ExpandLinkUseCase(
     new OzonShortLinkParser(),
     new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
-    (routes) => new InMemorySessionStoreAdapter(routes),
     () => expander,
   );
 }

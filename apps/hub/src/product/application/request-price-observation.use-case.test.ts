@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ListMarketplaceSessionsUseCase } from '../../browser-session/application/index.js';
-import { BrowserSessionEntity } from '../../browser-session/domain/browser-session.entity.js';
-import { InMemoryBrowserSessionRepositoryAdapter } from '../../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { ScheduleJobUseCase } from '../../job/application/index.js';
 import type {
   JobQueuePort,
@@ -36,31 +33,11 @@ function proxy(server: string, alive: boolean, checksAlive: number): ProxyEntity
   });
 }
 
-function session(proxyServer: string | null, status: 'active' | 'stale'): BrowserSessionEntity {
-  return new BrowserSessionEntity({
-    id:
-      proxyServer === null
-        ? '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22'
-        : '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11',
-    marketplace: 'ozon',
-    proxyServer,
-    exitIp: '217.71.230.103',
-    userAgent: 'Mozilla/5.0',
-    storageState: { cookies: [], origins: [] },
-    status,
-    staleReason: status === 'stale' ? 'challenge_required' : null,
-    createdAt: new Date('2026-10-24T12:00:00.000Z'),
-    updatedAt: new Date('2026-10-24T12:00:00.000Z'),
-    lastUsedAt: null,
-  });
-}
-
 const productUrl = 'https://www.ozon.ru/product/4775581891/';
 const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 async function createUseCase(
   proxies: ProxyEntity[],
-  sessions: BrowserSessionEntity[] = [],
   failQueue = false,
   tracked: TrackedProductReferenceInterface = {
     marketplace: 'ozon',
@@ -77,9 +54,6 @@ async function createUseCase(
 }> {
   const repository = new InMemoryProxyRepositoryAdapter();
   await repository.saveMany(proxies);
-
-  const sessionRepository = new InMemoryBrowserSessionRepositoryAdapter();
-  for (const item of sessions) await sessionRepository.save(item);
 
   const products = new InMemoryTrackedProductRepositoryAdapter();
   const { product } = await products.add(tracked);
@@ -101,11 +75,7 @@ async function createUseCase(
   return {
     useCase: new RequestPriceObservationUseCase(
       products,
-      new ChoosePriceRoutesUseCase(
-        new ListBestProxyServersUseCase(repository),
-        new ListMarketplaceSessionsUseCase(sessionRepository),
-        2,
-      ),
+      new ChoosePriceRoutesUseCase(new ListBestProxyServersUseCase(repository), 2),
       new ScheduleJobUseCase(queue, jobs),
       30000,
     ),
@@ -129,9 +99,9 @@ void test('queues the product with the best alive proxies and records the job', 
   assert.ok(request);
   assert.equal(request.jobId, jobId);
   assert.deepEqual(request.routes, [
-    { server: 'socks5://217.71.230.2:1080', session: null },
-    { server: null, session: null },
-    { server: 'socks5://217.71.230.3:1080', session: null },
+    { server: 'socks5://217.71.230.2:1080' },
+    { server: null },
+    { server: 'socks5://217.71.230.3:1080' },
   ]);
   assert.deepEqual(request.products, [{ trackedProductId: productId, url: productUrl }]);
   assert.equal(request.timeoutMs, 30000);
@@ -141,28 +111,6 @@ void test('queues the product with the best alive proxies and records the job', 
   assert.equal(job.snapshot.kind, 'price_fetch');
   assert.equal(job.snapshot.subject, productId);
   assert.equal(job.snapshot.total, 1);
-});
-
-void test('puts routes with an active session first and skips the stale ones', async (): Promise<void> => {
-  const pinned = 'socks5://217.71.230.2:1080';
-  const { useCase, requests, productId } = await createUseCase(
-    [
-      proxy('socks5://217.71.230.1:1080', true, 4),
-      proxy(pinned, true, 3),
-      proxy('socks5://217.71.230.3:1080', true, 2),
-    ],
-    [session(pinned, 'active'), session(null, 'stale')],
-  );
-
-  await useCase.execute(userId, productId);
-
-  const routes = requests[0]?.routes ?? [];
-  assert.deepEqual(
-    routes.map((route): string | null => route.server),
-    [pinned, null, 'socks5://217.71.230.1:1080'],
-  );
-  assert.equal(routes[0]?.session?.id, '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11');
-  assert.equal(routes[1]?.session, null);
 });
 
 void test('gives the manual proxies first, with their credentials', async (): Promise<void> => {
@@ -181,17 +129,6 @@ void test('gives the manual proxies first, with their credentials', async (): Pr
   assert.deepEqual(
     requests[0]?.routes.map((route): string | null => route.server),
     ['http://user:secret@217.71.230.5:3128/', null, 'socks5://217.71.230.1:1080'],
-  );
-});
-
-void test('works with a session only, even without alive proxies', async (): Promise<void> => {
-  const { useCase, requests, productId } = await createUseCase([], [session(null, 'active')]);
-
-  await useCase.execute(userId, productId);
-
-  assert.deepEqual(
-    requests[0]?.routes.map((route): string | null => route.server),
-    [null],
   );
 });
 
@@ -223,7 +160,6 @@ void test('refuses an unknown product and a missing route without queueing', asy
 void test('marks the job failed if it cannot be queued', async (): Promise<void> => {
   const { useCase, jobs, productId } = await createUseCase(
     [proxy('socks5://217.71.230.1:1080', true, 1)],
-    [],
     true,
   );
 
@@ -242,7 +178,6 @@ void test('names the city of the product in the job, for a marketplace that has 
   } as const;
   const { useCase, requests, productId } = await createUseCase(
     [proxy('socks5://217.71.230.1:1080', true, 4)],
-    [],
     false,
     dns,
   );

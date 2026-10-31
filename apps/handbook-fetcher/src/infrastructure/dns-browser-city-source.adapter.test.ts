@@ -1,24 +1,24 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
+import { afterEach, beforeEach, test } from 'node:test';
 
+import { Camoufox } from 'camoufox-js';
 import {
   type Browser,
   type BrowserContext,
   type BrowserContextOptions,
-  chromium,
   type Route,
-} from 'playwright';
+} from 'playwright-core';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { ChromiumOptionsFactory } from './chromium-options.factory.js';
+import { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 import { DnsBrowserCitySourceAdapter } from './dns-browser-city-source.adapter.js';
 
 let browser: Browser;
-before(async (): Promise<void> => {
-  browser = await chromium.launch({ headless: true });
+beforeEach(async (): Promise<void> => {
+  browser = await Camoufox({ headless: true });
 });
 
-after(async (): Promise<void> => {
+afterEach(async (): Promise<void> => {
   await browser.close();
 });
 
@@ -69,7 +69,7 @@ function createSource(
         return context;
       },
     },
-    new ChromiumOptionsFactory(),
+    new CamoufoxOptionsFactory(),
     1500,
   );
 

@@ -1,11 +1,9 @@
 import { z } from 'zod';
 
-import { browserSessionSchema } from './browser-session.type.js';
 import { proxyServerSchema } from './proxy-server.type.js';
 
 export const priceFetchRouteSchema = z.object({
   server: proxyServerSchema.nullable(),
-  session: browserSessionSchema.optional(),
 });
 
 export const priceFetchJobSchema = z.object({

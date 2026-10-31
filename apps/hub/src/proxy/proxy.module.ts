@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 
-import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
-import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
@@ -26,7 +24,7 @@ import { ProxyResultsConsumer } from './presentation/proxy-results.consumer.js';
 import { ProxySourcesController } from './presentation/proxy-sources.controller.js';
 
 @Module({
-  imports: [PrismaModule, JobModule, BrowserSessionModule],
+  imports: [PrismaModule, JobModule],
   controllers: [ProxiesController, ProxySourcesController],
   providers: [
     {
@@ -66,11 +64,9 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
     },
     {
       provide: ListProxiesUseCase,
-      useFactory: (
-        proxies: ProxyRepositoryPort,
-        sessions: ListMarketplaceSessionsUseCase,
-      ): ListProxiesUseCase => new ListProxiesUseCase(proxies, sessions),
-      inject: [PROXY_REPOSITORY, ListMarketplaceSessionsUseCase],
+      useFactory: (proxies: ProxyRepositoryPort): ListProxiesUseCase =>
+        new ListProxiesUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
     },
     {
       provide: AddManualProxyUseCase,

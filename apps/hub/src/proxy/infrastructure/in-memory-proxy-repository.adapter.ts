@@ -17,9 +17,7 @@ function matches(proxy: ProxyEntity, filter: ProxyFilterInterface): boolean {
     (filter.manual === undefined || proxy.isManual === filter.manual) &&
     (filter.alive === undefined || snapshot.alive === filter.alive) &&
     (filter.country === undefined || snapshot.country === filter.country) &&
-    (filter.disabled === undefined || (snapshot.disabledAt !== null) === filter.disabled) &&
-    (filter.servers === undefined || filter.servers.includes(snapshot.server)) &&
-    filter.excludedServers?.includes(snapshot.server) !== true
+    (filter.disabled === undefined || (snapshot.disabledAt !== null) === filter.disabled)
   );
 }
 

@@ -14,8 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "generate": "pnpm -r --if-present generate",
-    "test:e2e": "pnpm build:packages && pnpm generate && pnpm --filter frontend-admin build && pnpm --filter frontend-client build && pnpm --filter hub test:e2e",
-    "sessions:onboard": "pnpm --filter price-fetcher session:onboard"
+    "test:e2e": "pnpm build:packages && pnpm generate && pnpm --filter frontend-admin build && pnpm --filter frontend-client build && pnpm --filter hub test:e2e"
   },
   "keywords": [],
   "author": "",

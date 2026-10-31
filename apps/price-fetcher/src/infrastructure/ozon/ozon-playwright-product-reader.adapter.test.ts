@@ -1,19 +1,17 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
+import { afterEach, beforeEach, test } from 'node:test';
 
+import { Camoufox } from 'camoufox-js';
 import {
   type Browser,
   type BrowserContext,
   type BrowserContextOptions,
-  chromium,
   type Route,
-} from 'playwright';
+} from 'playwright-core';
 import { OzonReferenceParser, ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { SessionStorePort } from '../../application/session/session-store.port.js';
-import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
-import { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import { OzonChallengeParser } from './ozon-challenge.parser.js';
 import { OzonPageParser } from './ozon-page.parser.js';
@@ -24,11 +22,11 @@ import {
 import { OzonProductParser } from './ozon-product.parser.js';
 
 let browser: Browser;
-before(async (): Promise<void> => {
-  browser = await chromium.launch({ headless: true });
+beforeEach(async (): Promise<void> => {
+  browser = await Camoufox({ headless: true });
 });
 
-after(async (): Promise<void> => {
+afterEach(async (): Promise<void> => {
   await browser.close();
 });
 
@@ -50,7 +48,6 @@ function createReader(
   country = 'RU',
   status = 200,
   inspectOptions?: (options: BrowserContextOptions | undefined) => void,
-  sessions?: SessionStorePort,
 ): OzonPlaywrightProductReaderAdapter {
   return new OzonPlaywrightProductReaderAdapter(
     {
@@ -71,10 +68,9 @@ function createReader(
         return context;
       },
     },
-    new ChromiumOptionsFactory(),
+    new CamoufoxOptionsFactory(),
     parsers,
-    1000,
-    sessions,
+    10_000,
   );
 }
 
@@ -137,9 +133,9 @@ void test('reader accepts the final document after a JavaScript challenge redire
         return context;
       },
     },
-    new ChromiumOptionsFactory(),
+    new CamoufoxOptionsFactory(),
     parsers,
-    1000,
+    10_000,
   );
 
   const result = await reader.read(reference, null, new AbortController().signal);
@@ -189,99 +185,14 @@ void test('direct reader omits proxy configuration and skips GeoIP even for a no
   assert.equal(browser.contexts().length, 0);
 });
 
-const widgetHtml =
-  '<h1>Notebook</h1><div data-widget="webPrice"><span>100 000 ₽</span></div><div data-widget="webAddToCart">В корзину</div>';
-const session: BrowserSessionInterface = {
-  id: '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11',
-  exitIp: '217.71.230.103',
-  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) SessionTest',
-  storageState: {
-    cookies: [
-      {
-        name: 'abt',
-        value: 'v1',
-        domain: '.ozon.ru',
-        path: '/',
-        expires: -1,
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax',
-      },
-    ],
-    origins: [],
-  },
-};
-
-function createSessionSpy(found: BrowserSessionInterface | null): {
-  store: SessionStorePort;
-  updates: string[];
-  rejections: string[];
-} {
-  const updates: string[] = [];
-  const rejections: string[] = [];
-
-  return {
-    updates,
-    rejections,
-    store: {
-      find: (): BrowserSessionInterface | null => found,
-      update: (sessionId): void => {
-        updates.push(sessionId);
-      },
-      reject: (sessionId, actualIp): void => {
-        rejections.push(`${sessionId}@${actualIp}`);
-      },
-    },
-  };
-}
-
-void test('reader applies a session and stores the refreshed state after a successful read', async (): Promise<void> => {
-  const spy = createSessionSpy(session);
-  const received: Array<BrowserContextOptions | undefined> = [];
-  const reader = createReader(
-    widgetHtml,
-    'RU',
-    200,
-    (options): void => {
-      received.push(options);
-    },
-    spy.store,
-  );
-
-  const result = await reader.read(reference, proxy, new AbortController().signal);
-  assert.equal(result.status, 'success');
-
-  const options = received[0];
-  assert.equal(options?.userAgent, session.userAgent);
-  assert.equal(options.timezoneId, 'Europe/Moscow');
-  assert.deepEqual(options.storageState, session.storageState);
-  assert.deepEqual(spy.updates, [session.id]);
-  assert.deepEqual(spy.rejections, []);
-});
-
-void test('reader ignores a session created with another exit address', async (): Promise<void> => {
-  const spy = createSessionSpy({ ...session, exitIp: '198.51.100.7' });
-  const reader = createReader(widgetHtml, 'RU', 200, undefined, spy.store);
-
-  const result = await reader.read(reference, proxy, new AbortController().signal);
-
-  assert.equal(result.status, 'success');
-  assert.deepEqual(spy.rejections, [`${session.id}@217.71.230.103`]);
-  assert.deepEqual(spy.updates, []);
-});
-
-void test('reader does not store a session after a challenge', async (): Promise<void> => {
-  const spy = createSessionSpy(session);
+void test('reader reports a challenge', async (): Promise<void> => {
   const reader = createReader(
     '<title>Antibot Captcha</title><div class="captcha">Подтвердите, что вы человек</div>',
     'RU',
     403,
-    undefined,
-    spy.store,
   );
 
   assert.deepEqual(await reader.read(reference, proxy, new AbortController().signal), {
     status: 'challenge_required',
   });
-  assert.deepEqual(spy.updates, []);
 });

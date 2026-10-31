@@ -9,7 +9,6 @@ import {
 } from 'product-reference';
 
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import { InMemorySessionStoreAdapter } from '../../infrastructure/session/in-memory-session-store.adapter.js';
 import {
   type FetchPricesListenerInterface,
   FetchPricesUseCase,
@@ -33,17 +32,14 @@ async function fetchOne(
 
       return Promise.resolve();
     },
-    onSessionUpdate: (): Promise<void> => Promise.resolve(),
-    onSessionMismatch: (): Promise<void> => Promise.resolve(),
   };
 
   await new FetchPricesUseCase(
     new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
-    (routes) => new InMemorySessionStoreAdapter(routes),
     (): ProductReaderPort => reader,
   ).execute(
     {
-      routes: servers.map((server) => ({ server, session: null })),
+      routes: servers.map((server) => ({ server })),
       products: [product],
       timeoutMs: 1000,
     },
@@ -105,11 +101,10 @@ void test('gives the reader the city the product is asked for in', async (): Pro
   for (const given of [{ cityId }, {}]) {
     await new FetchPricesUseCase(
       new ResolveProductReferenceUseCase([new DnsReferenceParser()]),
-      (routes) => new InMemorySessionStoreAdapter(routes),
       (): ProductReaderPort => reader,
     ).execute(
       {
-        routes: [{ server: null, session: null }],
+        routes: [{ server: null }],
         products: [
           {
             trackedProductId,
@@ -123,8 +118,6 @@ void test('gives the reader the city the product is asked for in', async (): Pro
       {
         onProgress: (): Promise<void> => Promise.resolve(),
         onProduct: (): Promise<void> => Promise.resolve(),
-        onSessionUpdate: (): Promise<void> => Promise.resolve(),
-        onSessionMismatch: (): Promise<void> => Promise.resolve(),
       },
     );
   }

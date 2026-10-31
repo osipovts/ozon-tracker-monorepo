@@ -20,16 +20,13 @@ export class PriceFetchController {
   async handle(data: unknown, signal: AbortSignal, willRetry = false): Promise<void> {
     const job = this.messages.parse(priceFetchJobSchema, data, 'price fetch job');
     this.logger.info(
-      `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes (${String(job.proxies.filter((route): boolean => route.session !== undefined).length)} with a session), timeout ${String(job.timeoutMs)} ms`,
+      `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes, timeout ${String(job.timeoutMs)} ms`,
     );
 
     await this.lifecycle.run(job.jobId, willRetry, (): Promise<void> =>
       this.fetchPrices.execute(
         {
-          routes: job.proxies.map((route) => ({
-            server: route.server,
-            session: route.session ?? null,
-          })),
+          routes: job.proxies,
           products: job.products,
           timeoutMs: job.timeoutMs,
         },
@@ -45,15 +42,6 @@ export class PriceFetchController {
         this.publish({ type: 'job_progress', jobId, ...progress }),
       onProduct: (result): Promise<void> =>
         this.publish({ type: 'product_result', jobId, ...result }),
-      onSessionUpdate: (update): Promise<void> =>
-        this.publish({
-          type: 'session_update',
-          jobId,
-          observedAt: new Date().toISOString(),
-          ...update,
-        }),
-      onSessionMismatch: (mismatch): Promise<void> =>
-        this.publish({ type: 'session_ip_mismatch', jobId, ...mismatch }),
     };
   }
 }

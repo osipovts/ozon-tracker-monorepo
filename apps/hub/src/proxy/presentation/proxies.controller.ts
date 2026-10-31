@@ -53,11 +53,7 @@ export class ProxiesController {
   ) {}
 
   @Get()
-  @ApiOperation({
-    summary: 'List proxies, the best first',
-    description:
-      'A proxy is ready when it has an active browser session of the marketplace; `ready=false` lists the ones that still need it.',
-  })
+  @ApiOperation({ summary: 'List proxies, the best first' })
   @ApiOkResponse({ standardSchema: proxyListResponseSchema })
   async list(
     @Query({ schema: proxyListQuerySchema }) query: ProxyListQueryType,
@@ -67,13 +63,11 @@ export class ProxiesController {
         ...(query.alive === undefined ? {} : { alive: query.alive === 'true' }),
         ...(query.disabled === undefined ? {} : { disabled: query.disabled === 'true' }),
         ...(query.country === undefined ? {} : { country: query.country }),
-        marketplace: query.marketplace,
-        ...(query.ready === undefined ? {} : { ready: query.ready === 'true' }),
       },
       query,
     );
 
-    return toPageResponse(page, query, ({ proxy, session, ready }) => ({
+    return toPageResponse(page, query, (proxy) => ({
       server: proxy.snapshot.server,
       source: proxy.snapshot.source,
       country: proxy.snapshot.country,
@@ -83,17 +77,7 @@ export class ProxiesController {
       successRate: proxy.successRate,
       checksTotal: proxy.snapshot.checksTotal,
       lastCheckedAt: proxy.snapshot.lastCheckedAt.toISOString(),
-      ready,
       disabled: proxy.snapshot.disabledAt !== null,
-      session:
-        session === null
-          ? null
-          : {
-              id: session.id,
-              status: session.status,
-              staleReason: session.staleReason,
-              updatedAt: session.updatedAt.toISOString(),
-            },
     }));
   }
 

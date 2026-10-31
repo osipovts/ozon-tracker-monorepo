@@ -54,10 +54,7 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
   async enqueuePriceFetch(request: PriceFetchRequestInterface): Promise<void> {
     const job: PriceFetchJobType = priceFetchJobSchema.parse({
       jobId: request.jobId,
-      proxies: request.routes.map((route) => ({
-        server: route.server,
-        ...(route.session === null ? {} : { session: route.session }),
-      })),
+      proxies: request.routes,
       products: request.products,
       timeoutMs: request.timeoutMs,
     });

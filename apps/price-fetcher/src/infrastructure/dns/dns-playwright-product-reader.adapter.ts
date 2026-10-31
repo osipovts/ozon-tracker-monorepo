@@ -1,12 +1,12 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
-import type { BrowserContext, Page, Response } from 'playwright';
-import type { Browser } from 'playwright';
+import type { BrowserContext, Page, Response } from 'playwright-core';
+import type { Browser } from 'playwright-core';
 import { marketplaceExitCountries, type ProductReferenceEntity } from 'product-reference';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import type { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import type { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import type { DnsCityCookieParser } from './dns-city-cookie.parser.js';
 import type { DnsPageInterface } from './dns-page.interface.js';
@@ -23,7 +23,7 @@ export interface DnsReaderParsersInterface {
 export class DnsPlaywrightProductReaderAdapter implements ProductReaderPort {
   constructor(
     private readonly browser: Pick<Browser, 'newContext'>,
-    private readonly options: ChromiumOptionsFactory,
+    private readonly options: CamoufoxOptionsFactory,
     private readonly parsers: DnsReaderParsersInterface,
     private readonly timeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,

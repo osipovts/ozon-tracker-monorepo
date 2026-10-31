@@ -30,11 +30,6 @@ export const dashboardResponseSchema = z.strictObject({
     averageLatencyMs: z.number().int().nullable(),
     lastCheckedAt: z.iso.datetime().nullable(),
   }),
-  sessions: z.strictObject({
-    /** Browser sessions the marketplaces still let through. */
-    active: z.number().int(),
-    stale: z.number().int(),
-  }),
   jobs: z.strictObject({
     /** The jobs that started in the last day, by status. */
     lastDay: jobCountsSchema,

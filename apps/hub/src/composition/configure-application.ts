@@ -9,7 +9,7 @@ import { adminUiPath, clientUiPath, serveStaticUi } from '../shared/presentation
 export function apiDocumentOptions(): Omit<OpenAPIObject, 'paths'> {
   return new DocumentBuilder()
     .setTitle('Hub')
-    .setDescription('Proxies, browser sessions and price tracking of marketplace products')
+    .setDescription('Proxies and price tracking of marketplace products')
     .setVersion('1.0')
     .addBearerAuth()
     .addCookieAuth('session')
