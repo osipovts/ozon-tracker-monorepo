@@ -1,7 +1,7 @@
 import { type ClockPort, systemClock } from '../../shared/application/clock.port.js';
+import { hashSecretToken } from '../../shared/application/secret-token.type.js';
 import type { AuthSessionPolicyInterface } from '../domain/auth-session.entity.js';
 import type { AuthSessionRepositoryPort } from './auth-session-repository.port.js';
-import { hashSessionToken } from './session-token.type.js';
 
 export interface AuthIdentityInterface {
   userId: string;
@@ -17,7 +17,7 @@ export class ResolveAuthSessionUseCase {
   ) {}
 
   async execute(token: string): Promise<AuthIdentityInterface | null> {
-    const session = await this.sessions.findByTokenHash(hashSessionToken(token));
+    const session = await this.sessions.findByTokenHash(hashSecretToken(token));
     const at = this.clock.now();
     if (session?.isActive(at) !== true) return null;
 

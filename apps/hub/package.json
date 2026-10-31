@@ -25,6 +25,7 @@
     "@nestjs/testing": "12.2.0",
     "@types/express": "^5.0.0",
     "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   },
@@ -40,6 +41,7 @@
     "express": "^5.3.0",
     "ioredis": "^6.0.0",
     "logger": "workspace:*",
+    "nodemailer": "^10.3.1",
     "prisma": "7.10.1",
     "product-reference": "workspace:*",
     "queue-contract": "workspace:*",

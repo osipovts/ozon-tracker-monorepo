@@ -79,3 +79,14 @@ void test('trusts no proxy unless told how many stand in front of the hub', (): 
   assert.throws(() => parser.parse(env(['TRUST_PROXY', 'true'])));
   assert.throws(() => parser.parse(env(['TRUST_PROXY', '-1'])));
 });
+
+void test('sends mail through the SMTP service it is given, and writes it to the log with none', (): void => {
+  assert.equal(parser.parse(env()).smtpUrl, null);
+  assert.equal(parser.parse(env(['SMTP_URL', ''])).smtpUrl, null);
+  assert.equal(
+    parser.parse(env(['SMTP_URL', 'smtp://user:secret@mail.example.com:587'])).smtpUrl,
+    'smtp://user:secret@mail.example.com:587',
+  );
+  assert.throws(() => parser.parse(env(['SMTP_URL', 'http://mail.example.com'])));
+  assert.equal(parser.parse(env()).emailVerificationTtlMs, 86_400_000);
+});

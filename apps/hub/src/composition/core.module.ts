@@ -1,13 +1,17 @@
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ConsoleLoggerAdapter } from 'logger';
+import { createTransport } from 'nodemailer';
 import { QueueMessageParser } from 'queue-worker';
 
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
+import { MAILER, type MailerPort } from '../shared/application/mailer.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { AppConfigParser } from '../shared/infrastructure/app-config.parser.js';
+import { LogMailerAdapter } from '../shared/infrastructure/log-mailer.adapter.js';
 import { NestLoggerAdapter } from '../shared/infrastructure/nest-logger.adapter.js';
+import { NodemailerMailerAdapter } from '../shared/infrastructure/nodemailer-mailer.adapter.js';
 import { RedisRateLimiterAdapter } from '../shared/infrastructure/redis-rate-limiter.adapter.js';
 
 const REDIS = Symbol('Redis');
@@ -44,13 +48,26 @@ const REDIS = Symbol('Redis');
       inject: [REDIS],
     },
     {
+      provide: MAILER,
+      useFactory: (config: AppConfigInterface, logger: LoggerPort): MailerPort => {
+        if (config.smtpUrl !== null) {
+          return new NodemailerMailerAdapter(createTransport(config.smtpUrl), config.mailFrom);
+        }
+
+        logger.warn('SMTP_URL is not set: the mails are written to the log, not sent');
+
+        return new LogMailerAdapter(logger.child('mail'));
+      },
+      inject: [APP_CONFIG, LOGGER],
+    },
+    {
       provide: QueueMessageParser,
       useFactory: (logger: LoggerPort): QueueMessageParser =>
         new QueueMessageParser(logger.child('results')),
       inject: [LOGGER],
     },
   ],
-  exports: [APP_CONFIG, LOGGER, NestLoggerAdapter, QueueMessageParser, RATE_LIMITER],
+  exports: [APP_CONFIG, LOGGER, NestLoggerAdapter, QueueMessageParser, RATE_LIMITER, MAILER],
 })
 export class CoreModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS) private readonly redis: Redis) {}

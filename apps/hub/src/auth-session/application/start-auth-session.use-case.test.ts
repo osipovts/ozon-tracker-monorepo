@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { ClockPort } from '../../shared/application/clock.port.js';
+import { hashSecretToken } from '../../shared/application/secret-token.type.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../infrastructure/in-memory-auth-session-repository.adapter.js';
-import { hashSessionToken } from './session-token.type.js';
 import { StartAuthSessionUseCase } from './start-auth-session.use-case.js';
 
 const minute = 60_000;
@@ -23,7 +23,7 @@ void test('starts a session whose token only the client knows: the table keeps i
   });
 
   assert.equal(await sessions.findByTokenHash(token), null);
-  const stored = await sessions.findByTokenHash(hashSessionToken(token));
+  const stored = await sessions.findByTokenHash(hashSecretToken(token));
   assert.ok(stored);
   assert.equal(stored.snapshot.userId, userId);
   assert.equal(stored.snapshot.userAgent, 'Mozilla/5.0');

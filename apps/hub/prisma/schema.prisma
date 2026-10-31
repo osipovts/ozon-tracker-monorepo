@@ -124,6 +124,7 @@ model User {
   identities           LinkedIdentity[]
   authSessions         AuthSession[]
   productSubscriptions ProductSubscription[]
+  emailVerifications   EmailVerification[]
 
   @@map("users")
 }
@@ -183,4 +184,18 @@ model ProductSubscription {
   @@id([userId, trackedProductId])
   @@index([trackedProductId])
   @@map("product_subscriptions")
+}
+
+/// A link mailed to the email of a user: whoever opens it has the mailbox. A user has one at a time.
+model EmailVerification {
+  id        String   @id @db.Uuid
+  userId    String   @db.Uuid
+  /// SHA-256 of the token in the link.
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
 }

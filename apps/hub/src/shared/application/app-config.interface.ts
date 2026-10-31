@@ -25,6 +25,14 @@ export interface AppConfigInterface {
   /** How many products a user may add per window, whatever the products. */
   productAddMaxAttempts: number;
   productAddWindowMs: number;
+  /** The mail service, `smtp://user:password@host:587`; without one the mails are written to the log. */
+  smtpUrl: string | null;
+  /** The sender of the mails of the hub. */
+  mailFrom: string;
+  /** How long the link to confirm an email works. */
+  emailVerificationTtlMs: number;
+  /** Mails of the link to confirm an email, that a user may ask for per window. */
+  authVerificationResendMaxAttempts: number;
   /** How often the sessions that ended are deleted. */
   authSessionPurgeIntervalMs: number;
   /** The window the attempts of logging in and signing up are counted in. */

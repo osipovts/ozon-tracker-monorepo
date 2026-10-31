@@ -9,6 +9,10 @@ export const registerBodySchema = z.object({
 
 export type RegisterBodyType = z.infer<typeof registerBodySchema>;
 
+export const verifiedResponseSchema = z.strictObject({ verified: z.literal(true) });
+
+export type VerifiedResponseType = z.infer<typeof verifiedResponseSchema>;
+
 export const registeredResponseSchema = z.strictObject({ accepted: z.literal(true) });
 
 export type RegisteredResponseType = z.infer<typeof registeredResponseSchema>;
@@ -29,7 +33,7 @@ export type PasswordChangeBodyType = z.infer<typeof passwordChangeBodySchema>;
 
 export const authResponseSchema = z.object({
   /** Strict: a field that is not listed is never sent, and a test sees it if it is. */
-  user: z.strictObject({ id: z.uuid(), email: z.string() }),
+  user: z.strictObject({ id: z.uuid(), email: z.string(), emailVerified: z.boolean() }),
 });
 
 export type AuthResponseType = z.infer<typeof authResponseSchema>;

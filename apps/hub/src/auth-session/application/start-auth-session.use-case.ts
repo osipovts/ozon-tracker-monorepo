@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { type ClockPort, systemClock } from '../../shared/application/clock.port.js';
+import { hashSecretToken, issueSecretToken } from '../../shared/application/secret-token.type.js';
 import {
   AuthSessionEntity,
   type AuthSessionPolicyInterface,
 } from '../domain/auth-session.entity.js';
 import type { AuthSessionRepositoryPort } from './auth-session-repository.port.js';
-import { hashSessionToken, issueSessionToken } from './session-token.type.js';
 
 export interface StartAuthSessionInterface {
   userId: string;
@@ -29,9 +29,9 @@ export class StartAuthSessionUseCase {
   ) {}
 
   async execute(input: StartAuthSessionInterface): Promise<StartedAuthSessionInterface> {
-    const token = issueSessionToken();
+    const token = issueSecretToken();
     const session = AuthSessionEntity.start(
-      { id: randomUUID(), tokenHash: hashSessionToken(token), ...input },
+      { id: randomUUID(), tokenHash: hashSecretToken(token), ...input },
       this.policy,
       this.clock.now(),
     );

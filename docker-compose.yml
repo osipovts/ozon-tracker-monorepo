@@ -11,6 +11,8 @@ x-hub-env: &hub-env
   DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
   HUB_API_KEY: ${HUB_API_KEY:-}
   PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+  SMTP_URL: ${SMTP_URL:-}
+  MAIL_FROM: ${MAIL_FROM:-Price Tracker <no-reply@localhost>}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}

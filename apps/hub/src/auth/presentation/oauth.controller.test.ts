@@ -8,11 +8,14 @@ import { Test } from '@nestjs/testing';
 import { AuthenticateWithPasswordUseCase } from '../../account/application/authenticate-with-password.use-case.js';
 import { ChangeAccountPasswordUseCase } from '../../account/application/change-account-password.use-case.js';
 import { GetAccountUseCase } from '../../account/application/get-account.use-case.js';
+import { NotifyExistingAccountUseCase } from '../../account/application/notify-existing-account.use-case.js';
 import { RegisterAccountUseCase } from '../../account/application/register-account.use-case.js';
 import { ResolveOauthAccountUseCase } from '../../account/application/resolve-oauth-account.use-case.js';
+import { SendEmailVerificationUseCase } from '../../account/application/send-email-verification.use-case.js';
 import { Argon2idPasswordHasherAdapter } from '../../account/infrastructure/argon2id-password-hasher.adapter.js';
 import { InMemoryAccountRegistrationAdapter } from '../../account/infrastructure/in-memory-account-registration.adapter.js';
 import { InMemoryCredentialRepositoryAdapter } from '../../account/infrastructure/in-memory-credential-repository.adapter.js';
+import { InMemoryEmailVerificationRepositoryAdapter } from '../../account/infrastructure/in-memory-email-verification-repository.adapter.js';
 import { InMemoryLinkedIdentityRepositoryAdapter } from '../../account/infrastructure/in-memory-linked-identity-repository.adapter.js';
 import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-memory-user-repository.adapter.js';
 import { EndAuthSessionUseCase } from '../../auth-session/application/end-auth-session.use-case.js';
@@ -24,6 +27,7 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../shared/application/app-config.interface.js';
+import { InMemoryMailerAdapter } from '../../shared/infrastructure/in-memory-mailer.adapter.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
@@ -49,6 +53,10 @@ const config: AppConfigInterface = {
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
   authCookieSecure: true,
+  smtpUrl: null,
+  mailFrom: 'hub@example.com',
+  emailVerificationTtlMs: 86_400_000,
+  authVerificationResendMaxAttempts: 1000,
   productsPerUserMax: 100,
   productAddMaxAttempts: 1000,
   productAddWindowMs: 60_000,
@@ -82,6 +90,8 @@ before(async (): Promise<void> => {
   const registration = new InMemoryAccountRegistrationAdapter(users, credentials, identities);
   const startSession = new StartAuthSessionUseCase(sessions, policy);
   const limiter = new InMemoryRateLimiterAdapter();
+  const mailer = new InMemoryMailerAdapter();
+  const verifications = new InMemoryEmailVerificationRepositoryAdapter();
   const providers: OauthProvidersType = new Map([['google', google]]);
 
   const moduleRef = await Test.createTestingModule({
@@ -106,10 +116,19 @@ before(async (): Promise<void> => {
       },
       {
         provide: SignUpUseCase,
-        useValue: new SignUpUseCase(new RegisterAccountUseCase(registration, hasher), limiter, {
-          limit: 1000,
-          windowMs: 60_000,
-        }),
+        useValue: new SignUpUseCase(
+          new RegisterAccountUseCase(registration, hasher),
+          new SendEmailVerificationUseCase(users, verifications, mailer, {
+            linkBase: 'http://localhost:3000',
+            ttlMs: 60_000,
+          }),
+          new NotifyExistingAccountUseCase(mailer),
+          limiter,
+          {
+            register: { limit: 1000, windowMs: 60_000 },
+            notice: { limit: 1000, windowMs: 60_000 },
+          },
+        ),
       },
       {
         provide: LogInUseCase,

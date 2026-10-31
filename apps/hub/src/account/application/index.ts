@@ -14,6 +14,7 @@ export {
 } from './change-account-password.use-case.js';
 export { EmailTakenError } from './email-taken.error.js';
 export { GetAccountUseCase } from './get-account.use-case.js';
+export { NotifyExistingAccountUseCase } from './notify-existing-account.use-case.js';
 export {
   type RegisterAccountInterface,
   RegisterAccountUseCase,
@@ -23,6 +24,8 @@ export {
   type OauthAccountResultInterface,
   ResolveOauthAccountUseCase,
 } from './resolve-oauth-account.use-case.js';
+export { SendEmailVerificationUseCase } from './send-email-verification.use-case.js';
+export { VerifyEmailUseCase } from './verify-email.use-case.js';
 
 /** The form of an email that makes one address one user. */
 export function normalizeEmail(email: string): string {

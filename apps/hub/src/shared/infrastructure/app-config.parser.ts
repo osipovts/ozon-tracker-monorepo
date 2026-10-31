@@ -39,6 +39,14 @@ const configSchema = z.object({
     .int()
     .min(60_000)
     .default(30 * 24 * 3_600_000),
+  smtpUrl: z.url({ protocol: /^smtps?$/ }).nullable(),
+  mailFrom: z.string().min(3).default('Price Tracker <no-reply@localhost>'),
+  emailVerificationTtlMs: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .default(24 * 60 * 60_000),
+  authVerificationResendMaxAttempts: z.coerce.number().int().min(1).default(3),
   productsPerUserMax: z.coerce.number().int().min(1).default(100),
   productAddMaxAttempts: z.coerce.number().int().min(1).default(30),
   productAddWindowMs: z.coerce
@@ -109,6 +117,10 @@ export class AppConfigParser {
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],
         authSessionAbsoluteTtlMs: env['AUTH_SESSION_ABSOLUTE_TTL_MS'],
         authCookieSecure: env['AUTH_COOKIE_SECURE'],
+        smtpUrl: env['SMTP_URL'] === '' ? null : (env['SMTP_URL'] ?? null),
+        mailFrom: env['MAIL_FROM'],
+        emailVerificationTtlMs: env['EMAIL_VERIFICATION_TTL_MS'],
+        authVerificationResendMaxAttempts: env['AUTH_VERIFICATION_RESEND_MAX_ATTEMPTS'],
         productsPerUserMax: env['PRODUCTS_PER_USER_MAX'],
         productAddMaxAttempts: env['PRODUCT_ADD_MAX_ATTEMPTS'],
         productAddWindowMs: env['PRODUCT_ADD_WINDOW_MS'],

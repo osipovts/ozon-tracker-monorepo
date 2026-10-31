@@ -48,8 +48,8 @@ import {
 import { cookieOptionsOf } from './cookie-options.type.js';
 import { sessionCookieName, SessionCookieParser } from './session-cookie.parser.js';
 
-function toAuthResponse({ id, email }: UserInterface): AuthResponseType {
-  return { user: { id, email } };
+function toAuthResponse({ id, email, emailVerifiedAt }: UserInterface): AuthResponseType {
+  return { user: { id, email, emailVerified: emailVerifiedAt !== null } };
 }
 
 function clientOf(request: Request): ClientInterface {

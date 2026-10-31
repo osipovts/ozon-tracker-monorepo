@@ -8,10 +8,14 @@ import { Test } from '@nestjs/testing';
 import { AuthenticateWithPasswordUseCase } from '../../account/application/authenticate-with-password.use-case.js';
 import { ChangeAccountPasswordUseCase } from '../../account/application/change-account-password.use-case.js';
 import { GetAccountUseCase } from '../../account/application/get-account.use-case.js';
+import { NotifyExistingAccountUseCase } from '../../account/application/notify-existing-account.use-case.js';
 import { RegisterAccountUseCase } from '../../account/application/register-account.use-case.js';
+import { SendEmailVerificationUseCase } from '../../account/application/send-email-verification.use-case.js';
+import { VerifyEmailUseCase } from '../../account/application/verify-email.use-case.js';
 import { Argon2idPasswordHasherAdapter } from '../../account/infrastructure/argon2id-password-hasher.adapter.js';
 import { InMemoryAccountRegistrationAdapter } from '../../account/infrastructure/in-memory-account-registration.adapter.js';
 import { InMemoryCredentialRepositoryAdapter } from '../../account/infrastructure/in-memory-credential-repository.adapter.js';
+import { InMemoryEmailVerificationRepositoryAdapter } from '../../account/infrastructure/in-memory-email-verification-repository.adapter.js';
 import { InMemoryUserRepositoryAdapter } from '../../account/infrastructure/in-memory-user-repository.adapter.js';
 import { EndAuthSessionUseCase } from '../../auth-session/application/end-auth-session.use-case.js';
 import { ListAuthSessionsUseCase } from '../../auth-session/application/list-auth-sessions.use-case.js';
@@ -24,15 +28,18 @@ import {
   APP_CONFIG,
   type AppConfigInterface,
 } from '../../shared/application/app-config.interface.js';
+import { InMemoryMailerAdapter } from '../../shared/infrastructure/in-memory-mailer.adapter.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../../shared/presentation/application-error.filter.js';
 import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { LogInUseCase } from '../application/log-in.use-case.js';
+import { ResendEmailVerificationUseCase } from '../application/resend-email-verification.use-case.js';
 import { SignUpUseCase } from '../application/sign-up.use-case.js';
 import { AccessGuard } from './access.guard.js';
 import { AuthController } from './auth.controller.js';
 import { authResponseSchema, authSessionsResponseSchema } from './auth.type.js';
 import { AuthSessionsController } from './auth-sessions.controller.js';
+import { EmailVerificationController } from './email-verification.controller.js';
 import { SessionCookieParser } from './session-cookie.parser.js';
 
 const config: AppConfigInterface = {
@@ -43,6 +50,10 @@ const config: AppConfigInterface = {
   priceTimeoutMs: 60000,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
+  smtpUrl: null,
+  mailFrom: 'hub@example.com',
+  emailVerificationTtlMs: 86_400_000,
+  authVerificationResendMaxAttempts: 1000,
   productsPerUserMax: 100,
   productAddMaxAttempts: 1000,
   productAddWindowMs: 60_000,
@@ -63,6 +74,9 @@ const config: AppConfigInterface = {
   logLevel: 'error',
 };
 
+/** Every mail the hubs of these tests send. */
+const mailbox = new InMemoryMailerAdapter();
+
 let app: INestApplication;
 let baseUrl: string;
 
@@ -76,23 +90,34 @@ async function createApp(attempts: number): Promise<INestApplication> {
   const hasher = new Argon2idPasswordHasherAdapter({ memoryKib: 64, passes: 1, parallelism: 1 });
   const startSession = new StartAuthSessionUseCase(sessions, policy);
   const limiter = new InMemoryRateLimiterAdapter();
+  const mailer = mailbox;
+  const verifications = new InMemoryEmailVerificationRepositoryAdapter();
   const register = new RegisterAccountUseCase(
     new InMemoryAccountRegistrationAdapter(users, credentials),
     hasher,
   );
 
   const moduleRef = await Test.createTestingModule({
-    controllers: [AuthController, AuthSessionsController],
+    controllers: [AuthController, AuthSessionsController, EmailVerificationController],
     providers: [
       { provide: APP_PIPE, useClass: StandardSchemaValidationPipe },
       { provide: APP_FILTER, useClass: ApplicationErrorFilter },
       { provide: APP_CONFIG, useValue: config },
       {
         provide: SignUpUseCase,
-        useValue: new SignUpUseCase(register, limiter, {
-          limit: attempts,
-          windowMs: 60_000,
-        }),
+        useValue: new SignUpUseCase(
+          register,
+          new SendEmailVerificationUseCase(users, verifications, mailer, {
+            linkBase: 'http://localhost:3000',
+            ttlMs: 60_000,
+          }),
+          new NotifyExistingAccountUseCase(mailer),
+          limiter,
+          {
+            register: { limit: attempts, windowMs: 60_000 },
+            notice: { limit: attempts, windowMs: 60_000 },
+          },
+        ),
       },
       {
         provide: LogInUseCase,
@@ -119,6 +144,18 @@ async function createApp(attempts: number): Promise<INestApplication> {
         useValue: new ResolveAuthSessionUseCase(sessions, policy),
       },
       { provide: GetAccountUseCase, useValue: new GetAccountUseCase(users) },
+      { provide: VerifyEmailUseCase, useValue: new VerifyEmailUseCase(users, verifications) },
+      {
+        provide: ResendEmailVerificationUseCase,
+        useValue: new ResendEmailVerificationUseCase(
+          new SendEmailVerificationUseCase(users, verifications, mailer, {
+            linkBase: 'http://localhost:3000',
+            ttlMs: 60_000,
+          }),
+          limiter,
+          { limit: 3, windowMs: 60_000 },
+        ),
+      },
       {
         provide: ChangePasswordUseCase,
         useValue: new ChangePasswordUseCase(
@@ -466,4 +503,81 @@ void test('does not change the password on a wrong current one or a weak new one
     (await post('/auth/login', { email: 'ivy@example.com', password: 'old-password' })).status,
     200,
   );
+});
+
+/** The path of the link in the last mail to the address, as the user would follow it. */
+function linkTo(email: string): string {
+  const mail = mailbox.sent.findLast((message): boolean => message.to === email);
+  assert.ok(mail, `no mail to ${email}`);
+  const link = /https?:\/\/[^/\s]+(\/auth\/verify-email\?token=[A-Za-z0-9_-]+)/.exec(
+    mail.text,
+  )?.[1];
+  assert.ok(link !== undefined, 'no link in the mail');
+
+  return link;
+}
+
+void test('confirms the email through the link mailed at sign-up, and says so on the user', async (): Promise<void> => {
+  const cookie = await signUp('vera@example.com');
+  assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, false);
+
+  const confirmed = await call(linkTo('vera@example.com'));
+
+  assert.equal(confirmed.status, 200);
+  assert.deepEqual(confirmed.body, { verified: true });
+  assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, true);
+  // A mail scanner may have opened the link first: opening it again is no error.
+  assert.equal((await call(linkTo('vera@example.com'))).status, 200);
+});
+
+void test('refuses a link that is wrong', async (): Promise<void> => {
+  assert.equal((await call('/auth/verify-email?token=not-a-token')).status, 400);
+  assert.equal((await call('/auth/verify-email')).status, 400);
+});
+
+void test('mails the link again to a signed-in user, the new link works and the old one does not', async (): Promise<void> => {
+  const cookie = await signUp('wade@example.com');
+  const oldLink = linkTo('wade@example.com');
+
+  assert.equal((await post('/auth/verify-email/resend', {}, cookie)).status, 204);
+  const newLink = linkTo('wade@example.com');
+
+  assert.notEqual(newLink, oldLink);
+  assert.equal((await call(oldLink)).status, 400);
+  assert.equal((await call(newLink)).status, 200);
+  assert.equal((await post('/auth/verify-email/resend', {})).status, 401);
+});
+
+void test('sends nothing more to an email that is confirmed, and does not let a user ask for mail without end', async (): Promise<void> => {
+  const cookie = await signUp('xena@example.com');
+  await call(linkTo('xena@example.com'));
+  const before = mailbox.sent.length;
+
+  assert.equal((await post('/auth/verify-email/resend', {}, cookie)).status, 204);
+  assert.equal(mailbox.sent.length, before);
+
+  const other = await signUp('yuri@example.com');
+  for (let tries = 0; tries < 3; tries += 1) {
+    assert.equal((await post('/auth/verify-email/resend', {}, other)).status, 204);
+  }
+  assert.equal((await post('/auth/verify-email/resend', {}, other)).status, 429);
+});
+
+void test('tells the holder of an email, not the one who signed up with it again', async (): Promise<void> => {
+  await post('/auth/register', { email: 'zack@example.com', password: 'first-pass' });
+  const before = mailbox.sent.length;
+
+  const again = await post('/auth/register', {
+    email: 'zack@example.com',
+    password: 'second-pass',
+  });
+
+  assert.equal(again.status, 202);
+  assert.deepEqual(again.body, { accepted: true });
+  const notice = mailbox.sent.slice(before);
+  assert.equal(notice.length, 1);
+  const [mail] = notice;
+  assert.ok(mail);
+  assert.equal(mail.to, 'zack@example.com');
+  assert.doesNotMatch(mail.text, /token=/);
 });

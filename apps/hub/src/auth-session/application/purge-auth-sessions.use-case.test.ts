@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { ClockPort } from '../../shared/application/clock.port.js';
+import { hashSecretToken } from '../../shared/application/secret-token.type.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../infrastructure/in-memory-auth-session-repository.adapter.js';
 import { PurgeAuthSessionsUseCase } from './purge-auth-sessions.use-case.js';
 import { ResolveAuthSessionUseCase } from './resolve-auth-session.use-case.js';
 import { RevokeAuthSessionUseCase } from './revoke-auth-session.use-case.js';
-import { hashSessionToken } from './session-token.type.js';
 import { StartAuthSessionUseCase } from './start-auth-session.use-case.js';
 
 const minute = 60_000;
@@ -38,9 +38,9 @@ void test('deletes the sessions that ended more than the retention ago, those th
   const purged = await new PurgeAuthSessionsUseCase(sessions, day, clock).execute();
 
   assert.equal(purged, 2);
-  assert.equal(await sessions.findByTokenHash(hashSessionToken(expired.token)), null);
-  assert.equal(await sessions.findByTokenHash(hashSessionToken(revokedLongAgo.token)), null);
-  assert.notEqual(await sessions.findByTokenHash(hashSessionToken(live.token)), null);
-  assert.notEqual(await sessions.findByTokenHash(hashSessionToken(endedRecently.token)), null);
+  assert.equal(await sessions.findByTokenHash(hashSecretToken(expired.token)), null);
+  assert.equal(await sessions.findByTokenHash(hashSecretToken(revokedLongAgo.token)), null);
+  assert.notEqual(await sessions.findByTokenHash(hashSecretToken(live.token)), null);
+  assert.notEqual(await sessions.findByTokenHash(hashSecretToken(endedRecently.token)), null);
   assert.equal(await new PurgeAuthSessionsUseCase(sessions, day, clock).execute(), 0);
 });
