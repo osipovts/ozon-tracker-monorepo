@@ -245,6 +245,57 @@ void test('the theme and the language are set on the page of the settings, and k
   assert.equal(await page.evaluate((): string | null => localStorage.getItem('language')), null);
 });
 
+void test('the settings show the account and the devices, and sign the other devices out', async (): Promise<void> => {
+  await page.goto(`${hub.baseUrl}/app/settings`);
+  await page.getByRole('heading', { name: 'Account', level: 4 }).waitFor();
+  await page.getByText(email, { exact: true }).first().waitFor();
+
+  // The same person on a second device.
+  const other = await browser.newContext();
+  const login = await other.request.post(`${hub.baseUrl}/auth/login`, {
+    data: { email, password },
+    headers: { origin: hub.baseUrl },
+  });
+  assert.equal(login.status(), 200);
+  assert.equal((await other.request.get(`${hub.baseUrl}/auth/me`)).status(), 200);
+
+  await page.reload();
+  await page.getByText('this device').waitFor();
+  await page.getByRole('button', { name: 'Sign out the other devices' }).click();
+  await page
+    .getByRole('button', { name: 'Sign out the other devices' })
+    .waitFor({ state: 'detached' });
+
+  assert.equal((await other.request.get(`${hub.baseUrl}/auth/me`)).status(), 401);
+  assert.equal((await page.request.get(`${hub.baseUrl}/auth/me`)).status(), 200);
+  await other.close();
+});
+
+void test('the password is changed with the current one, and the old one stops working', async (): Promise<void> => {
+  const newPassword = 'a-new-horse-battery';
+
+  await page.getByLabel(/Current password/).fill('not-the-password');
+  await page.getByLabel(/New password/).fill(newPassword);
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await page.getByRole('alert').waitFor();
+
+  await page.getByLabel(/Current password/).fill(password);
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await page.getByText('The password is changed.').waitFor();
+
+  const check = await browser.newContext();
+  const attempt = (secret: string): Promise<number> =>
+    check.request
+      .post(`${hub.baseUrl}/auth/login`, {
+        data: { email, password: secret },
+        headers: { origin: hub.baseUrl },
+      })
+      .then((reply): number => reply.status());
+  assert.equal(await attempt(password), 401);
+  assert.equal(await attempt(newPassword), 200);
+  await check.close();
+});
+
 void test('a visitor who logs out is sent to the login', async (): Promise<void> => {
   await page.getByRole('button', { name: 'Log out' }).click();
   await page.waitForURL('**/app/login');

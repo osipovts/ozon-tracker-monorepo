@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import { ColorSchemeControl } from '../../app/color-scheme.component.js';
 import { LanguageControl } from '../../app/language.component.js';
+import { AccountSection } from './account-section.component.js';
+import { SessionsSection } from './sessions-section.component.js';
 
 /** What a person sets for themselves; the settings are kept by the browser, not by the hub. */
 export function SettingsPage(): ReactElement {
@@ -12,6 +14,8 @@ export function SettingsPage(): ReactElement {
   return (
     <Stack>
       <Title order={2}>{t('settings.title')}</Title>
+      <AccountSection />
+      <SessionsSection />
       <Card withBorder>
         <Stack gap="xs" align="flex-start">
           <Title order={4}>{t('settings.appearance')}</Title>
