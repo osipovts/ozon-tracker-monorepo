@@ -1,0 +1,209 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Proxy {
+  /// Proxy URL without credentials, e.g. socks5://203.0.113.10:1080
+  server        String    @id
+  source        String
+  country       String?
+  exitIp        String?
+  /// Result of the last check.
+  alive         Boolean
+  /// Latency of the last successful check, in milliseconds.
+  latencyMs     Int?
+  checksTotal   Int       @default(0)
+  checksAlive   Int       @default(0)
+  /// checksAlive / checksTotal, kept in the row to sort by it.
+  successRate   Float     @default(0)
+  lastCheckedAt DateTime
+  /// When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on.
+  disabledAt    DateTime?
+
+  @@index([alive, successRate(sort: Desc), latencyMs])
+  @@map("proxies")
+}
+
+model TrackedProduct {
+  id                 String                @id @default(uuid()) @db.Uuid
+  marketplace        String
+  externalId         String
+  /// Canonical product URL.
+  url                String
+  /// Status of the last fetch, including failed ones.
+  lastStatus         String?
+  lastCheckedAt      DateTime?
+  /// When a read of the product was last queued: the schedule leaves it be for a while after that.
+  lastRequestedAt    DateTime?
+  /// The key of the picture of the product in the S3 storage; null until one is kept.
+  thumbnailKey       String?
+  /// The address the kept picture was taken from: the same address is not downloaded again.
+  thumbnailSourceUrl String?
+  createdAt          DateTime              @default(now())
+  observations       PriceObservation[]
+  subscriptions      ProductSubscription[]
+
+  @@unique([marketplace, externalId], name: "marketplaceExternalId")
+  @@map("tracked_products")
+}
+
+model PriceObservation {
+  id               String         @id @default(uuid()) @db.Uuid
+  trackedProductId String         @db.Uuid
+  trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
+  /// Fetch job that produced the observation; makes redelivered results idempotent.
+  jobId            String         @db.Uuid
+  title            String
+  observedAt       DateTime
+  availability     String
+  /// Array of { amountMinor, currency }.
+  prices           Json
+  exitIp           String?
+
+  @@unique([jobId, trackedProductId])
+  @@index([trackedProductId, observedAt(sort: Desc)])
+  @@map("price_observations")
+}
+
+model JobRecord {
+  /// The job id given to the queue.
+  id          String    @id @db.Uuid
+  /// proxy_fetch or price_fetch.
+  kind        String
+  /// The proxy source of a proxy job or the product id of a price job.
+  subject     String
+  /// The user who asked for the job, who alone may read it; null for the jobs of the operator.
+  requestedBy String?   @db.Uuid
+  /// queued, running, retrying, completed or failed.
+  status      String
+  processed   Int       @default(0)
+  /// Null until the worker knows how much work there is.
+  total       Int?
+  succeeded   Int       @default(0)
+  error       String?
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  @@index([createdAt(sort: Desc)])
+  @@index([kind, status])
+  @@map("jobs")
+}
+
+model BrowserSession {
+  /// The session id given by `session:onboard`.
+  id           String    @id @db.Uuid
+  marketplace  String
+  /// Proxy URL without credentials the session was created through; null for a direct connection.
+  proxyServer  String?
+  /// proxyServer or "direct": a marketplace has one session per route.
+  routeKey     String
+  exitIp       String
+  userAgent    String
+  /// Playwright storageState: cookies and localStorage.
+  storageState Json
+  /// active or stale.
+  status       String
+  staleReason  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastUsedAt   DateTime?
+
+  @@unique([marketplace, routeKey], name: "marketplaceRouteKey")
+  @@map("browser_sessions")
+}
+
+model User {
+  id                   String                @id @db.Uuid
+  /// Trimmed and lowercase.
+  email                String                @unique
+  /// Null until the user proves the address is theirs.
+  emailVerifiedAt      DateTime?
+  createdAt            DateTime              @default(now())
+  credential           Credential?
+  identities           LinkedIdentity[]
+  authSessions         AuthSession[]
+  productSubscriptions ProductSubscription[]
+  emailVerifications   EmailVerification[]
+
+  @@map("users")
+}
+
+/// The password of a user apart from the user: see CredentialEntity for why.
+model Credential {
+  userId       String @id @db.Uuid
+  /// A hash of the password, never the password itself.
+  passwordHash String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credentials")
+}
+
+model LinkedIdentity {
+  id        String   @id @db.Uuid
+  userId    String   @db.Uuid
+  /// google or github.
+  provider  String
+  /// The id of the user at the provider.
+  subject   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject], name: "providerSubject")
+  @@index([userId])
+  @@map("linked_identities")
+}
+
+model AuthSession {
+  id                String    @id @db.Uuid
+  userId            String    @db.Uuid
+  /// SHA-256 of the session token.
+  tokenHash         String    @unique
+  userAgent         String?
+  ip                String?
+  createdAt         DateTime  @default(now())
+  lastSeenAt        DateTime
+  /// Moves forward while the session is used.
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+/// A user tracks a product: the products and their price history are shared, the tracking is not.
+model ProductSubscription {
+  userId           String         @db.Uuid
+  trackedProductId String         @db.Uuid
+  createdAt        DateTime       @default(now())
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackedProductId])
+  @@index([trackedProductId])
+  @@map("product_subscriptions")
+}
+
+/// A link mailed to the email of a user: whoever opens it has the mailbox. A user has one at a time.
+model EmailVerification {
+  id        String   @id @db.Uuid
+  userId    String   @db.Uuid
+  /// SHA-256 of the token in the link.
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
+}

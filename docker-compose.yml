@@ -1,30 +1,168 @@
-services:
-  app-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: prod
-    init: true
-    restart: unless-stopped
-    env_file:
-      - .env
-    # ports:
-    #   - "3000:3000"
+x-app: &app
+  init: true
+  restart: unless-stopped
 
-  app-dev:
-    profiles: ['dev']
+x-app-env: &app-env
+  REDIS_URL: redis://redis:6379
+  LOG_LEVEL: ${LOG_LEVEL:-verbose}
+
+x-hub-env: &hub-env
+  <<: *app-env
+  DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
+  HUB_API_KEY: ${HUB_API_KEY:-}
+  ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+  PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+  SMTP_URL: ${SMTP_URL:-}
+  MAIL_FROM: ${MAIL_FROM:-Price Tracker <no-reply@localhost>}
+  # A login through a provider lands the user in the client app, which the image of the hub serves.
+  AUTH_SUCCESS_REDIRECT: ${AUTH_SUCCESS_REDIRECT:-/app/}
+  AUTH_FAILURE_REDIRECT: ${AUTH_FAILURE_REDIRECT:-/app/login}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+  GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+  # The pictures of the products are kept in the S3 service of this stack; the files are handed to browsers
+  # by addresses signed for S3_PUBLIC_URL, which is where a browser reaches the service.
+  S3_ENDPOINT: http://s3:9000
+  S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+  S3_BUCKET: ${S3_BUCKET:-thumbnails}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-s3key}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-s3secret-change-me}
+
+x-depends-on-redis: &depends-on-redis
+  redis:
+    condition: service_healthy
+
+services:
+  # Applies the pending migrations once; the hub starts after it succeeds.
+  migrate:
+    <<: *app
+    image: price-tracker/hub:prod
+    restart: on-failure
     build:
       context: .
-      dockerfile: Dockerfile
-      target: dev
-    init: true
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - pnpm_store:/pnpm-store
+      target: hub-prod
+      args:
+        APP_NAME: hub
+    command: ['node', 'node_modules/prisma/build/index.js', 'migrate', 'deploy']
+    environment: *hub-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  hub:
+    <<: *app
+    image: price-tracker/hub:prod
+    build:
+      context: .
+      target: hub-prod
+      args:
+        APP_NAME: hub
+    environment: *hub-env
+    # The API is guarded (see the README), and reachable from this machine only.
+    ports:
+      - '127.0.0.1:${HUB_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/docs/json').then((response) => process.exit(response.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      <<: *depends-on-redis
+      migrate:
+        condition: service_completed_successfully
+
+  proxy-fetcher:
+    <<: *app
+    image: price-tracker/proxy-fetcher:prod
+    build:
+      context: .
+      target: proxy-fetcher-prod
+      args:
+        APP_NAME: proxy-fetcher
+    environment: *app-env
+    depends_on: *depends-on-redis
+
+  # Scales with `docker compose up -d --scale price-fetcher-worker=<count>`.
+  price-fetcher-worker:
+    <<: *app
+    image: price-tracker/price-fetcher:prod
+    build:
+      context: .
+      target: price-fetcher-prod
+      args:
+        APP_NAME: price-fetcher
     env_file:
-      - .env
+      - path: apps/price-fetcher/.env
+        required: false
+    environment: *app-env
+    # Chromium runs out of the default 64 MB of /dev/shm on heavy pages.
+    shm_size: 1gb
+    # Lets the job in progress finish: a price fetch takes up to PRICE_TIMEOUT_MS of the hub.
+    stop_grace_period: 70s
+    depends_on: *depends-on-redis
+
+  # An S3 service (SeaweedFS: MinIO no longer publishes images). The files are private: the hub signs
+  # the addresses it hands out.
+  s3:
+    image: chrislusf/seaweedfs:4.50
+    command: ['server', '-dir=/data', '-s3', '-s3.port=9000', '-ip.bind=0.0.0.0']
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-s3key}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-s3secret-change-me}
+    # From this machine only: a browser on it loads the pictures from here.
+    ports:
+      - '127.0.0.1:${S3_PORT:-9000}:9000'
+    volumes:
+      - s3_data:/data
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:9333/cluster/status']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Persistence keeps queued jobs across restarts. The port is reachable from this
+    # machine only, for the apps started with pnpm; never publish it on a public address.
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hub}
+      POSTGRES_DB: hub
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hub -d hub']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
 
 volumes:
-  node_modules:
-  pnpm_store:
+  postgres_data:
+  redis_data:
+  s3_data:

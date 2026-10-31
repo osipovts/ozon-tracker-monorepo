@@ -1,3 +1,14 @@
 dist
 node_modules
 .env
+.ozon-browser/
+
+session.json
+*.session.json
+
+generated
+AGENTS.md
+
+# Reports of the ub-mode tools (crapper, dryer, mutator) and their mutation workers.
+.metrics
+target

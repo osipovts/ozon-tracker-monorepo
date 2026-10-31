@@ -1,0 +1,35 @@
+{
+  "name": "price-fetcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "start:worker": "node dist/worker.js",
+    "dev:worker": "tsx watch --conditions=source src/worker.ts",
+    "session:onboard": "node dist/session-onboard.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "logger": "workspace:*",
+    "playwright": "^1.64.1",
+    "product-reference": "workspace:*",
+    "proxy-endpoint": "workspace:*",
+    "queue-contract": "workspace:*",
+    "queue-worker": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

@@ -1,94 +1,285 @@
-# About
+# Price Tracker
 
-A simple "Hello World" template with TypeScript, Docker, and ESLint pre-configured.
+Автоматический трекер цен на различных маркетплейсах. Позволяет следить за историей цены товара и легко сравнивать цены с различных площадок.
 
-# Usage
+Пока реализован только Ozon. Планируется:
 
-Use this repository as a template for your project by copying with [github](https://github.com)'s UI or manually with `git clone`.
+- Aliexpress
+- Wildberries
+- DNS
+- и др.
 
-It is recommended to run `pnpm up` to update dev-dependencies (eslint, tsx, etc.) after copying this template.
+## Архитектура
 
-## Copy with github.com UI
+Проект представляет собой pnpm-монорепу:
 
-Please refer to [this page](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) for details.
+- `apps/hub` - оркестратор и хранилище данных
+- `apps/proxy-fetcher` - собирает и проверяет прокси
+- `apps/price-fetcher` - читает цены
+- `packages/*` - общий код
 
-## Copy manually
+## Быстрый старт
+
+1. Запустить сервисы
+2. Обновить список прокси
+3. Создать браузерные сессии
+4. Добавить ссылку на товар
+5. Обновить цену
+
+### Доступ к API
+
+Маршруты hub закрыты по умолчанию. Доступ бывает двух видов:
+
+- **Пользователь** - товары, цены и `GET /jobs/{id}`. Регистрация: `POST /auth/register` (отвечает одинаково для свободной и занятой почты и сессию не
+  выдаёт, чтобы не раскрывать, у каких почт есть аккаунт), затем вход: `POST /auth/login`;
+  сессия живёт в HttpOnly cookie `session`, выход: `POST /auth/logout`. Устройства, где вошёл пользователь:
+  `GET /auth/sessions`; завершить одну - `DELETE /auth/sessions/{id}`, все остальные -
+  `DELETE /auth/sessions`. Смена пароля: `POST /auth/password` (нужен текущий пароль; остальные
+  устройства выходят). Товары и история цен общие, но отслеживает товар каждый пользователь для себя:
+  чужие товары не видны; `DELETE /products/{id}` прекращает отслеживание, а когда подписчиков не
+  остаётся - удаляет товар вместе с историей.
+- **Оператор** - `/proxies`, `/proxy-sources`, `/sessions` и `GET /jobs`. Нужен заголовок
+  `Authorization: Bearer <HUB_API_KEY>` или сессия **администратора**: пользователя, чья почта указана в
+  `ADMIN_EMAILS` и подтверждена письмом (`GET /auth/me` показывает `isAdmin`). Обычный пользователь получает 403. Ключ задаётся переменной окружения `HUB_API_KEY` (не короче
+  16 символов, например `openssl rand -hex 32`); без него эти маршруты закрыты для всех. Вошедший
+  пользователь оператором не становится.
+
+Админка (для администраторов из `ADMIN_EMAILS`): `GET /admin/dashboard` - цифры по пользователям, товарам,
+прокси, браузерным сессиям и задачам за сутки с последними неудачами.
+
+Панель администратора (`apps/frontend-admin`: React, Mantine, типы API из OpenAPI): вход, дашборд, прокси
+(список с фильтрами, включение и выключение, удаление, обновление источника). Хаб отдаёт собранную панель
+по `/panel`, если задан `ADMIN_UI_DIR`; в образе `hub-prod` она уже собрана и включена.
+В dev-режиме Docker (`docker-compose.dev.yml`) сервис `frontend-admin` поднимает Vite на
+http://localhost:5173/panel/ (порт `ADMIN_UI_PORT`) и проксирует запросы на хаб.
+Локально без Docker: `pnpm --filter frontend-admin dev` (http://localhost:5173/panel/, запросы идут на хаб
+`HUB_URL`, по умолчанию http://localhost:3000; в хабе нужен `AUTH_ALLOWED_ORIGINS=http://localhost:5173`).
+Политика конфиденциальности и условия использования (английский и русский, по языку интерфейса) открыты без входа: `/app/privacy` и `/app/terms`, ссылки на них в подвале каждой страницы. Это адреса для экрана согласия Google (Branding: Privacy policy и Terms of service). Вход через Google и GitHub в клиентском приложении: на странице входа кнопки «Продолжить через …» для тех провайдеров, чьи
+OAuth-приложения заданы (`GET /auth/oauth/providers`). Callback-адреса: `<PUBLIC_URL>/auth/oauth/google/callback` и
+`<PUBLIC_URL>/auth/oauth/github/callback`; у Google в OAuth consent screen нужны scopes `openid`, `email`, `profile`, у GitHub
+хватает `user:email`. После входа пользователь попадает на `AUTH_SUCCESS_REDIRECT` (в compose `/app/`), после неудачного входа
+на `AUTH_FAILURE_REDIRECT` (в compose `/app/login`) с сообщением. Почта от провайдера используется только подтверждённая.
+
+Привязанные аккаунты и удаление аккаунта: `GET /auth/account` (способы входа: пароль и привязанные провайдеры), `DELETE /auth/identities/{provider}` (отвязать; последний способ входа отвязать нельзя, 409) и `DELETE /auth/account` с телом `{ "email": ... }` (удалить аккаунт навсегда: email нужно ввести для подтверждения). Удаление снимает все подписки пользователя, товары без единой подписки удаляются вместе с историей цен и картинкой, остальное (пароль, привязки, сессии, подписки) уходит каскадом `ON DELETE CASCADE` в БД. Задачи в таблице job сохраняют лишь uuid владельца.
+
+На странице `/settings` клиентского приложения также аккаунт (email, смена пароля) и список устройств с выходом на одном или на всех остальных. Клиентское приложение хранит настройки пользователя (тема, язык) в localStorage браузера на странице `/settings`: у языка есть вариант «Авто», который возвращает выбор по языкам браузера. Оба приложения на английском и русском: язык берётся из языков браузера (`Accept-Language`, то есть `navigator.languages`), иначе английский; выбранный в переключателе EN/RU язык запоминается. Тексты ошибок хаба приходят на английском. В списке прокси админки есть колонка и фильтр наличия сессии маркетплейса (`ready`, статус и причина устаревания в подсказке).
+
+Типы API обновляются так: `pnpm --filter hub openapi && pnpm --filter frontend-admin generate:api && pnpm --filter frontend-client generate:api`
+(документ API лежит в `apps/hub/openapi.json`).
+
+Картинки товаров: воркер читает со страницы товара адрес картинки (Ozon отдаёт уменьшенный вариант `wc300`), hub скачивает её
+(только изображения, не больше 2 МБ) и кладёт в S3 (в compose это SeaweedFS, сервис `s3`; MinIO больше не публикует образы),
+по ключу `products/<id>/thumbnail`. Картинка скачивается один раз на адрес и удаляется вместе с товаром. Файлы приватные:
+API отдаёт `thumbnailUrl`, адрес с подписью на 1-2 часа (подпись считается на начало часа, поэтому адрес в течение часа один
+и тот же, и браузер кеширует картинку). Подпись содержит хост, поэтому `S3_PUBLIC_URL` должен быть адресом, по которому
+браузер ходит в S3 (в staging это домен, а Caddy отдаёт путь `/thumbnails/*` в S3). Без `S3_ENDPOINT` картинки не хранятся,
+у товаров плейсхолдер. Настройки: `S3_ENDPOINT`, `S3_PUBLIC_URL`, `S3_BUCKET` (по умолчанию `thumbnails`), `S3_REGION`,
+`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (в compose для dev есть значения по умолчанию, в staging задайте свои). Клиентское
+приложение называется «Нищебродская» (слоган «трекер цен»).
+
+Клиентское приложение (`apps/frontend-client`): вход и регистрация, добавление товара по ссылке, список товаров
+с последней ценой, страница товара с историей цен и двумя графиками (по часам за 48 часов и по дням за 30 дней).
+Точка графика - средняя цена за час или день, в подсказке мин, макс, последняя и средняя цена периода; если за
+период цен нет, берётся последняя известная и рисуется пунктиром. Ценой считается первая из `prices`
+наблюдения. Хаб отдаёт приложение по `/app`, если задан `CLIENT_UI_DIR` (в образе `hub-prod` включено);
+в dev-Docker оно на http://localhost:5174/app/ (`CLIENT_UI_PORT`), локально `pnpm --filter frontend-client dev`.
+
+Подтверждение почты: при регистрации на почту уходит письмо со ссылкой `GET /auth/verify-email?token=...`
+(работает сутки, повторное открытие безвредно); ещё раз выслать - `POST /auth/verify-email/resend`.
+`GET /auth/me` показывает `emailVerified`. Подтверждённая почта защищена от «захвата» через провайдера входа.
+Если при регистрации указать уже занятую почту, письмо с уведомлением получит её владелец (не чаще раза в
+час), а регистрирующему ответ не отличается от обычного. Письма отправляются через SMTP (`SMTP_URL`,
+`MAIL_FROM`); без `SMTP_URL` hub пишет их в лог вместо отправки.
+
+Завершённые сессии (истёкшие и отозванные больше суток назад) удаляются раз в час
+(`AUTH_SESSION_PURGE_INTERVAL_MS`).
+
+Попытки входа и регистрации ограничены (счётчики хранятся в Redis и общие для всех экземпляров hub):
+по умолчанию 10 входов на почту с одного адреса, 100 входов на почту со всех адресов вместе (щедро, чтобы
+постороннему не удалось заблокировать вход владельцу), 50 входов с одного адреса и 5 регистраций с одного
+адреса за 15 минут (`AUTH_*_MAX_ATTEMPTS*`, `AUTH_RATE_LIMIT_WINDOW_MS`). Сверх лимита hub отвечает 429 с заголовком `Retry-After`.
+
+Тело запроса ограничено 100 КБ, кроме импорта браузерной сессии (`POST /sessions`): там 10 МБ.
+
+Если перед hub стоит reverse proxy, задайте `TRUST_PROXY` (число прокси перед hub): иначе все клиенты
+будут «одним адресом» для лимитов и списка сессий. Адреса IPv6 в лимитах считаются по сети /64.
+
+На пользователя действуют квоты: не больше 100 товаров (`PRODUCTS_PER_USER_MAX`) и не больше 30 добавлений
+за час (`PRODUCT_ADD_MAX_ATTEMPTS`, `PRODUCT_ADD_WINDOW_MS`). Сверх них hub отвечает 403 и 429.
+
+Запись (POST, PUT, PATCH, DELETE) из браузера проверяется по заголовку `Origin`: разрешён origin из
+`PUBLIC_URL` и перечисленные в `AUTH_ALLOWED_ORIGINS` (через запятую). Открывать Swagger нужно по адресу из
+`PUBLIC_URL`. Запросы не из браузера (curl, CLI) без `Origin` проходят.
+
+### Вход через Google и GitHub
+
+Вход через провайдера включается переменными окружения: `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`,
+`GITHUB_CLIENT_ID` и `GITHUB_CLIENT_SECRET` (пара целиком, иначе hub не запустится) и `PUBLIC_URL` -
+адрес hub снаружи. В настройках OAuth-приложения провайдера укажите callback
+`<PUBLIC_URL>/auth/oauth/<google|github>/callback`.
+
+Войти: откройте в браузере `GET /auth/oauth/<google|github>/start`; после входа браузер попадёт на
+`AUTH_SUCCESS_REDIRECT` (по умолчанию `/auth/me`) с cookie `session`. Первый вход создаёт пользователя.
+Провайдер должен подтвердить почту. Регистрация по паролю открыта и почта при ней не подтверждается,
+поэтому подтверждённая провайдером почта «отбирает» такой аккаунт: пароль удаляется, почта помечается
+подтверждённой, сессии прежнего владельца завершаются (иначе тот, кто зарегистрировался по чужой почте
+первым, мог бы навсегда закрыть настоящему владельцу вход или сохранить доступ). Аккаунт с уже
+подтверждённой почтой провайдер просто присоединяет.
+
+### 1 (a). Запуск приложения в Docker
 
 ```sh
-git clone https://github.com/osipovts/skeleton.git
-mv skeleton my_project
-cd my_project
-git remote remove origin
-git remote add origin <YOUR_REPO_URL>
-git push -u origin --all
-git push -u origin --tags
+docker compose up -d --build
 ```
 
-# Setup
+Порты на хосте, пароль Postgres, `HUB_API_KEY` и уровень логов задаются в `.env` в корне (`cp .env.example .env`);
+без него используются значения по умолчанию как в `.env.example`. Воркеров price-fetcher можно запустить несколько: `docker compose up -d --scale price-fetcher-worker=3`.
+
+Далее см. [Swagger](http://localhost:3000/docs).
+
+### 1 (b). Запуск приложения без Docker (pnpm)
+
+Нужны Node.js (требуемая версия в `.nvmrc`), pnpm версии из `packageManager` в `package.json`, Postgres и Redis. Postgres и Redis
+проще всего поднять из `docker-compose.yml`; можно и свои - адреса задаются в `.env`.
 
 ```sh
-nvm use              # Node.js version from .nvmrc
+nvm use
+npm install -g pnpm@11.3.0 # Corepack в Node.js 25+ не поставляется
 pnpm install
-cp .env.example .env # required by docker compose
+pnpm --filter price-fetcher exec playwright install chromium
+cp apps/hub/.env.example apps/hub/.env
+cp apps/price-fetcher/.env.example apps/price-fetcher/.env
+docker compose up -d postgres redis # если локально не подняты
+pnpm build
+
+# приложения читают переменные окружения, а не файл .env
+set -a; source apps/hub/.env; set +a
+pnpm --filter hub migrate:deploy
 ```
 
-# Run
+Запустить каждый сервис в своём терминале:
 
-- `pnpm build && pnpm start`: Compile TypeScript to JavaScript and run the app
-- `pnpm dev`: Run in "watch mode" for development
-- `pnpm typecheck`: Type-check without emitting files
-- `pnpm lint`: Run ESLint to check code style
-- `pnpm lint:fix`: Automatically fix code style issues
-- `pnpm format` / `pnpm format:check`: Format or check all files with Prettier
-
-# Docker
-
-Run in dev mode:
-
-```
-# install new packages (optional)
-docker compose --profile dev run --rm app-dev pnpm install
-# run
-docker compose --profile dev up app-dev
+```sh
+# hub
+set -a; source apps/hub/.env; set +a; pnpm --filter hub start
+# proxy-fetcher
+pnpm --filter proxy-fetcher start
+# price-fetcher
+set -a; source apps/price-fetcher/.env; set +a
+xvfb-run -a pnpm --filter price-fetcher start:worker
 ```
 
-Run in prod mode
+В сеансе Wayland воркер запускайте через `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 xvfb-run -a …`,
+иначе Chromium будет открывать окно прямо на рабочем столе.
 
+Далее см. [Swagger](http://localhost:3000/docs).
+
+### 2. Обновить список прокси
+
+Собрать и проверить прокси (нужен ключ оператора): `POST /proxy-sources/{source}/refresh`
+
+Прогресс: `GET /jobs` (оператор; `GET /jobs/{jobId}` отдаёт задачу только тому пользователю, кто её запросил)
+
+Результат: `GET /proxies` (без `alive` покажет и живые, и мёртвые; `disabled=true|false` - отключённые вручную).
+Отключить или включить прокси: `PATCH /proxies?server=<url>` с телом `{"disabled": true}` (отключённый не выдаётся
+воркерам и остаётся в списке, проверка его не включает), удалить: `DELETE /proxies?server=<url>` (следующее
+обновление источника вернёт его, если он там ещё есть: чтобы держать его вдали, отключите).
+
+### 3. Создать браузерные сессии
+
+`HUB_API_KEY=<ключ> pnpm sessions:onboard --hub http://localhost:3000` - замените url хаба на свой, подставьте ключ оператора (он нужен, чтобы загрузить сессии в hub) и выполните эту команду для создания сессий и загрузки их в хаб. Ниже объясняется зачем это нужно.
+
+Маркетплейсы обычно ограничивают автоматический сбор информации. Что бы программно получить цену товара необходимо хотя бы один раз открыть любую страницу маркетплейса обычным "живым" браузером и позволить серверу записать cookies - создать сессию. Далее price-fetcher присоединяет сессию к своим запросам и маркетплейсы отдают нужные данные.
+
+`pnpm sessions:onboard --hub http://localhost:3000` по очереди открывает окна браузера для каждого
+прокси; в окне пройдите антибот-проверку, сессия загрузится в hub и привяжется к прокси сама. Обычно антибот-проверка не требует явных действий от пользователя, но может потребоваться и решение несложной капчи.
+
+Прокси с сессией получает `ready: true` в `GET /proxies`. Если маркетплейс снова требует проверку
+или сменился выходной IP, сессия становится `stale`, и прокси снова попадает в выборку
+`sessions:onboard`.
+
+Бесплатные прокси часто меняют IP, поэтому сессии на них живут недолго. Необходимо периодически подкидывать свежие сессии в систему с помощью `pnpm sessions:onboard`.
+
+### 4. Добавить ссылку на товар
+
+Сначала зарегистрируйтесь (`POST /auth/register`) и войдите (`POST /auth/login`), затем `POST /products`.
+
+### 5. Получить цену
+
+Отдельного запроса цены нет: чтение первой цены ставится в очередь при добавлении товара
+(`POST /products` возвращает `jobId`, если у товара ещё нет цены и есть через какие прокси её читать).
+Позже обновление цен будет идти по расписанию.
+
+Прогресс: `GET /jobs/{jobId}`
+
+Результат: `GET /products/{id}/prices`
+
+Обновление по расписанию: каждый час в 55-ю минуту по UTC (`PRICE_REFRESH_MINUTE`) hub ставит в очередь чтение
+товаров, за которыми кто-то следит. Цена не должна стать старше `PRICE_REFRESH_MAX_AGE_MS` (по умолчанию час):
+товар читается на последнем запуске перед тем, как его цена достигла бы этого возраста, так что при часе
+читаются все товары каждый час, а при 3 часах - каждый третий запуск. Не больше 200 товаров за запуск
+(`PRICE_REFRESH_BATCH_SIZE`), пачками по 50 в задачу; остальные ждут следующего. Запуск при старте hub в часовом
+режиме не делается: перезапуск не повод читать все цены второй раз за час. `PRICE_REFRESH_INTERVAL_MS` (0
+выключает) заменяет часовое расписание обычным интервалом. Если нет прокси и сессий, чтение ждёт следующего
+запуска. Таких задач нет в `GET /jobs/{jobId}` пользователя (у них нет владельца), оператор видит их в
+`GET /jobs`. При нескольких экземплярах hub на общем Redis расписание запускает только один. Время ближайшей
+проверки товара отдают `GET /products` и `GET /products/{id}/prices` в поле `nextCheckAt`.
+
+## Разработка
+
+### Тесты
+
+- `pnpm test` - модульные тесты (без внешних сервисов).
+- `pnpm test:e2e` - сквозные тесты hub целиком: настоящие Postgres и Redis (одноразовые контейнеры
+  `postgres:17-alpine` и `redis:7-alpine` на свободных портах, нужен Docker), настоящий SMTP-сервер для писем,
+  настоящие очереди BullMQ. Подменено только то, что нельзя запустить в тесте: Google и GitHub (их роль
+  играет HTTP-сервер с теми же эндпоинтами, он проверяет PKCE и секрет клиента) и воркер чтения цен
+  (браузер и Ozon; очереди и сообщения у него настоящие, цены берутся из таблицы).
+  Панель администратора и клиентское приложение проверяются в настоящем Chromium (Playwright; браузер ставится командой
+  `pnpm --filter hub exec playwright install chromium`), панель собирается перед запуском.
+- Тесты Prisma-адаптеров и лимитера на Redis запускаются, когда заданы `TEST_DATABASE_URL` (Postgres с
+  применёнными миграциями) и `TEST_REDIS_URL`; иначе пропускаются. Не указывайте базы с нужными данными.
+
+### Разработка в Docker
+
+Контейнеры запускают исходники с этой машины в `tsx watch` и перезапускаются при любой правке, включая
+`packages/*`. Используются `node_modules` этой машины, поэтому сначала нужен `pnpm install`.
+
+Контейнеры работают от `1000:1000`, чтобы созданные ими файлы принадлежали вам. Для rootless Docker
+задайте `DEV_USER=0:0` в `.env` в корне (см. `.env.example`), для другого uid - `DEV_USER=<uid>:<gid>`.
+
+Запуск:
+
+```sh
+pnpm install
+cp apps/price-fetcher/.env.example apps/price-fetcher/.env # необязательно: настройки воркера
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
-docker compose up -d app-prod --build
+
+Миграции применяет сервис `migrate`, Prisma-клиент генерирует hub при старте. Далее см.
+[Swagger](http://localhost:3000/docs).
+
+Чтобы не указывать оба файла в каждой команде, задайте их в переменной окружения текущего терминала:
+
+```sh
+export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+docker compose up -d --build        # запустить в фоне
+docker compose logs -f hub          # логи сервиса
+docker compose up -d hub            # только hub (с postgres, redis и migrate)
+docker compose restart price-fetcher-worker
+docker compose down                 # остановить; данные postgres и redis сохраняются
 ```
 
-## Notes
+После изменения зависимостей повторите `pnpm install` и `--build`: образ price-fetcher ставит Chromium
+под версию Playwright из lockfile.
 
-1. Using cached pnpm packages.
-2. Using distroless image in production to minimize image size.
-3. Using non-root user to improve security.
-4. Using `init: true` so the app receives `SIGTERM` and stops gracefully on `docker compose stop`.
+После изменения `schema.prisma` создайте миграцию на этой машине и перезапустите `migrate` и `hub`
+(`DATABASE_URL` в `apps/hub/.env` должен указывать на `POSTGRES_PORT`):
 
-# VS Code tips
-
-## Auto-linter on save
-
-To run Prettier and ESLint fix automaticly on file save:
-
-1. Install `dbaeumer.vscode-eslint` and `esbenp.prettier-vscode` extensions via Extensions (`Ctrl + Shift + X`) or Quick Open (`Ctrl + P`):
-
-```
-ext install dbaeumer.vscode-eslint
-ext install esbenp.prettier-vscode
+```sh
+set -a; source apps/hub/.env; set +a
+pnpm --filter hub exec prisma migrate dev --name <имя>
+docker compose up -d --force-recreate migrate hub
 ```
 
-2. Edit your settings.json:
-
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.fixAll.eslint": "explicit"
-  },
-  "eslint.validate": ["javascript", "typescript", "typescriptreact", "javascriptreact"],
-  "prettier.requireConfig": true
-}
-```
+`pnpm sessions:onboard` открывает окно браузера, поэтому запускается на этой машине, а не в контейнере.

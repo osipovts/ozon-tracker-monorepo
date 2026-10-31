@@ -1,0 +1,38 @@
+/* A glint over the glass of a card that still waits for its first price: a light band runs across it. */
+[data-waiting='true'] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-waiting='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    var(--waiting-glint-color, rgba(34, 139, 230, 0.16)) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: waiting-glint 2s ease-in-out infinite;
+}
+
+[data-mantine-color-scheme='dark'] [data-waiting='true']::after {
+  --waiting-glint-color: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes waiting-glint {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* A person who asked for less motion gets none: the card still says that it waits. */
+@media (prefers-reduced-motion: reduce) {
+  [data-waiting='true']::after {
+    animation: none;
+    display: none;
+  }
+}

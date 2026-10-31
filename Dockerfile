@@ -1,48 +1,162 @@
-ARG NODE_VERSION=26
+# One Dockerfile for every app: docker compose passes APP_NAME and picks the target
+# (see docker-compose.yml and docker-compose.dev.yml). Build context is the monorepo root.
+# Keep the version in sync with .nvmrc.
+ARG NODE_VERSION=26.12
+
+################################
+# Runtime
+################################
+FROM node:${NODE_VERSION}-slim AS runtime
+WORKDIR /app
+# The Prisma schema engine that applies the migrations needs OpenSSL.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
+
+################################
+# pnpm
+################################
+FROM runtime AS pnpm
+# Install the pnpm version pinned in package.json "packageManager" (without the "+sha..." suffix)
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    npm install -g --prefix /opt/pnpm \
+      "$(node -p "require('/tmp/package.json').packageManager.split('+')[0]")"
 
 ################################
 # Base
 ################################
-FROM node:${NODE_VERSION}-slim AS base
-WORKDIR /app
-ENV PNPM_STORE_PATH="/pnpm-store"
-# Install the pnpm version pinned in package.json "packageManager" (without the "+sha..." suffix)
-RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
-    npm install -g "$(node -p "require('/tmp/package.json').packageManager.split('+')[0]")" && \
-    pnpm config set store-dir "$PNPM_STORE_PATH"
+FROM runtime AS base
+ENV PATH="/opt/pnpm/bin:$PATH"
+COPY --from=pnpm /opt/pnpm /opt/pnpm
+RUN pnpm config set store-dir /pnpm-store
 
 ################################
 # Dependencies
 ################################
-FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+FROM base AS fetch
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY .npmrc* ./
+# Downloads the packages of the whole lockfile into the store: the layer depends on the lockfile
+# only. pnpm has verified the lockfile when it wrote it; --trust-lockfile skips verifying it again,
+# which would request the metadata of every package from the registry.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
-    pnpm install --frozen-lockfile
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile fetch --frozen-lockfile
+
+################################
+# Installation
+################################
+FROM fetch AS install
+ARG APP_NAME
+# Only the workspace packages and the app itself: changes of the other apps keep the cache.
+COPY packages ./packages
+COPY apps/${APP_NAME} ./apps/${APP_NAME}
+# Links the app and the workspace packages it depends on from the store, without the registry.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter ${APP_NAME}...
 
 ################################
 # Build
 ################################
-FROM deps AS build
-COPY . .
-RUN pnpm build && \
-    pnpm prune --prod
+FROM install AS build
+ARG APP_NAME
+# The trailing "..." builds the workspace packages the app depends on first.
+RUN pnpm --filter ${APP_NAME}... build
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile --offline --filter ${APP_NAME} deploy --prod /deploy
 
 ################################
-# Development
+# Development (the code is mounted, see docker-compose.dev.yml)
 ################################
 FROM base AS dev
-ENV NODE_ENV=development \
-    CI=true
-CMD ["pnpm", "dev"]
+ENV NODE_ENV=development
 
 ################################
-# Production
+# Admin panel (static files the hub serves)
 ################################
-FROM gcr.io/distroless/nodejs${NODE_VERSION}-debian13:nonroot AS prod
-WORKDIR /app
+FROM fetch AS admin-ui-build
+COPY apps/frontend-admin ./apps/frontend-admin
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter frontend-admin...
+RUN pnpm --filter frontend-admin build
+
+################################
+# Client app (static files the hub serves)
+################################
+FROM fetch AS client-ui-build
+COPY apps/frontend-client ./apps/frontend-client
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --trust-lockfile install --offline --frozen-lockfile --filter frontend-client...
+RUN pnpm --filter frontend-client build
+
+################################
+# Hub
+################################
+FROM runtime AS hub-prod
+ENV NODE_ENV=production \
+    ADMIN_UI_DIR=/app/panel \
+    CLIENT_UI_DIR=/app/client
+COPY --from=admin-ui-build /app/apps/frontend-admin/dist ./panel
+COPY --from=client-ui-build /app/apps/frontend-client/dist ./client
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/dist ./dist
+COPY --from=build /deploy/prisma ./prisma
+COPY --from=build /deploy/prisma.config.js ./prisma.config.js
+COPY --from=build /deploy/package.json ./package.json
+USER node
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+
+################################
+# Proxy fetcher
+################################
+FROM runtime AS proxy-fetcher-prod
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./package.json
-CMD ["dist/index.js"]
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/dist ./dist
+COPY --from=build /deploy/package.json ./package.json
+USER node
+CMD ["node", "dist/index.js"]
+
+################################
+# Chromium for the price fetcher
+################################
+FROM install AS playwright-version
+ARG APP_NAME
+# The browser stage below is cached until the installed Playwright version changes.
+RUN cd apps/${APP_NAME} && node -p "require('playwright/package.json').version" > /playwright-version
+
+FROM runtime AS chromium
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+    DISPLAY=:99
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends xvfb && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=playwright-version /playwright-version /tmp/playwright-version
+RUN --mount=type=cache,id=npm,target=/root/.npm \
+    npx -y "playwright@$(cat /tmp/playwright-version)" install --with-deps chromium && \
+    chmod -R a+rX /opt/playwright
+# Xvfb runs beside the app instead of xvfb-run wrapping it: the app gets SIGTERM itself
+# and finishes the job in progress while the display is still there. A restarted container
+# keeps the lock of the previous Xvfb.
+ENTRYPOINT ["sh", "-c", "rm -f /tmp/.X99-lock /tmp/.X11-unix/X99; Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp & until [ -e /tmp/.X11-unix/X99 ]; do kill -0 $! || exit 1; sleep 0.1; done; exec \"$@\"", "xvfb"]
+
+################################
+# Price fetcher
+################################
+FROM chromium AS price-fetcher-dev
+ENV NODE_ENV=development \
+    PATH="/opt/pnpm/bin:$PATH"
+COPY --from=pnpm /opt/pnpm /opt/pnpm
+
+FROM chromium AS price-fetcher-prod
+ENV NODE_ENV=production
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/dist ./dist
+COPY --from=build /deploy/package.json ./package.json
+USER node
+CMD ["node", "dist/worker.js"]

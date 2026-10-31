@@ -1,0 +1,13 @@
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	# The hub has no page at the root: the app of the users is the one people come for.
+	redir / /app/ 302
+
+	# The pictures: the addresses the hub signs are of the bucket, on this host. Each is signed, and a request
+	# without a valid signature is refused by the service.
+	@pictures path /thumbnails/*
+	reverse_proxy @pictures s3:9000
+
+	reverse_proxy hub:3000
+}
