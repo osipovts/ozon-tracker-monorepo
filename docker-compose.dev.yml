@@ -42,6 +42,8 @@ services:
       NODE_ENV: development
       pnpm_config_verify_deps_before_run: 'false'
       HUB_URL: http://hub:3000
+      # The hub lets a write in only from its own PUBLIC_URL, not from the name it has in the network of Docker.
+      HUB_ORIGIN: ${PUBLIC_URL:-http://localhost:3000}
     ports:
       - '127.0.0.1:${ADMIN_UI_PORT:-5173}:5173'
     depends_on:

@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 /** Where the hub runs in development: the panel talks to it through this server, as from the same origin. */
 const hub = process.env['HUB_URL'] ?? 'http://localhost:3000';
+/** The origin the hub knows itself by (its PUBLIC_URL): in Docker the address it is reached at differs. */
+const hubOrigin = process.env['HUB_ORIGIN'] ?? hub;
 
 export default defineConfig({
   plugins: [react()],
@@ -14,7 +16,7 @@ export default defineConfig({
       ['/auth', '/admin', '/proxies', '/proxy-sources', '/jobs'].map((path): [string, object] => [
         path,
         // The hub checks where a write comes from: the panel in development says it is the hub itself.
-        { target: hub, headers: { origin: hub } },
+        { target: hub, headers: { origin: hubOrigin } },
       ]),
     ),
   },
