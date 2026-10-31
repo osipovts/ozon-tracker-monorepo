@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  DnsReferenceParser,
+  OzonReferenceParser,
+  type ProductReferenceEntity,
+  ResolveProductReferenceUseCase,
+} from 'product-reference';
 
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
 import { InMemorySessionStoreAdapter } from '../../infrastructure/session/in-memory-session-store.adapter.js';
@@ -84,4 +89,45 @@ void test('reports no proxies without routes', async (): Promise<void> => {
   });
 
   assert.deepEqual(result, { trackedProductId, status: 'no_proxies', attempts: [] });
+});
+
+void test('gives the reader the city the product is asked for in', async (): Promise<void> => {
+  const cities: Array<string | null> = [];
+  const reader: ProductReaderPort = {
+    read: (reference: ProductReferenceEntity): Promise<ReadProductResultType> => {
+      cities.push(reference.cityId);
+
+      return Promise.resolve({ status: 'parse_error' });
+    },
+  };
+  const cityId = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
+
+  for (const given of [{ cityId }, {}]) {
+    await new FetchPricesUseCase(
+      new ResolveProductReferenceUseCase([new DnsReferenceParser()]),
+      (routes) => new InMemorySessionStoreAdapter(routes),
+      (): ProductReaderPort => reader,
+    ).execute(
+      {
+        routes: [{ server: null, session: null }],
+        products: [
+          {
+            trackedProductId,
+            url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+            ...given,
+          },
+        ],
+        timeoutMs: 1000,
+      },
+      new AbortController().signal,
+      {
+        onProgress: (): Promise<void> => Promise.resolve(),
+        onProduct: (): Promise<void> => Promise.resolve(),
+        onSessionUpdate: (): Promise<void> => Promise.resolve(),
+        onSessionMismatch: (): Promise<void> => Promise.resolve(),
+      },
+    );
+  }
+
+  assert.deepEqual(cities, [cityId, null]);
 });

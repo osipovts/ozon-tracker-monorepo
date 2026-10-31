@@ -1,6 +1,7 @@
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
 import { chromium } from 'playwright';
 import {
+  DnsReferenceParser,
   OzonReferenceParser,
   OzonShortLinkParser,
   ResolveProductReferenceUseCase,
@@ -11,6 +12,10 @@ import { z } from 'zod';
 
 import { ExpandLinkUseCase } from './application/link/expand-link.use-case.js';
 import { FetchPricesUseCase } from './application/product/fetch-prices.use-case.js';
+import { DnsCityCookieParser } from './infrastructure/dns/dns-city-cookie.parser.js';
+import { DnsPageParser } from './infrastructure/dns/dns-page.parser.js';
+import { DnsPlaywrightProductReaderAdapter } from './infrastructure/dns/dns-playwright-product-reader.adapter.js';
+import { DnsProductParser } from './infrastructure/dns/dns-product.parser.js';
 import { OzonChallengeParser } from './infrastructure/ozon/ozon-challenge.parser.js';
 import { OzonPageParser } from './infrastructure/ozon/ozon-page.parser.js';
 import { OzonPlaywrightLinkExpanderAdapter } from './infrastructure/ozon/ozon-playwright-link-expander.adapter.js';
@@ -85,6 +90,7 @@ const expandRunner = new QueueWorkerRunner<never>(
 );
 
 const references = new OzonReferenceParser();
+const dnsReferences = new DnsReferenceParser();
 const parsers: OzonReaderParsersInterface = {
   geoIp: new GeoIpPageParser(),
   pages: new OzonPageParser(),
@@ -93,7 +99,7 @@ const parsers: OzonReaderParsersInterface = {
 };
 const controller = new PriceFetchController(
   new FetchPricesUseCase(
-    new ResolveProductReferenceUseCase([references]),
+    new ResolveProductReferenceUseCase([references, dnsReferences]),
     (routes) => new InMemorySessionStoreAdapter(routes),
     (sessions, timeoutMs) =>
       new MarketplaceProductReaderAdapter({
@@ -104,6 +110,18 @@ const controller = new PriceFetchController(
           timeoutMs,
           sessions,
           logger.child('ozon'),
+        ),
+        dns: new DnsPlaywrightProductReaderAdapter(
+          browser,
+          options,
+          {
+            geoIp: parsers.geoIp,
+            pages: new DnsPageParser(),
+            products: new DnsProductParser(dnsReferences),
+            cities: new DnsCityCookieParser(),
+          },
+          timeoutMs,
+          logger.child('dns'),
         ),
       }),
     logger.child('prices'),

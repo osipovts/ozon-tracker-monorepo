@@ -21,7 +21,7 @@ import type { ProductReaderPort } from './product-reader.port.js';
 export interface FetchPricesJobInterface {
   /** Routes in the order they are tried; a null server is a direct connection. */
   routes: ReadonlyArray<{ server: string | null; session: BrowserSessionInterface | null }>;
-  products: ReadonlyArray<{ trackedProductId: string; url: string }>;
+  products: ReadonlyArray<{ trackedProductId: string; url: string; cityId?: string | undefined }>;
   timeoutMs: number;
 }
 
@@ -106,7 +106,7 @@ export class FetchPricesUseCase {
   }
 
   private async fetchProduct(
-    product: { trackedProductId: string; url: string },
+    product: { trackedProductId: string; url: string; cityId?: string | undefined },
     candidates: ReadonlyArray<ProxyEndpointEntity | null>,
     reader: ProductReaderPort,
     sessions: JobSessionStorePort,
@@ -114,7 +114,7 @@ export class FetchPricesUseCase {
   ): Promise<ProductFetchResultInterface> {
     let reference: ProductReferenceEntity;
     try {
-      reference = this.resolveReference.execute(product.url);
+      reference = this.resolveReference.execute(product.url).inCity(product.cityId ?? null);
     } catch {
       this.logger.warn(`Product ${product.trackedProductId}: unsupported URL`);
 

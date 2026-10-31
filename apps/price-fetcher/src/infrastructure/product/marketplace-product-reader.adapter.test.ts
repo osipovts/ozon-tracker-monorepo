@@ -11,6 +11,9 @@ void test('delegates reading to the reader of the reference marketplace', async 
     ozon: {
       read: (): Promise<ReadProductResultType> => Promise.resolve({ status: 'parse_error' }),
     },
+    dns: {
+      read: (): Promise<ReadProductResultType> => Promise.resolve({ status: 'network_error' }),
+    },
   });
 
   const result = await reader.read(
