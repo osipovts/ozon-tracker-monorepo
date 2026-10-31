@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import {
+  DnsReferenceParser,
   OzonReferenceParser,
   OzonShortLinkParser,
   ResolveProductReferenceUseCase,
@@ -8,6 +9,8 @@ import {
 import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { CityExistsUseCase } from '../handbook/application/index.js';
+import { HandbookModule } from '../handbook/handbook.module.js';
 import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
 import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
@@ -67,7 +70,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
 }
 
 @Module({
-  imports: [PrismaModule, JobModule, BrowserSessionModule, ProxyModule],
+  imports: [PrismaModule, JobModule, BrowserSessionModule, ProxyModule, HandbookModule],
   controllers: [ProductsController],
   providers: [
     {
@@ -85,7 +88,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
     {
       provide: ResolveProductReferenceUseCase,
       useFactory: (): ResolveProductReferenceUseCase =>
-        new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
+        new ResolveProductReferenceUseCase([new OzonReferenceParser(), new DnsReferenceParser()]),
     },
     {
       provide: AddProductUseCase,
@@ -98,6 +101,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         config: AppConfigInterface,
         logger: LoggerPort,
         expandLink: ExpandProductLinkUseCase,
+        cityExists: CityExistsUseCase,
       ): AddProductUseCase =>
         new AddProductUseCase(
           resolve,
@@ -111,6 +115,10 @@ function refreshScheduleSettings(config: AppConfigInterface): {
           },
           logger.child('products'),
           expandLink,
+          {
+            exists: (marketplace, cityId): Promise<boolean> =>
+              cityExists.execute(marketplace, cityId),
+          },
         ),
       inject: [
         ResolveProductReferenceUseCase,
@@ -121,6 +129,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         APP_CONFIG,
         LOGGER,
         ExpandProductLinkUseCase,
+        CityExistsUseCase,
       ],
     },
     {

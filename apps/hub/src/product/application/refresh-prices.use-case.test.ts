@@ -39,6 +39,7 @@ function setup(
   const queue = { failing: false };
   const port: JobQueuePort = {
     enqueueProxyFetch: (): Promise<void> => Promise.resolve(),
+    enqueueHandbookFetch: (): Promise<void> => Promise.resolve(),
     enqueuePriceFetch: (request): Promise<void> => {
       if (queue.failing) return Promise.reject(new Error('redis is down'));
       requests.push(request);

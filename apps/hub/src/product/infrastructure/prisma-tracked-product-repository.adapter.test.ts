@@ -6,6 +6,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 import { PrismaClient } from '../../generated/prisma/client.js';
 import { ProductGoneError } from '../application/product-gone.error.js';
+import type { TrackedProductReferenceInterface } from '../application/tracked-product-repository.port.js';
 import { PrismaTrackedProductRepositoryAdapter } from './prisma-tracked-product-repository.adapter.js';
 
 /** Needs a Postgres with the migrations applied: set TEST_DATABASE_URL to run it (never a database with data that matters). */
@@ -155,5 +156,34 @@ void test(
     for (const id of [fresh, waiting, never, untracked]) {
       await prisma.trackedProduct.delete({ where: { id } });
     }
+  },
+);
+
+void test(
+  'keeps one product per city, and one for a marketplace without cities, whatever is asked',
+  { skip },
+  async (): Promise<void> => {
+    const externalId = randomUUID().replaceAll('-', '').slice(0, 16);
+    const reference = (cityId: string | null): TrackedProductReferenceInterface => ({
+      marketplace: 'dns',
+      externalId,
+      url: `https://www.dns-shop.ru/product/${externalId}/`,
+      cityId,
+    });
+
+    const moscow = await products.add(reference('city-moscow'));
+    const irkutsk = await products.add(reference('city-irkutsk'));
+    const again = await products.add(reference('city-irkutsk'));
+    const none = await products.add(reference(null));
+    const noneAgain = await products.add(reference(null));
+
+    assert.deepEqual([moscow.created, irkutsk.created, again.created], [true, true, false]);
+    assert.equal(again.product.snapshot.id, irkutsk.product.snapshot.id);
+    assert.notEqual(moscow.product.snapshot.id, irkutsk.product.snapshot.id);
+    assert.equal(irkutsk.product.snapshot.cityId, 'city-irkutsk');
+    assert.equal(none.product.snapshot.cityId, null);
+    assert.equal(noneAgain.product.snapshot.id, none.product.snapshot.id);
+
+    await prisma.trackedProduct.deleteMany({ where: { externalId } });
   },
 );

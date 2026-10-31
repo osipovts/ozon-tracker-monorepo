@@ -254,6 +254,10 @@
                           "url": {
                             "type": "string"
                           },
+                          "cityId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "lastStatus": {
                             "nullable": true,
                             "type": "string"
@@ -336,6 +340,7 @@
                           "marketplace",
                           "externalId",
                           "url",
+                          "cityId",
                           "lastStatus",
                           "lastCheckedAt",
                           "nextCheckAt",
@@ -385,6 +390,11 @@
                   "url": {
                     "type": "string",
                     "format": "uri"
+                  },
+                  "cityId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   }
                 },
                 "required": ["url"]
@@ -412,6 +422,10 @@
                       "type": "string"
                     },
                     "url": {
+                      "type": "string"
+                    },
+                    "cityId": {
+                      "nullable": true,
                       "type": "string"
                     },
                     "lastStatus": {
@@ -447,6 +461,7 @@
                     "marketplace",
                     "externalId",
                     "url",
+                    "cityId",
                     "lastStatus",
                     "lastCheckedAt",
                     "nextCheckAt",
@@ -479,6 +494,10 @@
                     "url": {
                       "type": "string"
                     },
+                    "cityId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "lastStatus": {
                       "nullable": true,
                       "type": "string"
@@ -512,6 +531,7 @@
                     "marketplace",
                     "externalId",
                     "url",
+                    "cityId",
                     "lastStatus",
                     "lastCheckedAt",
                     "nextCheckAt",
@@ -524,7 +544,7 @@
             }
           },
           "400": {
-            "description": "Unsupported marketplace or product URL"
+            "description": "Unsupported marketplace or product URL, or a city the marketplace does not have"
           },
           "403": {
             "description": "The user tracks the most products the hub allows"
@@ -671,6 +691,10 @@
                         "url": {
                           "type": "string"
                         },
+                        "cityId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "lastStatus": {
                           "nullable": true,
                           "type": "string"
@@ -698,6 +722,7 @@
                         "marketplace",
                         "externalId",
                         "url",
+                        "cityId",
                         "lastStatus",
                         "lastCheckedAt",
                         "nextCheckAt",
@@ -780,7 +805,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["proxy_fetch", "price_fetch"]
+              "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
             }
           },
           {
@@ -813,7 +838,7 @@
                           },
                           "kind": {
                             "type": "string",
-                            "enum": ["proxy_fetch", "price_fetch"]
+                            "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
                           },
                           "subject": {
                             "type": "string"
@@ -945,7 +970,7 @@
                     },
                     "kind": {
                       "type": "string",
-                      "enum": ["proxy_fetch", "price_fetch"]
+                      "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
                     },
                     "subject": {
                       "type": "string"
@@ -1038,7 +1063,7 @@
                 "properties": {
                   "marketplace": {
                     "type": "string",
-                    "enum": ["ozon"]
+                    "enum": ["ozon", "dns"]
                   },
                   "proxy": {
                     "nullable": true,
@@ -1463,7 +1488,7 @@
             "schema": {
               "default": "ozon",
               "type": "string",
-              "enum": ["ozon"]
+              "enum": ["ozon", "dns"]
             }
           },
           {
@@ -1806,6 +1831,135 @@
         ],
         "summary": "Queue a refresh of the proxies of one source",
         "tags": ["proxies"]
+      }
+    },
+    "/marketplaces/{marketplace}/cities": {
+      "get": {
+        "description": "The cities the hub has read of the marketplace, the ones whose names begin with the query first. Empty until the first read of the handbook is done.",
+        "operationId": "CitiesController_list",
+        "parameters": [
+          {
+            "name": "marketplace",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": ["ozon", "dns"]
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "",
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "region": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "name", "region"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["items"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The prices of the marketplace do not depend on the city"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search the cities of a marketplace whose prices depend on the city",
+        "tags": ["marketplaces"]
+      }
+    },
+    "/handbooks/{handbook}/refresh": {
+      "post": {
+        "description": "A worker reads the handbook through the best proxies and the hub keeps it. The hub asks for it by itself when it was never read, and every week.",
+        "operationId": "HandbooksController_refresh",
+        "parameters": [
+          {
+            "name": "handbook",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": ["dns-cities"]
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "required": ["jobId"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Queue a read of a handbook",
+        "tags": ["handbooks"]
       }
     },
     "/auth/account": {

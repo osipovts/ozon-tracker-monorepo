@@ -88,6 +88,7 @@ async function createUseCase(
   const requests: PriceFetchRequestInterface[] = [];
   const queue: JobQueuePort = {
     enqueueProxyFetch: (): Promise<void> => Promise.resolve(),
+    enqueueHandbookFetch: (): Promise<void> => Promise.resolve(),
     enqueuePriceFetch: (request): Promise<void> => {
       if (failQueue) return Promise.reject(new Error('redis is down'));
       requests.push(request);

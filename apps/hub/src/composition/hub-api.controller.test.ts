@@ -26,6 +26,12 @@ import { ListMarketplaceSessionsUseCase } from '../browser-session/application/i
 import { ListSessionsUseCase } from '../browser-session/application/list-sessions.use-case.js';
 import { InMemoryBrowserSessionRepositoryAdapter } from '../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { SessionsController } from '../browser-session/presentation/sessions.controller.js';
+import { RefreshHandbookUseCase } from '../handbook/application/refresh-handbook.use-case.js';
+import { SaveHandbookCitiesUseCase } from '../handbook/application/save-handbook-cities.use-case.js';
+import { SearchCitiesUseCase } from '../handbook/application/search-cities.use-case.js';
+import { InMemoryHandbookRepositoryAdapter } from '../handbook/infrastructure/in-memory-handbook-repository.adapter.js';
+import { CitiesController } from '../handbook/presentation/cities.controller.js';
+import { HandbooksController } from '../handbook/presentation/handbooks.controller.js';
 import { GetJobUseCase } from '../job/application/get-job.use-case.js';
 import { ScheduleJobUseCase } from '../job/application/index.js';
 import type { JobQueuePort } from '../job/application/job-queue.port.js';
@@ -68,6 +74,7 @@ const jobs = new InMemoryJobRepositoryAdapter();
 const sessions = new InMemoryBrowserSessionRepositoryAdapter();
 
 const queued: unknown[] = [];
+const handbooks = new InMemoryHandbookRepositoryAdapter();
 const irkutskId = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
 const queue: JobQueuePort = {
   enqueueProxyFetch: (request): Promise<void> => {
@@ -76,6 +83,11 @@ const queue: JobQueuePort = {
     return Promise.resolve();
   },
   enqueuePriceFetch: (request): Promise<void> => {
+    queued.push(request);
+
+    return Promise.resolve();
+  },
+  enqueueHandbookFetch: (request): Promise<void> => {
     queued.push(request);
 
     return Promise.resolve();
@@ -159,6 +171,8 @@ before(async (): Promise<void> => {
       ProductsController,
       JobsController,
       SessionsController,
+      CitiesController,
+      HandbooksController,
     ],
     providers: [
       { provide: APP_PIPE, useClass: StandardSchemaValidationPipe },
@@ -201,6 +215,15 @@ before(async (): Promise<void> => {
             exists: (_marketplace, cityId): Promise<boolean> =>
               Promise.resolve(cityId === irkutskId),
           },
+        ),
+      },
+      { provide: SearchCitiesUseCase, useValue: new SearchCitiesUseCase(handbooks) },
+      {
+        provide: RefreshHandbookUseCase,
+        useValue: new RefreshHandbookUseCase(
+          new ListBestProxyServersUseCase(proxies),
+          scheduleJob,
+          2,
         ),
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
@@ -468,8 +491,10 @@ void test('rejects bad links, unknown and malformed product ids', async (): Prom
 void test('documents the endpoints and their zod schemas in Swagger', (): void => {
   const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('Hub').build());
   assert.deepEqual(Object.keys(document.paths).toSorted(), [
+    '/handbooks/{handbook}/refresh',
     '/jobs',
     '/jobs/{id}',
+    '/marketplaces/{marketplace}/cities',
     '/products',
     '/products/{id}',
     '/products/{id}/prices',
@@ -637,6 +662,7 @@ void test('a proxy becomes ready once it has an active session', async (): Promi
 const userRoutes: Array<[string, string]> = [
   ['GET', '/products'],
   ['POST', '/products'],
+  ['GET', '/marketplaces/dns/cities'],
   ['GET', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11/prices'],
   ['DELETE', '/products/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
   ['GET', '/jobs/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
@@ -648,6 +674,7 @@ const operatorRoutes: Array<[string, string]> = [
   ['PATCH', '/proxies?server=socks5%3A%2F%2F203.0.113.50%3A1080'],
   ['DELETE', '/proxies?server=socks5%3A%2F%2F203.0.113.50%3A1080'],
   ['POST', '/proxy-sources/github-free-proxy-list/refresh'],
+  ['POST', '/handbooks/dns-cities/refresh'],
   ['GET', '/sessions'],
   ['POST', '/sessions'],
   ['DELETE', '/sessions/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
@@ -827,4 +854,35 @@ void test('tracks a product of DNS in the city asked for, in the default city wi
   assert.notEqual(asked.body['id'], byDefault.body['id']);
   assert.equal(unknown.status, 400);
   assert.equal(ozon.body['cityId'], null);
+});
+
+void test('a user searches the cities of DNS by a part of the name, and asks no city of a marketplace that has none', async (): Promise<void> => {
+  await new SaveHandbookCitiesUseCase(handbooks).execute('dns-cities', [
+    { id: irkutskId, name: 'Иркутск', region: 'Иркутская область' },
+    { id: 'b', name: 'Москва', region: null },
+  ]);
+
+  const found = await call('/marketplaces/dns/cities?query=%D0%B8%D1%80%D0%BA');
+  const all = await call('/marketplaces/dns/cities?limit=1');
+
+  assert.equal(found.status, 200);
+  assert.deepEqual(found.body['items'], [
+    { id: irkutskId, name: 'Иркутск', region: 'Иркутская область' },
+  ]);
+  assert.equal(Array.isArray(all.body['items']) && all.body['items'].length, 1);
+  assert.equal((await call('/marketplaces/ozon/cities')).status, 404);
+  assert.equal((await call('/marketplaces/dns/cities?limit=0')).status, 400);
+});
+
+void test('the operator queues the read of a handbook through the proxies, and the job is theirs to follow', async (): Promise<void> => {
+  const accepted = await call('/handbooks/dns-cities/refresh', post());
+
+  assert.equal(accepted.status, 202);
+  const request = queued.at(-1);
+  assert.ok(typeof request === 'object' && request !== null && 'handbook' in request);
+  assert.equal(request.handbook, 'dns-cities');
+  assert.ok(
+    'proxies' in request && Array.isArray(request.proxies) && request.proxies.at(-1) === null,
+  );
+  assert.equal((await call('/handbooks/unknown/refresh', post())).status, 400);
 });

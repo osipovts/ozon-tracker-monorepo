@@ -1,6 +1,8 @@
 import { type JobsOptions, Queue } from 'bullmq';
 import { type LoggerPort, silentLogger } from 'logger';
 import {
+  handbookFetchJobSchema,
+  type HandbookFetchJobType,
   priceFetchJobSchema,
   type PriceFetchJobType,
   proxyFetchJobSchema,
@@ -9,6 +11,7 @@ import {
 } from 'queue-contract';
 
 import type {
+  HandbookFetchRequestInterface,
   JobQueuePort,
   PriceFetchRequestInterface,
   ProxyFetchRequestInterface,
@@ -24,6 +27,7 @@ const jobOptions: JobsOptions = {
 export class BullmqJobQueueAdapter implements JobQueuePort {
   private readonly proxyFetchQueue: Queue;
   private readonly priceFetchQueue: Queue;
+  private readonly handbookFetchQueue: Queue;
 
   constructor(
     redisUrl: string,
@@ -32,8 +36,9 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
     const connection = { url: redisUrl };
     this.proxyFetchQueue = new Queue(queueNames.proxyFetchJobs, { connection });
     this.priceFetchQueue = new Queue(queueNames.priceFetchJobs, { connection });
+    this.handbookFetchQueue = new Queue(queueNames.handbookFetchJobs, { connection });
 
-    for (const queue of [this.proxyFetchQueue, this.priceFetchQueue]) {
+    for (const queue of [this.proxyFetchQueue, this.priceFetchQueue, this.handbookFetchQueue]) {
       queue.on('error', (error): void => {
         this.logger.error(`Queue ${queue.name} error: ${error.message}`);
       });
@@ -60,7 +65,17 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
     this.logger.debug(`Published price-fetch ${job.jobId} to ${queueNames.priceFetchJobs}`);
   }
 
+  async enqueueHandbookFetch(request: HandbookFetchRequestInterface): Promise<void> {
+    const job: HandbookFetchJobType = handbookFetchJobSchema.parse(request);
+    await this.handbookFetchQueue.add('handbook-fetch', job, { ...jobOptions, jobId: job.jobId });
+    this.logger.debug(`Published handbook-fetch ${job.jobId} to ${queueNames.handbookFetchJobs}`);
+  }
+
   async onApplicationShutdown(): Promise<void> {
-    await Promise.all([this.proxyFetchQueue.close(), this.priceFetchQueue.close()]);
+    await Promise.all([
+      this.proxyFetchQueue.close(),
+      this.priceFetchQueue.close(),
+      this.handbookFetchQueue.close(),
+    ]);
   }
 }

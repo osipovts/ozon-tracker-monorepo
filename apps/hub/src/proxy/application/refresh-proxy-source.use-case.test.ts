@@ -14,6 +14,7 @@ function setup(): { refresh: RefreshProxySourceUseCase; jobs: InMemoryJobReposit
   const queue: JobQueuePort = {
     enqueueProxyFetch: (): Promise<void> => Promise.resolve(),
     enqueuePriceFetch: (): Promise<void> => Promise.resolve(),
+    enqueueHandbookFetch: (): Promise<void> => Promise.resolve(),
   };
 
   return { refresh: new RefreshProxySourceUseCase(new ScheduleJobUseCase(queue, jobs)), jobs };

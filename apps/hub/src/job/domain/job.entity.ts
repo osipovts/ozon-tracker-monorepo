@@ -1,4 +1,4 @@
-export const jobKinds = ['proxy_fetch', 'price_fetch'] as const;
+export const jobKinds = ['proxy_fetch', 'price_fetch', 'handbook_fetch'] as const;
 
 export type JobKindType = (typeof jobKinds)[number];
 
@@ -9,7 +9,7 @@ export type JobStatusType = (typeof jobStatuses)[number];
 export interface JobInterface {
   id: string;
   kind: JobKindType;
-  /** The proxy source of a proxy job or the product id of a price job. */
+  /** The proxy source of a proxy job, the product id of a price job, or the handbook of a handbook job. */
   subject: string;
   /** The user who asked for the job; null for the jobs of the operator. Only they may read it. */
   requestedBy: string | null;

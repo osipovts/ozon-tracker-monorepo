@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { InMemoryJobRepositoryAdapter } from '../infrastructure/in-memory-job-repository.adapter.js';
 import type {
+  HandbookFetchRequestInterface,
   JobQueuePort,
   PriceFetchRequestInterface,
   ProxyFetchRequestInterface,
@@ -17,10 +18,12 @@ function setup(failQueue = false): {
   jobs: InMemoryJobRepositoryAdapter;
   proxyRequests: ProxyFetchRequestInterface[];
   priceRequests: PriceFetchRequestInterface[];
+  handbookRequests: HandbookFetchRequestInterface[];
 } {
   const jobs = new InMemoryJobRepositoryAdapter();
   const proxyRequests: ProxyFetchRequestInterface[] = [];
   const priceRequests: PriceFetchRequestInterface[] = [];
+  const handbookRequests: HandbookFetchRequestInterface[] = [];
   const queue: JobQueuePort = {
     enqueueProxyFetch: (request): Promise<void> => {
       if (failQueue) return Promise.reject(new Error('redis is down'));
@@ -34,9 +37,21 @@ function setup(failQueue = false): {
 
       return Promise.resolve();
     },
+    enqueueHandbookFetch: (request): Promise<void> => {
+      if (failQueue) return Promise.reject(new Error('redis is down'));
+      handbookRequests.push(request);
+
+      return Promise.resolve();
+    },
   };
 
-  return { useCase: new ScheduleJobUseCase(queue, jobs), jobs, proxyRequests, priceRequests };
+  return {
+    useCase: new ScheduleJobUseCase(queue, jobs),
+    jobs,
+    proxyRequests,
+    priceRequests,
+    handbookRequests,
+  };
 }
 
 void test('records a queued proxy job and publishes it under the same id', async (): Promise<void> => {
@@ -103,4 +118,25 @@ void test('fails the recorded job for good when the queue is down', async (): Pr
   assert.equal(items.length, 1);
   assert.equal(items[0]?.snapshot.status, 'failed');
   assert.equal(items[0].snapshot.error, 'Could not be queued');
+});
+
+void test('records a queued handbook job of the operator and publishes it with its routes', async (): Promise<void> => {
+  const { useCase, jobs, handbookRequests } = setup();
+
+  const { jobId } = await useCase.execute({
+    kind: 'handbook_fetch',
+    requestedBy: null,
+    handbook: 'dns-cities',
+    proxies: ['socks5://217.71.230.1:1080', null],
+  });
+
+  assert.deepEqual(handbookRequests, [
+    { jobId, handbook: 'dns-cities', proxies: ['socks5://217.71.230.1:1080', null] },
+  ]);
+  const job = await jobs.findById(jobId);
+  assert.ok(job);
+  assert.equal(job.snapshot.kind, 'handbook_fetch');
+  assert.equal(job.snapshot.subject, 'dns-cities');
+  assert.equal(job.snapshot.total, null);
+  assert.equal(job.snapshot.requestedBy, null);
 });

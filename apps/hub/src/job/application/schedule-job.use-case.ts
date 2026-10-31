@@ -38,6 +38,15 @@ export class ScheduleJobUseCase {
           new Date(),
           request.requestedBy,
         );
+      case 'handbook_fetch':
+        return JobEntity.queued(
+          jobId,
+          request.kind,
+          request.handbook,
+          null,
+          new Date(),
+          request.requestedBy,
+        );
       case 'price_fetch':
         return JobEntity.queued(
           jobId,
@@ -58,6 +67,12 @@ export class ScheduleJobUseCase {
           source: request.source,
           maxCandidates: request.maxCandidates,
           probeTimeoutMs: request.probeTimeoutMs,
+        });
+      case 'handbook_fetch':
+        return this.queue.enqueueHandbookFetch({
+          jobId,
+          handbook: request.handbook,
+          proxies: request.proxies,
         });
       case 'price_fetch':
         return this.queue.enqueuePriceFetch({

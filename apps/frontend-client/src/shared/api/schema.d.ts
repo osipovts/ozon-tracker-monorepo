@@ -170,7 +170,11 @@ export interface paths {
      */
     get: operations['ProxiesController_list'];
     put?: never;
-    post?: never;
+    /**
+     * Add a proxy by hand
+     * @description The workers are given the manual proxies before the found ones, whatever their check and exit country. A proxy that is listed already becomes manual. The address may carry `user:password@` for an HTTP(S) proxy: the credentials are kept apart, given to the workers only and never listed.
+     */
+    post: operations['ProxiesController_add'];
     /**
      * Delete a proxy
      * @description The next refresh of its source finds it again if it is still listed there: turn it off instead to keep it away.
@@ -216,6 +220,46 @@ export interface paths {
     put?: never;
     /** Queue a refresh of the proxies of one source */
     post: operations['ProxySourcesController_refresh'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/marketplaces/{marketplace}/cities': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search the cities of a marketplace whose prices depend on the city
+     * @description The cities the hub has read of the marketplace, the ones whose names begin with the query first. Empty until the first read of the handbook is done.
+     */
+    get: operations['CitiesController_list'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/handbooks/{handbook}/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Queue a read of a handbook
+     * @description A worker reads the handbook through the best proxies and the hub keeps it. The hub asks for it by itself when it was never read, and every week.
+     */
+    post: operations['HandbooksController_refresh'];
     delete?: never;
     options?: never;
     head?: never;
@@ -599,6 +643,7 @@ export interface operations {
               marketplace: string;
               externalId: string;
               url: string;
+              cityId: string | null;
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;
@@ -642,6 +687,7 @@ export interface operations {
         'application/json': {
           /** Format: uri */
           url: string;
+          cityId?: string;
         };
       };
     };
@@ -658,6 +704,7 @@ export interface operations {
             marketplace: string;
             externalId: string;
             url: string;
+            cityId: string | null;
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
@@ -682,6 +729,7 @@ export interface operations {
             marketplace: string;
             externalId: string;
             url: string;
+            cityId: string | null;
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
@@ -694,7 +742,7 @@ export interface operations {
           };
         };
       };
-      /** @description Unsupported marketplace or product URL */
+      /** @description Unsupported marketplace or product URL, or a city the marketplace does not have */
       400: {
         headers: {
           [name: string]: unknown;
@@ -761,6 +809,7 @@ export interface operations {
               marketplace: string;
               externalId: string;
               url: string;
+              cityId: string | null;
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;
@@ -812,7 +861,7 @@ export interface operations {
       query?: {
         page?: number;
         pageSize?: number;
-        kind?: 'proxy_fetch' | 'price_fetch';
+        kind?: 'proxy_fetch' | 'price_fetch' | 'handbook_fetch';
         status?: 'queued' | 'running' | 'retrying' | 'completed' | 'failed';
       };
       header?: never;
@@ -831,7 +880,7 @@ export interface operations {
               /** Format: uuid */
               id: string;
               /** @enum {string} */
-              kind: 'proxy_fetch' | 'price_fetch';
+              kind: 'proxy_fetch' | 'price_fetch' | 'handbook_fetch';
               subject: string;
               /** @enum {string} */
               status: 'queued' | 'running' | 'retrying' | 'completed' | 'failed';
@@ -875,7 +924,7 @@ export interface operations {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: 'proxy_fetch' | 'price_fetch';
+            kind: 'proxy_fetch' | 'price_fetch' | 'handbook_fetch';
             subject: string;
             /** @enum {string} */
             status: 'queued' | 'running' | 'retrying' | 'completed' | 'failed';
@@ -957,7 +1006,7 @@ export interface operations {
       content: {
         'application/json': {
           /** @enum {string} */
-          marketplace: 'ozon';
+          marketplace: 'ozon' | 'dns';
           /** Format: uri */
           proxy: string | null;
           session: {
@@ -1055,7 +1104,7 @@ export interface operations {
         alive?: 'true' | 'false';
         disabled?: 'true' | 'false';
         country?: string;
-        marketplace?: 'ozon';
+        marketplace?: 'ozon' | 'dns';
         ready?: 'true' | 'false';
       };
       header?: never;
@@ -1098,6 +1147,30 @@ export interface operations {
             total: number;
           };
         };
+      };
+    };
+  };
+  ProxiesController_add: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** Format: uri */
+          server: string;
+        };
+      };
+    };
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -1195,6 +1268,67 @@ export interface operations {
         };
       };
     };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** Format: uuid */
+            jobId: string;
+          };
+        };
+      };
+    };
+  };
+  CitiesController_list: {
+    parameters: {
+      query?: {
+        query?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        marketplace: 'ozon' | 'dns';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            items: {
+              id: string;
+              name: string;
+              region: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description The prices of the marketplace do not depend on the city */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HandbooksController_refresh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handbook: 'dns-cities';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       202: {
         headers: {
