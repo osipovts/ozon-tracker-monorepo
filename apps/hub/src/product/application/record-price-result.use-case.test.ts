@@ -28,6 +28,7 @@ async function setup(): Promise<{
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
     cityId: null,
+    cityName: null,
   });
   await products.subscribe(userId, product.snapshot.id);
 
@@ -126,6 +127,7 @@ void test('hands the picture of the product over once the price is recorded, and
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
     cityId: null,
+    cityName: null,
   });
   const order: string[] = [];
   const record = new RecordPriceResultUseCase(

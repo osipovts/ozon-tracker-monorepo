@@ -644,6 +644,7 @@ export interface operations {
               externalId: string;
               url: string;
               cityId: string | null;
+              cityName: string | null;
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;
@@ -705,6 +706,7 @@ export interface operations {
             externalId: string;
             url: string;
             cityId: string | null;
+            cityName: string | null;
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
@@ -730,6 +732,7 @@ export interface operations {
             externalId: string;
             url: string;
             cityId: string | null;
+            cityName: string | null;
             lastStatus: string | null;
             /** Format: date-time */
             lastCheckedAt: string | null;
@@ -810,6 +813,7 @@ export interface operations {
               externalId: string;
               url: string;
               cityId: string | null;
+              cityName: string | null;
               lastStatus: string | null;
               /** Format: date-time */
               lastCheckedAt: string | null;

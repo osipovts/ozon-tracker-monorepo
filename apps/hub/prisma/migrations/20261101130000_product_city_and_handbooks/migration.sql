@@ -2,7 +2,8 @@
 DROP INDEX "tracked_products_marketplace_externalId_key";
 
 -- AlterTable
-ALTER TABLE "tracked_products" ADD COLUMN     "cityId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "tracked_products" ADD COLUMN     "cityId" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "cityName" TEXT;
 
 -- CreateTable
 CREATE TABLE "handbooks" (

@@ -51,7 +51,9 @@ function setup(
   limits: ProductLimitsInterface = roomy,
   request: Pick<RequestPriceObservationUseCase, 'execute'> | null = null,
   products: InMemoryTrackedProductRepositoryAdapter = new InMemoryTrackedProductRepositoryAdapter(),
-  cities: MarketplaceCitiesPort = { exists: (): Promise<boolean> => Promise.resolve(false) },
+  cities: MarketplaceCitiesPort = {
+    find: (): Promise<{ name: string } | null> => Promise.resolve(null),
+  },
 ): {
   add: AddProductUseCase;
   products: InMemoryTrackedProductRepositoryAdapter;
@@ -316,8 +318,11 @@ void test('refuses another link of a user while one is being added, and takes it
 const irkutsk = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
 const dnsLink = 'https://www.dns-shop.ru/product/0463bb2411a1d582/156-noutbuk-asus/';
 const knownCities: MarketplaceCitiesPort = {
-  exists: (_marketplace, cityId): Promise<boolean> => Promise.resolve(cityId === irkutsk),
+  find: (_marketplace, cityId): Promise<{ name: string } | null> =>
+    Promise.resolve(cityId === irkutsk ? { name: 'Иркутск' } : null),
 };
+const moscow = marketplaceDefaultCities.dns;
+if (moscow === undefined) throw new Error('DNS has a default city');
 
 void test('a product of a marketplace with cities is tracked in the default city unless a city is asked for', async (): Promise<void> => {
   const { add } = setup(roomy, null, undefined, knownCities);
@@ -325,8 +330,10 @@ void test('a product of a marketplace with cities is tracked in the default city
   const byDefault = await add.execute(jane, dnsLink);
   const asked = await add.execute(jane, dnsLink, irkutsk);
 
-  assert.equal(byDefault.product.snapshot.cityId, marketplaceDefaultCities.dns);
+  assert.equal(byDefault.product.snapshot.cityId, moscow.id);
+  assert.equal(byDefault.product.snapshot.cityName, 'Москва');
   assert.equal(asked.product.snapshot.cityId, irkutsk);
+  assert.equal(asked.product.snapshot.cityName, 'Иркутск');
   assert.equal(asked.created, true);
   assert.notEqual(asked.product.snapshot.id, byDefault.product.snapshot.id);
   assert.equal(asked.product.snapshot.externalId, byDefault.product.snapshot.externalId);
@@ -350,8 +357,8 @@ void test('refuses a city the marketplace is not known to have, but not its defa
     add.execute(jane, dnsLink, '11111111-1111-1111-1111-111111111111'),
     UnknownCityError,
   );
-  const byDefault = await add.execute(jane, dnsLink, marketplaceDefaultCities.dns);
-  assert.equal(byDefault.product.snapshot.cityId, marketplaceDefaultCities.dns);
+  const byDefault = await add.execute(jane, dnsLink, moscow.id);
+  assert.equal(byDefault.product.snapshot.cityId, moscow.id);
 });
 
 void test('a marketplace without cities has no city whatever is asked for', async (): Promise<void> => {
@@ -360,4 +367,5 @@ void test('a marketplace without cities has no city whatever is asked for', asyn
   const added = await add.execute(jane, 'https://www.ozon.ru/product/4775581891/', irkutsk);
 
   assert.equal(added.product.snapshot.cityId, null);
+  assert.equal(added.product.snapshot.cityName, null);
 });

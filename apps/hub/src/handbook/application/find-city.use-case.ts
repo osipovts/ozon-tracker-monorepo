@@ -1,18 +1,19 @@
 import type { MarketplaceType } from 'product-reference';
+import type { HandbookCityType } from 'queue-contract';
 
 import type { HandbookRepositoryPort } from './handbook-repository.port.js';
 import { marketplaceCityHandbooks } from './marketplace-city-handbooks.type.js';
 
-export class CityExistsUseCase {
+export class FindCityUseCase {
   constructor(private readonly handbooks: HandbookRepositoryPort) {}
 
-  /** Whether the marketplace has the city, by the id it gives it. */
-  async execute(marketplace: MarketplaceType, cityId: string): Promise<boolean> {
+  /** The city of the marketplace by the id it gives it; null if it has none such. */
+  async execute(marketplace: MarketplaceType, cityId: string): Promise<HandbookCityType | null> {
     const handbook = marketplaceCityHandbooks[marketplace];
-    if (handbook === undefined) return false;
+    if (handbook === undefined) return null;
 
     const stored = await this.handbooks.findCities(handbook);
 
-    return stored?.cities.some((city): boolean => city.id === cityId) ?? false;
+    return stored?.cities.find((city): boolean => city.id === cityId) ?? null;
   }
 }

@@ -8,7 +8,7 @@ import { ProxyModule } from '../proxy/proxy.module.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
-import { CityExistsUseCase } from './application/city-exists.use-case.js';
+import { FindCityUseCase } from './application/find-city.use-case.js';
 import {
   HANDBOOK_REPOSITORY,
   type HandbookRepositoryPort,
@@ -51,9 +51,9 @@ const handbookProxyCount = 10;
       inject: [HANDBOOK_REPOSITORY],
     },
     {
-      provide: CityExistsUseCase,
-      useFactory: (handbooks: HandbookRepositoryPort): CityExistsUseCase =>
-        new CityExistsUseCase(handbooks),
+      provide: FindCityUseCase,
+      useFactory: (handbooks: HandbookRepositoryPort): FindCityUseCase =>
+        new FindCityUseCase(handbooks),
       inject: [HANDBOOK_REPOSITORY],
     },
     {
@@ -84,6 +84,6 @@ const handbookProxyCount = 10;
     },
     HandbookResultsConsumer,
   ],
-  exports: [CityExistsUseCase],
+  exports: [FindCityUseCase],
 })
 export class HandbookModule {}

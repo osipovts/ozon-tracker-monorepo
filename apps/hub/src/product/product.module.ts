@@ -9,7 +9,7 @@ import {
 import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
 import { PrismaClient } from '../generated/prisma/client.js';
-import { CityExistsUseCase } from '../handbook/application/index.js';
+import { FindCityUseCase } from '../handbook/application/index.js';
 import { HandbookModule } from '../handbook/handbook.module.js';
 import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
@@ -101,7 +101,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         config: AppConfigInterface,
         logger: LoggerPort,
         expandLink: ExpandProductLinkUseCase,
-        cityExists: CityExistsUseCase,
+        findCity: FindCityUseCase,
       ): AddProductUseCase =>
         new AddProductUseCase(
           resolve,
@@ -116,8 +116,8 @@ function refreshScheduleSettings(config: AppConfigInterface): {
           logger.child('products'),
           expandLink,
           {
-            exists: (marketplace, cityId): Promise<boolean> =>
-              cityExists.execute(marketplace, cityId),
+            find: (marketplace, cityId): Promise<{ name: string } | null> =>
+              findCity.execute(marketplace, cityId),
           },
         ),
       inject: [
@@ -129,7 +129,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         APP_CONFIG,
         LOGGER,
         ExpandProductLinkUseCase,
-        CityExistsUseCase,
+        FindCityUseCase,
       ],
     },
     {

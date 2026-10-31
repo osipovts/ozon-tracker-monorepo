@@ -79,6 +79,7 @@ async function track(
     externalId: String(n),
     url: `https://www.ozon.ru/product/${String(n)}/`,
     cityId: null,
+    cityName: null,
   });
   if (userId !== null) await products.subscribe(userId, product.snapshot.id);
 
@@ -203,6 +204,7 @@ void test('names the city of a product in the job of the schedule', async (): Pr
     externalId: '0463bb2411a1d582',
     url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
     cityId,
+    cityName: 'Иркутск',
   });
   await products.subscribe(jane, product.snapshot.id);
 

@@ -43,6 +43,8 @@ model TrackedProduct {
   url                String
   /// The city whose price is read, by the id of the marketplace; empty where the marketplace has no cities.
   cityId             String                @default("")
+  /// The name of that city when the product was added; null where the marketplace has no cities.
+  cityName           String?
   /// Status of the last fetch, including failed ones.
   lastStatus         String?
   lastCheckedAt      DateTime?

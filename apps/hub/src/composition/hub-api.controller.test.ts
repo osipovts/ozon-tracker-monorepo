@@ -212,8 +212,8 @@ before(async (): Promise<void> => {
           undefined,
           undefined,
           {
-            exists: (_marketplace, cityId): Promise<boolean> =>
-              Promise.resolve(cityId === irkutskId),
+            find: (_marketplace, cityId): Promise<{ name: string } | null> =>
+              Promise.resolve(cityId === irkutskId ? { name: 'Иркутск' } : null),
           },
         ),
       },
@@ -408,6 +408,7 @@ void test('tracks a product once whatever the link and lists it with its newest 
     externalId: '4775581891',
     url: productUrl,
     cityId: null,
+    cityName: null,
     lastStatus: null,
     lastCheckedAt: null,
     // The schedule is off in this test.
@@ -468,6 +469,7 @@ void test('queues the read of the first price when a product is added, and serve
       externalId: '9000',
       url,
       cityId: null,
+      cityName: null,
       lastStatus: null,
       lastCheckedAt: null,
       nextCheckAt: null,
@@ -848,12 +850,15 @@ void test('tracks a product of DNS in the city asked for, in the default city wi
   const unknown = await call('/products', post({ url, cityId: 'nowhere' }));
   const ozon = await call('/products', post({ url: productUrl, cityId: irkutskId }));
 
-  assert.equal(byDefault.body['cityId'], marketplaceDefaultCities.dns);
+  assert.equal(byDefault.body['cityId'], marketplaceDefaultCities.dns?.id);
+  assert.equal(byDefault.body['cityName'], 'Москва');
   assert.equal(asked.status, 201);
   assert.equal(asked.body['cityId'], irkutskId);
+  assert.equal(asked.body['cityName'], 'Иркутск');
   assert.notEqual(asked.body['id'], byDefault.body['id']);
   assert.equal(unknown.status, 400);
   assert.equal(ozon.body['cityId'], null);
+  assert.equal(ozon.body['cityName'], null);
 });
 
 void test('a user searches the cities of DNS by a part of the name, and asks no city of a marketplace that has none', async (): Promise<void> => {

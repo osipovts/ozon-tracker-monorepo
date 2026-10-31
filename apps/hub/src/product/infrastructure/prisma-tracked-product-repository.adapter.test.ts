@@ -43,6 +43,7 @@ async function newProduct(): Promise<string> {
     externalId,
     url: `https://www.ozon.ru/product/${externalId}/`,
     cityId: null,
+    cityName: null,
   });
 
   return product.snapshot.id;
@@ -169,6 +170,7 @@ void test(
       externalId,
       url: `https://www.dns-shop.ru/product/${externalId}/`,
       cityId,
+      cityName: cityId === null ? null : 'Город',
     });
 
     const moscow = await products.add(reference('city-moscow'));

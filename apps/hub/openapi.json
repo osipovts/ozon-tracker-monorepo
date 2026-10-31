@@ -258,6 +258,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "cityName": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "lastStatus": {
                             "nullable": true,
                             "type": "string"
@@ -341,6 +345,7 @@
                           "externalId",
                           "url",
                           "cityId",
+                          "cityName",
                           "lastStatus",
                           "lastCheckedAt",
                           "nextCheckAt",
@@ -428,6 +433,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "cityName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "lastStatus": {
                       "nullable": true,
                       "type": "string"
@@ -462,6 +471,7 @@
                     "externalId",
                     "url",
                     "cityId",
+                    "cityName",
                     "lastStatus",
                     "lastCheckedAt",
                     "nextCheckAt",
@@ -498,6 +508,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "cityName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "lastStatus": {
                       "nullable": true,
                       "type": "string"
@@ -532,6 +546,7 @@
                     "externalId",
                     "url",
                     "cityId",
+                    "cityName",
                     "lastStatus",
                     "lastCheckedAt",
                     "nextCheckAt",
@@ -695,6 +710,10 @@
                           "nullable": true,
                           "type": "string"
                         },
+                        "cityName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "lastStatus": {
                           "nullable": true,
                           "type": "string"
@@ -723,6 +742,7 @@
                         "externalId",
                         "url",
                         "cityId",
+                        "cityName",
                         "lastStatus",
                         "lastCheckedAt",
                         "nextCheckAt",

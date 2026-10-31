@@ -89,6 +89,7 @@ void test('deletes the picture with the product, and keeps it while somebody els
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
     cityId: null,
+    cityName: null,
   });
   await products.subscribe('jane', product.snapshot.id);
   await products.subscribe('sam', product.snapshot.id);

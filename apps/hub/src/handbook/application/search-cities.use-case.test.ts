@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { InMemoryHandbookRepositoryAdapter } from '../infrastructure/in-memory-handbook-repository.adapter.js';
-import { CityExistsUseCase } from './city-exists.use-case.js';
+import { FindCityUseCase } from './find-city.use-case.js';
 import { MarketplaceWithoutCitiesError } from './marketplace-without-cities.error.js';
 import { SaveHandbookCitiesUseCase } from './save-handbook-cities.use-case.js';
 import { SearchCitiesUseCase } from './search-cities.use-case.js';
@@ -17,7 +17,7 @@ const city = (
   region,
 });
 
-async function setup(): Promise<{ search: SearchCitiesUseCase; exists: CityExistsUseCase }> {
+async function setup(): Promise<{ search: SearchCitiesUseCase; find: FindCityUseCase }> {
   const repository = new InMemoryHandbookRepositoryAdapter();
   await new SaveHandbookCitiesUseCase(repository).execute('dns-cities', [
     city('1', 'Абакан'),
@@ -27,7 +27,7 @@ async function setup(): Promise<{ search: SearchCitiesUseCase; exists: CityExist
     city('5', 'Москва'),
   ]);
 
-  return { search: new SearchCitiesUseCase(repository), exists: new CityExistsUseCase(repository) };
+  return { search: new SearchCitiesUseCase(repository), find: new FindCityUseCase(repository) };
 }
 
 void test('finds the cities by a part of the name, the ones that begin with it first', async (): Promise<void> => {
@@ -66,10 +66,14 @@ void test('has no cities until the handbook is read, and none for a marketplace 
   );
 });
 
-void test('tells whether a marketplace has a city by its id', async (): Promise<void> => {
-  const { exists } = await setup();
+void test('finds a city of a marketplace by its id', async (): Promise<void> => {
+  const { find } = await setup();
 
-  assert.equal(await exists.execute('dns', '3'), true);
-  assert.equal(await exists.execute('dns', 'nowhere'), false);
-  assert.equal(await exists.execute('ozon', '3'), false);
+  assert.deepEqual(await find.execute('dns', '3'), {
+    id: '3',
+    name: 'Иркутск',
+    region: 'Иркутская область',
+  });
+  assert.equal(await find.execute('dns', 'nowhere'), null);
+  assert.equal(await find.execute('ozon', '3'), null);
 });

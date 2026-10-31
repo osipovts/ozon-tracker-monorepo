@@ -23,6 +23,8 @@ export const productSchema = z.object({
   url: z.string(),
   /** The city whose price is read, by the id of the marketplace; null where it has no cities. */
   cityId: z.string().nullable(),
+  /** The name of that city; null where the marketplace has no cities. */
+  cityName: z.string().nullable(),
   /** Status of the last fetch, including failed ones. */
   lastStatus: z.string().nullable(),
   lastCheckedAt: z.iso.datetime().nullable(),

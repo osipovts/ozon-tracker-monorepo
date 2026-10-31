@@ -1,5 +1,6 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import {
+  type MarketplaceCityInterface,
   marketplaceDefaultCities,
   type ProductReferenceEntity,
   type ResolveProductReferenceUseCase,
@@ -48,7 +49,7 @@ export class AddProductUseCase {
     private readonly logger: LoggerPort = silentLogger,
     private readonly expandLink: Pick<ExpandProductLinkUseCase, 'execute'> = unchangedLinks,
     private readonly cities: MarketplaceCitiesPort = {
-      exists: (): Promise<boolean> => Promise.resolve(false),
+      find: (): Promise<{ name: string } | null> => Promise.resolve(null),
     },
   ) {}
 
@@ -100,7 +101,7 @@ export class AddProductUseCase {
       throw new UnsupportedProductUrlError();
     }
 
-    const cityId = await this.cityOf(reference, askedCityId);
+    const city = await this.cityOf(reference, askedCityId);
 
     // Before the product is created: a refused one would be left, tracked by nobody.
     const tracking = await this.products.listSubscribed(userId, { page: 1, pageSize: 1 });
@@ -112,7 +113,8 @@ export class AddProductUseCase {
       marketplace: reference.marketplace,
       externalId: reference.id,
       url: reference.url,
-      cityId,
+      cityId: city?.id ?? null,
+      cityName: city?.name ?? null,
     };
 
     let added: { product: TrackedProductEntity; created: boolean };
@@ -137,14 +139,15 @@ export class AddProductUseCase {
   private async cityOf(
     reference: ProductReferenceEntity,
     askedCityId: string | null,
-  ): Promise<string | null> {
-    const defaultCityId = marketplaceDefaultCities[reference.marketplace];
-    if (defaultCityId === undefined) return null;
-    if (askedCityId === null || askedCityId === defaultCityId) return defaultCityId;
-    if (!(await this.cities.exists(reference.marketplace, askedCityId)))
-      throw new UnknownCityError(askedCityId);
+  ): Promise<MarketplaceCityInterface | null> {
+    const defaultCity = marketplaceDefaultCities[reference.marketplace];
+    if (defaultCity === undefined) return null;
+    if (askedCityId === null || askedCityId === defaultCity.id) return defaultCity;
 
-    return askedCityId;
+    const found = await this.cities.find(reference.marketplace, askedCityId);
+    if (found === null) throw new UnknownCityError(askedCityId);
+
+    return { id: askedCityId, name: found.name };
   }
 
   private async track(

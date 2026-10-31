@@ -8,10 +8,18 @@ export const marketplaceExitCountries: Readonly<Record<MarketplaceType, string>>
   dns: 'RU',
 };
 
+export interface MarketplaceCityInterface {
+  /** The id the marketplace gives the city. */
+  id: string;
+  name: string;
+}
+
 /**
- * The city a marketplace whose prices depend on it falls back to, by the id the marketplace gives it.
- * A marketplace that is not here has one price for everyone and no city.
+ * The city a marketplace whose prices depend on it falls back to. A marketplace that is not here has
+ * one price for everyone and no city.
  */
-export const marketplaceDefaultCities: Readonly<Partial<Record<MarketplaceType, string>>> = {
-  dns: '30b7c1f3-03fb-11dc-95ee-00151716f9f5',
+export const marketplaceDefaultCities: Readonly<
+  Partial<Record<MarketplaceType, MarketplaceCityInterface>>
+> = {
+  dns: { id: '30b7c1f3-03fb-11dc-95ee-00151716f9f5', name: 'Москва' },
 };

@@ -31,6 +31,7 @@ function toEntity(row: TrackedProductRow): TrackedProductEntity {
     externalId: row.externalId,
     url: row.url,
     cityId: row.cityId === '' ? null : row.cityId,
+    cityName: row.cityName,
     lastStatus: row.lastStatus,
     lastCheckedAt: row.lastCheckedAt,
     lastRequestedAt: row.lastRequestedAt,

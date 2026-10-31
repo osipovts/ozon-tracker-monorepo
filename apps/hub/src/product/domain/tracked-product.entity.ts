@@ -8,6 +8,8 @@ export interface TrackedProductInterface {
   url: string;
   /** The city whose price is read, by the id of the marketplace; null where the marketplace has no cities. */
   cityId: string | null;
+  /** The name of that city when the product was added. */
+  cityName: string | null;
   /** Status of the last fetch, including failed ones. */
   lastStatus: string | null;
   lastCheckedAt: Date | null;

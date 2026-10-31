@@ -101,6 +101,7 @@ export class ProductsController {
       externalId: snapshot.externalId,
       url: snapshot.url,
       cityId: snapshot.cityId,
+      cityName: snapshot.cityName,
       lastStatus: snapshot.lastStatus,
       lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null,
       nextCheckAt: next?.toISOString() ?? null,

@@ -16,6 +16,7 @@ void test('stops tracking every product of the user, deleting those nobody else 
       externalId: String(n),
       url: `https://www.ozon.ru/product/${String(n)}/`,
       cityId: null,
+      cityName: null,
     });
     await products.subscribe('jane', product.snapshot.id);
     ids.push(product.snapshot.id);

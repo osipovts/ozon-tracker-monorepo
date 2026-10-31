@@ -39,6 +39,7 @@ async function setup(
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
     cityId: null,
+    cityName: null,
   });
 
   return {

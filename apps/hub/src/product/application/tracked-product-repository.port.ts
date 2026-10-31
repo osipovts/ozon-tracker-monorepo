@@ -14,6 +14,8 @@ export interface TrackedProductReferenceInterface {
   url: string;
   /** The city whose price is read; null where the marketplace has no cities. */
   cityId: string | null;
+  /** The name of that city; null where the marketplace has no cities. */
+  cityName: string | null;
 }
 
 export interface TrackedProductRepositoryPort {

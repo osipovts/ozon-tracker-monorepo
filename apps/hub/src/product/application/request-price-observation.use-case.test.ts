@@ -67,6 +67,7 @@ async function createUseCase(
     externalId: '4775581891',
     url: productUrl,
     cityId: null,
+    cityName: null,
   },
 ): Promise<{
   useCase: RequestPriceObservationUseCase;
@@ -237,6 +238,7 @@ void test('names the city of the product in the job, for a marketplace that has 
     externalId: '0463bb2411a1d582',
     url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
     cityId: '30b7c1f1-03fb-11dc-95ee-00151716f9f5',
+    cityName: 'Иркутск',
   } as const;
   const { useCase, requests, productId } = await createUseCase(
     [proxy('socks5://217.71.230.1:1080', true, 4)],
