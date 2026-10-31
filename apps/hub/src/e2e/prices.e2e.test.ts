@@ -130,8 +130,9 @@ void test('another user joins the product: the same history, no second read, and
 });
 
 void test('the routes of the operator take the key, and show the proxies and the jobs', async (): Promise<void> => {
-  assert.equal((await jane.request('/proxies')).status, 401);
-  assert.equal((await jane.request('/jobs')).status, 401);
+  // A user who is signed in and is no administrator is refused, not asked to sign in.
+  assert.equal((await jane.request('/proxies')).status, 403);
+  assert.equal((await jane.request('/jobs')).status, 403);
 
   const key = { authorization: `Bearer ${operatorApiKey}` };
   const proxies = z
