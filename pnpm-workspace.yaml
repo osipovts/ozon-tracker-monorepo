@@ -15,3 +15,5 @@ allowBuilds:
   prisma: true
   # Usage analytics of the Prisma packages.
   '@scarf/scarf': false
+  # The binary comes as a platform package: no build script is needed.
+  '@swc/core': false
