@@ -22,6 +22,7 @@ function snapshot(): ConstructorParameters<typeof ProxyEntity>[0] {
     checksAlive: 3,
     lastCheckedAt: checkedAt,
     disabledAt: null,
+    credentials: null,
   };
 }
 

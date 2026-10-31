@@ -42,6 +42,7 @@ function proxy(n: number, disabledAt: Date | null): ProxyEntity {
     checksAlive: 1,
     lastCheckedAt: new Date('2026-10-31T10:00:00Z'),
     disabledAt,
+    credentials: null,
   });
 }
 

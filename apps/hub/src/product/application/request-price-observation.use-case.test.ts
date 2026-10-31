@@ -31,6 +31,7 @@ function proxy(server: string, alive: boolean, checksAlive: number): ProxyEntity
     checksAlive,
     lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
     disabledAt: null,
+    credentials: null,
   });
 }
 
@@ -124,6 +125,7 @@ void test('queues the product with the best alive proxies and records the job', 
   assert.equal(request.jobId, jobId);
   assert.deepEqual(request.routes, [
     { server: 'socks5://217.71.230.2:1080', session: null },
+    { server: null, session: null },
     { server: 'socks5://217.71.230.3:1080', session: null },
   ]);
   assert.deepEqual(request.products, [{ trackedProductId: productId, url: productUrl }]);
@@ -152,10 +154,29 @@ void test('puts routes with an active session first and skips the stale ones', a
   const routes = requests[0]?.routes ?? [];
   assert.deepEqual(
     routes.map((route): string | null => route.server),
-    [pinned, 'socks5://217.71.230.1:1080'],
+    [pinned, null, 'socks5://217.71.230.1:1080'],
   );
   assert.equal(routes[0]?.session?.id, '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11');
   assert.equal(routes[1]?.session, null);
+});
+
+void test('gives the manual proxies first, with their credentials', async (): Promise<void> => {
+  const manual = ProxyEntity.manual(
+    'http://217.71.230.5:3128',
+    { username: 'user', password: 'secret' },
+    new Date('2026-10-31T10:00:00Z'),
+  );
+  const { useCase, requests, productId } = await createUseCase([
+    proxy('socks5://217.71.230.1:1080', true, 4),
+    manual,
+  ]);
+
+  await useCase.execute(userId, productId);
+
+  assert.deepEqual(
+    requests[0]?.routes.map((route): string | null => route.server),
+    ['http://user:secret@217.71.230.5:3128/', null, 'socks5://217.71.230.1:1080'],
+  );
 });
 
 void test('works with a session only, even without alive proxies', async (): Promise<void> => {

@@ -9,7 +9,7 @@ import type {
   ProxyRepositoryPort,
   ProxyStatsInterface,
 } from '../application/proxy-repository.port.js';
-import { ProxyEntity } from '../domain/proxy.entity.js';
+import { manualProxySource, ProxyEntity } from '../domain/proxy.entity.js';
 
 function toEntity(row: ProxyRow): ProxyEntity {
   return new ProxyEntity({
@@ -23,6 +23,10 @@ function toEntity(row: ProxyRow): ProxyEntity {
     checksAlive: row.checksAlive,
     lastCheckedAt: row.lastCheckedAt,
     disabledAt: row.disabledAt,
+    credentials:
+      row.username === null || row.password === null
+        ? null
+        : { username: row.username, password: row.password },
   });
 }
 
@@ -38,8 +42,13 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
   async saveMany(proxies: ProxyEntity[]): Promise<void> {
     await this.prisma.$transaction(
       proxies.map((proxy) => {
-        const { server, ...rest } = proxy.snapshot;
-        const data = { ...rest, successRate: proxy.successRate };
+        const { server, credentials, ...rest } = proxy.snapshot;
+        const data = {
+          ...rest,
+          username: credentials?.username ?? null,
+          password: credentials?.password ?? null,
+          successRate: proxy.successRate,
+        };
 
         return this.prisma.proxy.upsert({
           where: { server },
@@ -95,6 +104,9 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
       ...(filter.disabled === undefined
         ? {}
         : { disabledAt: filter.disabled ? { not: null } : null }),
+      ...(filter.manual === undefined
+        ? {}
+        : { source: filter.manual ? manualProxySource : { not: manualProxySource } }),
       ...(filter.servers === undefined && filter.excludedServers === undefined
         ? {}
         : {

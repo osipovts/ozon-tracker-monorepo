@@ -55,6 +55,7 @@
     "nodemailer": "^10.3.1",
     "prisma": "7.10.1",
     "product-reference": "workspace:*",
+    "proxy-endpoint": "workspace:*",
     "queue-contract": "workspace:*",
     "queue-worker": "workspace:*",
     "reflect-metadata": "^0.2.2",

@@ -1606,6 +1606,40 @@
         "summary": "List proxies, the best first",
         "tags": ["proxies"]
       },
+      "post": {
+        "description": "The workers are given the manual proxies before the found ones, whatever their check and exit country. A proxy that is listed already becomes manual. The address may carry `user:password@` for an HTTP(S) proxy: the credentials are kept apart, given to the workers only and never listed.",
+        "operationId": "ProxiesController_add",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "server": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": ["server"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a proxy by hand",
+        "tags": ["proxies"]
+      },
       "patch": {
         "description": "A proxy that is off stays in the list but is not given to the workers, and a check does not turn it on. The server goes in the query: it has slashes.",
         "operationId": "ProxiesController_setProxyDisabled",

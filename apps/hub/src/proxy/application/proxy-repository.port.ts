@@ -11,6 +11,8 @@ export interface ProxyFilterInterface {
   country?: string;
   /** Only the proxies that are turned off (`true`), or only those that are on (`false`). */
   disabled?: boolean;
+  /** Only the proxies added by hand (`true`), or only the found ones (`false`). */
+  manual?: boolean;
   /** Only these proxies. */
   servers?: readonly string[];
   /** All proxies except these. */

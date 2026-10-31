@@ -38,6 +38,7 @@ import { RequestPriceObservationUseCase } from '../product/application/request-p
 import { InMemoryPriceObservationRepositoryAdapter } from '../product/infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../product/infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { ProductsController } from '../product/presentation/products.controller.js';
+import { AddManualProxyUseCase } from '../proxy/application/add-manual-proxy.use-case.js';
 import { DeleteAllProxiesUseCase } from '../proxy/application/delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from '../proxy/application/delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
@@ -196,6 +197,7 @@ before(async (): Promise<void> => {
         provide: GetProductThumbnailUrlUseCase,
         useValue: new GetProductThumbnailUrlUseCase(new InMemoryObjectStorageAdapter(false)),
       },
+      { provide: AddManualProxyUseCase, useValue: new AddManualProxyUseCase(proxies) },
       { provide: SetProxyDisabledUseCase, useValue: new SetProxyDisabledUseCase(proxies) },
       { provide: DeleteProxyUseCase, useValue: new DeleteProxyUseCase(proxies) },
       { provide: DeleteAllProxiesUseCase, useValue: new DeleteAllProxiesUseCase(proxies) },
@@ -321,6 +323,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
           checksAlive: index !== 3 ? 1 : 0,
           lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
           disabledAt: null,
+          credentials: null,
         }),
     ),
   );
@@ -405,6 +408,7 @@ void test('queues the read of the first price when a product is added, and serve
     jobId,
     routes: [
       { server: 'socks5://217.71.230.1:1080', session: null },
+      { server: null, session: null },
       { server: 'socks5://217.71.230.2:1080', session: null },
     ],
     products: [{ trackedProductId: id, url }],
@@ -724,6 +728,7 @@ void test('an administrator turns a proxy off and on, sees the ones that are off
       checksAlive: 2,
       lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
       disabledAt: null,
+      credentials: null,
     }),
   ]);
   const query = `server=${encodeURIComponent(server)}`;
@@ -767,4 +772,26 @@ void test('an administrator turns a proxy off and on, sees the ones that are off
     (await call(`/proxies?${query}`, { ...post({ disabled: 'yes' }), method: 'PATCH' })).status,
     400,
   );
+});
+
+void test('an operator adds a proxy with credentials by hand: they are never listed, only given to the workers', async (): Promise<void> => {
+  const server = 'http://217.71.230.77:3128';
+  const added = await call('/proxies', post({ server: 'http://user:p%40ss@217.71.230.77:3128' }));
+  assert.equal(added.status, 204);
+
+  const listed = JSON.stringify((await call('/proxies?pageSize=100')).body);
+  assert.ok(listed.includes(server));
+  assert.equal(listed.includes('p%40ss') || listed.includes('p@ss'), false);
+
+  const [stored] = await proxies.findByServers([server]);
+  assert.ok(stored);
+  assert.equal(stored.snapshot.source, 'manual');
+  assert.deepEqual(stored.snapshot.credentials, { username: 'user', password: 'p@ss' });
+  assert.equal(stored.routeUrl, 'http://user:p%40ss@217.71.230.77:3128/');
+
+  assert.equal(
+    (await call('/proxies', post({ server: 'socks5://u:p@217.71.230.78:1080' }))).status,
+    400,
+  );
+  assert.equal((await call('/proxies', post({ server: 'http://10.0.0.1:3128' }))).status, 400);
 });

@@ -63,6 +63,17 @@ function useRefreshedViews(): () => Promise<void> {
   };
 }
 
+export function useAddProxy(): UseMutationResult<void, Error, string> {
+  const refreshed = useRefreshedViews();
+
+  return useMutation({
+    mutationFn: async (server: string): Promise<void> => {
+      ensure(await api.POST('/proxies', { body: { server } }));
+    },
+    onSuccess: refreshed,
+  });
+}
+
 export function useSetProxyDisabled(): UseMutationResult<
   void,
   Error,

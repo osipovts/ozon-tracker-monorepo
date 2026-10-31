@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import {
@@ -20,11 +21,14 @@ import {
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
+import { AddManualProxyUseCase } from '../application/add-manual-proxy.use-case.js';
 import { DeleteAllProxiesUseCase } from '../application/delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from '../application/delete-proxy.use-case.js';
 import { ListProxiesUseCase } from '../application/list-proxies.use-case.js';
 import { SetProxyDisabledUseCase } from '../application/set-proxy-disabled.use-case.js';
 import {
+  proxyAddBodySchema,
+  type ProxyAddBodyType,
   proxyDisabledBodySchema,
   type ProxyDisabledBodyType,
   proxyListQuerySchema,
@@ -42,6 +46,7 @@ import {
 export class ProxiesController {
   constructor(
     @Inject(ListProxiesUseCase) private readonly listProxies: ListProxiesUseCase,
+    @Inject(AddManualProxyUseCase) private readonly addManualProxy: AddManualProxyUseCase,
     @Inject(SetProxyDisabledUseCase) private readonly setDisabled: SetProxyDisabledUseCase,
     @Inject(DeleteProxyUseCase) private readonly deleteProxy: DeleteProxyUseCase,
     @Inject(DeleteAllProxiesUseCase) private readonly deleteAllProxies: DeleteAllProxiesUseCase,
@@ -90,6 +95,18 @@ export class ProxiesController {
               updatedAt: session.updatedAt.toISOString(),
             },
     }));
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Add a proxy by hand',
+    description:
+      'The workers are given the manual proxies before the found ones, whatever their check and exit country. A proxy that is listed already becomes manual. The address may carry `user:password@` for an HTTP(S) proxy: the credentials are kept apart, given to the workers only and never listed.',
+  })
+  @ApiNoContentResponse()
+  async add(@Body({ schema: proxyAddBodySchema }) body: ProxyAddBodyType): Promise<void> {
+    await this.addManualProxy.execute(body.server);
   }
 
   @Patch()

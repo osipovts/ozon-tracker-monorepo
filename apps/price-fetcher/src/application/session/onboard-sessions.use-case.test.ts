@@ -75,7 +75,7 @@ void test('uploads a session per prepared proxy and explains every skipped one',
     rejected,
     'socks5://127.0.0.1:1080',
   ]);
-  const steps: Array<[string, number, number]> = [];
+  const steps: Array<[string | null, number, number]> = [];
 
   const summary = await useCase.execute(
     5,
@@ -89,7 +89,7 @@ void test('uploads a session per prepared proxy and explains every skipped one',
 
   assert.deepEqual(summary.ready, [working]);
   assert.deepEqual(
-    summary.skipped.map((item): string => item.server),
+    summary.skipped.map((item): string | null => item.server),
     [dead, skipped, rejected, 'socks5://127.0.0.1:1080'],
   );
   assert.match(summary.skipped[0]?.reason ?? '', /does not work: timeout/);
@@ -121,4 +121,38 @@ void test('a time-out while waiting for the check skips the proxy', async (): Pr
   assert.deepEqual(summary.ready, []);
   assert.match(summary.skipped[0]?.reason ?? '', /timed out/);
   assert.equal(uploaded.length, 0);
+});
+
+void test('opens one window without a proxy for the direct connection and ignores the proxies of the hub', async (): Promise<void> => {
+  const { useCase, uploaded, closed } = setup([working]);
+
+  const summary = await useCase.execute(
+    5,
+    new AbortController().signal,
+    (): Promise<CaptureDecisionType> => Promise.resolve('save'),
+    [null],
+  );
+
+  assert.deepEqual(summary, { ready: [null], skipped: [] });
+  assert.deepEqual(closed, ['direct']);
+  assert.equal(uploaded.length, 1);
+});
+
+void test('prepares the given proxies with credentials and keeps the credentials out of the summary', async (): Promise<void> => {
+  const { useCase, uploaded } = setup([working]);
+
+  const summary = await useCase.execute(
+    5,
+    new AbortController().signal,
+    (): Promise<CaptureDecisionType> => Promise.resolve('save'),
+    ['http://user:secret@217.71.230.9:3128', 'http://user:secret@127.0.0.1:3128'],
+  );
+
+  assert.deepEqual(summary.ready, ['http://217.71.230.9:3128']);
+  assert.deepEqual(
+    summary.skipped.map((item): string | null => item.server),
+    ['http://127.0.0.1:3128'],
+  );
+  assert.equal(JSON.stringify(summary).includes('secret'), false);
+  assert.equal(uploaded.length, 1);
 });

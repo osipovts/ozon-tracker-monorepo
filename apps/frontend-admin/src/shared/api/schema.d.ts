@@ -170,7 +170,11 @@ export interface paths {
      */
     get: operations['ProxiesController_list'];
     put?: never;
-    post?: never;
+    /**
+     * Add a proxy by hand
+     * @description The workers are given the manual proxies before the found ones, whatever their check and exit country. A proxy that is listed already becomes manual. The address may carry `user:password@` for an HTTP(S) proxy: the credentials are kept apart, given to the workers only and never listed.
+     */
+    post: operations['ProxiesController_add'];
     /**
      * Delete a proxy
      * @description The next refresh of its source finds it again if it is still listed there: turn it off instead to keep it away.
@@ -1098,6 +1102,30 @@ export interface operations {
             total: number;
           };
         };
+      };
+    };
+  };
+  ProxiesController_add: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** Format: uri */
+          server: string;
+        };
+      };
+    };
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

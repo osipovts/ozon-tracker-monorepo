@@ -23,6 +23,7 @@ function proxy(
     checksAlive: alive ? 1 : 0,
     lastCheckedAt: new Date(checked),
     disabledAt: disabled ? new Date('2026-10-31T09:00:00Z') : null,
+    credentials: null,
   });
 }
 

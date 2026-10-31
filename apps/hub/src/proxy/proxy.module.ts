@@ -7,6 +7,7 @@ import { ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
+import { AddManualProxyUseCase } from './application/add-manual-proxy.use-case.js';
 import { DeleteAllProxiesUseCase } from './application/delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from './application/delete-proxy.use-case.js';
 import { GetProxyStatsUseCase } from './application/get-proxy-stats.use-case.js';
@@ -47,6 +48,12 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
         sessions: ListMarketplaceSessionsUseCase,
       ): ListProxiesUseCase => new ListProxiesUseCase(proxies, sessions),
       inject: [PROXY_REPOSITORY, ListMarketplaceSessionsUseCase],
+    },
+    {
+      provide: AddManualProxyUseCase,
+      useFactory: (proxies: ProxyRepositoryPort): AddManualProxyUseCase =>
+        new AddManualProxyUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
     },
     {
       provide: SetProxyDisabledUseCase,

@@ -93,6 +93,11 @@ export const ru: DictionaryType = {
     sessionActiveHint: 'У прокси есть сессия, которую маркетплейс ещё пропускает.',
     sessionStaleHint: 'Сессия устарела: {{reason}}. Нужна новая (sessions:onboard).',
     sessionNoneHint: 'У прокси нет сессии этого маркетплейса: через него нельзя читать цены.',
+    add: 'Добавить прокси',
+    addTitle: 'Добавить прокси вручную',
+    addAddress: 'Адрес',
+    addHint:
+      'HTTP(S) или SOCKS5 с публичным IPv4 и портом. Для HTTP(S) можно указать user:password@. Ручные прокси выдаются воркерам раньше найденных, а пароль нигде не показывается.',
     delete: 'Удалить',
     noMatch: 'Подходящих прокси нет.',
     deleteTitle: 'Удалить прокси?',

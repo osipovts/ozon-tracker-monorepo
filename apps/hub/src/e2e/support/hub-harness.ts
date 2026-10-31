@@ -101,6 +101,7 @@ export async function seedProxies(prisma: PrismaClient, servers: string[]): Prom
           checksAlive: 3,
           lastCheckedAt: new Date(),
           disabledAt: null,
+          credentials: null,
         }),
     ),
   );

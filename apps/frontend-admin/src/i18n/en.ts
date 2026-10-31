@@ -92,6 +92,11 @@ export const en = {
     sessionStaleHint: 'The session is stale: {{reason}}. It needs a new one (sessions:onboard).',
     sessionNoneHint:
       'The proxy has no session of this marketplace: prices cannot be read through it.',
+    add: 'Add proxy',
+    addTitle: 'Add a proxy by hand',
+    addAddress: 'Address',
+    addHint:
+      'HTTP(S) or SOCKS5 with a public IPv4 and port. An HTTP(S) one may carry user:password@. Manual proxies are given to the workers before the found ones, and the password is never shown.',
     delete: 'Delete',
     noMatch: 'No proxies match.',
     deleteTitle: 'Delete the proxy?',

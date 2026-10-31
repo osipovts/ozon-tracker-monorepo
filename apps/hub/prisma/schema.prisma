@@ -27,6 +27,9 @@ model Proxy {
   lastCheckedAt DateTime
   /// When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on.
   disabledAt    DateTime?
+  /// Credentials of an HTTP(S) proxy that asks for them; given to the workers only, never listed.
+  username      String?
+  password      String?
 
   @@index([alive, successRate(sort: Desc), latencyMs])
   @@map("proxies")

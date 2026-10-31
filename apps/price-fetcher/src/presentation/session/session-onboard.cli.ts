@@ -21,6 +21,8 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
     options: {
       hub: { type: 'string', default: process.env['HUB_URL'] ?? 'http://localhost:3000' },
       limit: { type: 'string', default: '5' },
+      direct: { type: 'boolean', default: false },
+      proxy: { type: 'string', multiple: true },
       'wait-ms': { type: 'string', default: '600000' },
       'timeout-ms': { type: 'string', default: '60000' },
       'browser-path': { type: 'string' },
@@ -30,7 +32,7 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
 
   if (values.help === true) {
     console.log(
-      'Usage: HUB_API_KEY=<key of the hub> pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
+      'Usage: HUB_API_KEY=<key of the hub> pnpm session:onboard [--hub http://localhost:3000] [--limit 5] [--direct] [--proxy http://user:password@host:port ...] [--wait-ms 600000] [--timeout-ms 60000] [--browser-path /usr/bin/chromium]',
     );
 
     return;
@@ -45,6 +47,12 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
   const limit = z.coerce.number().int().min(1).max(100).parse(values.limit);
   const waitMs = z.coerce.number().int().min(10_000).max(3_600_000).parse(values['wait-ms']);
   const timeoutMs = z.coerce.number().int().min(1000).max(600_000).parse(values['timeout-ms']);
+
+  // Proxies with credentials are given here: the hub never lists them.
+  const routes: Array<string | null> | undefined =
+    values.direct || values.proxy !== undefined
+      ? [...(values.direct ? [null] : []), ...(values.proxy ?? [])]
+      : undefined;
 
   const logger = new ConsoleLoggerAdapter(
     parseLogLevel(process.env['LOG_LEVEL'], 'info'),
@@ -72,12 +80,18 @@ export async function runSessionOnboardCli(args: string[] = process.argv.slice(2
         logger.child('capture'),
       ),
       logger,
-    ).execute(limit, new AbortController().signal, (step) => promptCapture(terminal, step, waitMs));
+    ).execute(
+      limit,
+      new AbortController().signal,
+      (step) => promptCapture(terminal, step, waitMs),
+      routes,
+    );
 
     logger.info(
       `Done: ${String(summary.ready.length)} ready, ${String(summary.skipped.length)} skipped`,
     );
-    for (const { server, reason } of summary.skipped) logger.info(`Skipped ${server}: ${reason}`);
+    for (const { server, reason } of summary.skipped)
+      logger.info(`Skipped ${server ?? 'direct connection'}: ${reason}`);
   } finally {
     terminal.close();
     await browser.close();

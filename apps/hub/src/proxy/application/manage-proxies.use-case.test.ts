@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { ProxyEntity } from '../domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
+import { AddManualProxyUseCase } from './add-manual-proxy.use-case.js';
 import { DeleteAllProxiesUseCase } from './delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from './delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from './list-best-proxy-servers.use-case.js';
@@ -24,6 +25,7 @@ function proxy(server: string, checksAlive: number): ProxyEntity {
     checksAlive,
     lastCheckedAt: new Date('2026-10-31T10:00:00Z'),
     disabledAt: null,
+    credentials: null,
   });
 }
 
@@ -80,4 +82,40 @@ void test('deleting all proxies leaves none for the workers', async (): Promise<
 
   assert.equal(await new DeleteAllProxiesUseCase(proxies).execute(), 2);
   assert.deepEqual(await best.execute({ country: 'RU', limit: 5 }), []);
+});
+
+void test('manual proxies go to the workers before the found ones, whatever their check and country', async (): Promise<void> => {
+  const { proxies, best } = await setup();
+  const manual = 'socks5://217.71.230.9:1080';
+
+  await new AddManualProxyUseCase(proxies).execute(manual);
+
+  assert.deepEqual(await best.execute({ country: 'RU', limit: 5 }), [manual, first, second]);
+  assert.deepEqual(await best.execute({ country: 'KZ', limit: 5 }), [manual]);
+  assert.deepEqual(await best.execute({ country: 'RU', limit: 2 }), [manual, first]);
+});
+
+void test('a found proxy becomes manual and stays so after a check', async (): Promise<void> => {
+  const { proxies, best } = await setup();
+
+  await new AddManualProxyUseCase(proxies).execute(second);
+  const [known] = await proxies.findByServers([second]);
+  assert.ok(known);
+  await proxies.saveMany([
+    ProxyEntity.fromCheck(
+      {
+        server: second,
+        source: 'proxifly',
+        alive: false,
+        country: null,
+        exitIp: null,
+        latencyMs: null,
+        checkedAt: new Date('2026-10-31T11:00:00Z'),
+      },
+      known,
+    ),
+  ]);
+
+  assert.equal((await proxies.findByServers([second]))[0]?.isManual, true);
+  assert.deepEqual(await best.execute({ country: 'RU', limit: 5 }), [second, first]);
 });

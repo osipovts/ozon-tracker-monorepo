@@ -12,6 +12,7 @@ import {
   Switch,
   Table,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from '@mantine/core';
@@ -26,6 +27,7 @@ import {
   proxySources,
   type ProxySourceType,
   sessionMarketplace,
+  useAddProxy,
   useDeleteAllProxies,
   useDeleteProxy,
   useProxies,
@@ -177,6 +179,8 @@ export function ProxiesPage(): ReactElement {
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [address, setAddress] = useState('');
   const proxies = useProxies({
     alive: toFilter(alive),
     disabled: toFilter(disabled),
@@ -186,6 +190,7 @@ export function ProxiesPage(): ReactElement {
   const setProxyDisabled = useSetProxyDisabled();
   const deleteProxy = useDeleteProxy();
   const deleteAllProxies = useDeleteAllProxies();
+  const addProxy = useAddProxy();
   const data = proxies.data;
 
   return (
@@ -193,6 +198,15 @@ export function ProxiesPage(): ReactElement {
       <Group justify="space-between" align="flex-start">
         <Title order={2}>{t('proxies.title')}</Title>
         <Group align="flex-start">
+          <Button
+            variant="light"
+            onClick={(): void => {
+              addProxy.reset();
+              setAdding(true);
+            }}
+          >
+            {t('proxies.add')}
+          </Button>
           <Button
             color="red"
             variant="light"
@@ -326,6 +340,44 @@ export function ProxiesPage(): ReactElement {
           )}
         </>
       )}
+      <Modal
+        opened={adding}
+        title={t('proxies.addTitle')}
+        onClose={(): void => {
+          setAdding(false);
+          setAddress('');
+        }}
+      >
+        <form
+          onSubmit={(event): void => {
+            event.preventDefault();
+            addProxy.mutate(address.trim(), {
+              onSuccess: (): void => {
+                setAdding(false);
+                setAddress('');
+              },
+            });
+          }}
+        >
+          <Stack>
+            <TextInput
+              label={t('proxies.addAddress')}
+              description={t('proxies.addHint')}
+              placeholder="http://user:password@203.0.113.10:3128"
+              value={address}
+              autoComplete="off"
+              data-autofocus
+              onChange={(event): void => {
+                setAddress(event.currentTarget.value);
+              }}
+            />
+            {addProxy.error !== null && <ErrorAlert error={addProxy.error} />}
+            <Button type="submit" disabled={address.trim() === ''} loading={addProxy.isPending}>
+              {t('proxies.add')}
+            </Button>
+          </Stack>
+        </form>
+      </Modal>
       <Modal
         opened={deleting !== null}
         title={t('proxies.deleteTitle')}

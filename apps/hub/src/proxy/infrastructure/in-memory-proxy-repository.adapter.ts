@@ -10,8 +10,11 @@ import type {
 } from '../application/proxy-repository.port.js';
 import type { ProxyEntity } from '../domain/proxy.entity.js';
 
-function matches({ snapshot }: ProxyEntity, filter: ProxyFilterInterface): boolean {
+function matches(proxy: ProxyEntity, filter: ProxyFilterInterface): boolean {
+  const { snapshot } = proxy;
+
   return (
+    (filter.manual === undefined || proxy.isManual === filter.manual) &&
     (filter.alive === undefined || snapshot.alive === filter.alive) &&
     (filter.country === undefined || snapshot.country === filter.country) &&
     (filter.disabled === undefined || (snapshot.disabledAt !== null) === filter.disabled) &&

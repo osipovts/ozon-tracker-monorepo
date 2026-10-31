@@ -1,3 +1,4 @@
+import { ProxyEndpointEntity } from 'proxy-endpoint';
 import { marketplaceSchema, proxyServerSchema } from 'queue-contract';
 import { z } from 'zod';
 
@@ -62,6 +63,27 @@ export const proxyServerQuerySchema = z.object({
 });
 
 export type ProxyServerQueryType = z.infer<typeof proxyServerQuerySchema>;
+
+export const proxyAddBodySchema = z.object({
+  /** HTTP(S) or SOCKS5 proxy URL with a public IPv4; an HTTP(S) one may carry `user:password@`. */
+  server: proxyServerSchema.refine(
+    (server): boolean => {
+      try {
+        new ProxyEndpointEntity(server);
+
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    {
+      error:
+        'Proxy must use HTTP(S) or SOCKS5 with a public IPv4 and port; SOCKS5 authentication is unsupported',
+    },
+  ),
+});
+
+export type ProxyAddBodyType = z.infer<typeof proxyAddBodySchema>;
 
 export const proxyDisabledBodySchema = z.object({ disabled: z.boolean() });
 
