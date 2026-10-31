@@ -125,19 +125,27 @@ const settle = (): Promise<void> =>
     setImmediate(resolve);
   });
 
-void test('at a minute of the hour it runs at that minute of every hour, and not when the hub starts', async (t: TestContext): Promise<void> => {
-  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 9, 31, 14, 20) });
+/** A run of the 13:55 slot, as the limiter of a hub that went down afterwards remembers it. */
+async function ranAtSlot(limiter: InMemoryRateLimiterAdapter): Promise<void> {
+  await limiter.hit('price-refresh:run', { limit: 1, windowMs: 54 * 60_000 });
+}
+
+void test('at a minute of the hour it runs at that minute of every hour, and not when the hub starts after a run', async (t: TestContext): Promise<void> => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 9, 31, 13, 55) });
   const { refresh, calls } = counting();
+  const limiter = new InMemoryRateLimiterAdapter();
+  await ranAtSlot(limiter);
+  t.mock.timers.tick(25 * 60_000);
   const adapter = new PeriodicPriceRefreshAdapter(
     refresh,
-    new InMemoryRateLimiterAdapter(),
+    limiter,
     { kind: 'hourly', minute: 55 },
     silentLogger,
   );
 
   adapter.onApplicationBootstrap();
   await settle();
-  assert.equal(calls(), 0);
+  assert.equal(calls(), 0, 'at 14:20, the 13:55 slot was run');
 
   t.mock.timers.tick(34 * 60_000);
   await settle();
@@ -155,4 +163,46 @@ void test('at a minute of the hour it runs at that minute of every hour, and not
   t.mock.timers.tick(2 * 60 * 60_000);
   await settle();
   assert.equal(calls(), 2, 'not after it shuts down');
+});
+
+void test('a hub that was down at the minute runs the missed slot when it starts, and keeps the next one', async (t: TestContext): Promise<void> => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 9, 31, 14, 20) });
+  const { refresh, calls } = counting();
+  const adapter = new PeriodicPriceRefreshAdapter(
+    refresh,
+    new InMemoryRateLimiterAdapter(),
+    { kind: 'hourly', minute: 55 },
+    silentLogger,
+  );
+
+  adapter.onApplicationBootstrap();
+  await settle();
+  assert.equal(calls(), 1, 'at 14:20, nothing ran at 13:55');
+
+  t.mock.timers.tick(35 * 60_000);
+  await settle();
+  assert.equal(calls(), 2, 'the late run does not hold back 14:55');
+
+  await adapter.onApplicationShutdown();
+});
+
+void test('a hub that starts just before the next slot leaves it to the slot', async (t: TestContext): Promise<void> => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 9, 31, 14, 52) });
+  const { refresh, calls } = counting();
+  const adapter = new PeriodicPriceRefreshAdapter(
+    refresh,
+    new InMemoryRateLimiterAdapter(),
+    { kind: 'hourly', minute: 55 },
+    silentLogger,
+  );
+
+  adapter.onApplicationBootstrap();
+  await settle();
+  assert.equal(calls(), 0, 'at 14:52');
+
+  t.mock.timers.tick(3 * 60_000);
+  await settle();
+  assert.equal(calls(), 1, 'at 14:55');
+
+  await adapter.onApplicationShutdown();
 });
