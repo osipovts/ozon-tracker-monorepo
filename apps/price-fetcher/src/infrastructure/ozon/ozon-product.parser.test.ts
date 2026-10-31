@@ -19,6 +19,7 @@ const base: OzonPageInterface = {
   body: '',
   priceText: '',
   purchaseText: '',
+  outOfStockText: '',
   structuredData: [],
   imageUrl: '',
 };
@@ -137,6 +138,50 @@ void test('returns out-of-stock without inventing a zero price', (): void => {
   assert.ok(snapshot);
   assert.equal(snapshot.availability, 'out_of_stock');
   assert.deepEqual(snapshot.prices, []);
+});
+
+const searchUrl =
+  'https://www.ozon.ru/search/?deny_category_prediction=true&from_global=true&text=ASUS+UX3607OA-SQ050W';
+const soldOutWidget =
+  '203\u00a0489 ₽\nASUS UX3607OA-SQ050W Ноутбук 16", RAM 48 ГБ, SSD 1000 ГБ, Qualcomm Adreno, Windows Home, бежевый';
+
+void test('reads a product that is out of stock from the search Ozon sends its address to, with its last price', (): void => {
+  const snapshot = parser.parse(reference, {
+    ...base,
+    url: searchUrl,
+    heading: '',
+    purchaseText: soldOutWidget,
+    outOfStockText: soldOutWidget,
+    imageUrl: 'https://ir.ozone.ru/s3/cms/logo/og_ozon_ru.png',
+  });
+
+  assert.ok(snapshot);
+  assert.equal(snapshot.availability, 'out_of_stock');
+  assert.deepEqual(snapshot.prices, [{ amountMinor: 20348900, currency: 'RUB' }]);
+  assert.equal(
+    snapshot.title,
+    'ASUS UX3607OA-SQ050W Ноутбук 16", RAM 48 ГБ, SSD 1000 ГБ, Qualcomm Adreno, Windows Home, бежевый',
+  );
+  assert.equal(snapshot.imageUrl, null);
+});
+
+void test('does not take a search without the sold out widget, or another site, for the product', (): void => {
+  assert.equal(parser.parse(reference, { ...base, url: searchUrl, heading: '' }), null);
+  assert.equal(
+    parser.parse(reference, {
+      ...base,
+      url: 'https://example.com/search/?text=x',
+      outOfStockText: soldOutWidget,
+    }),
+    null,
+  );
+});
+
+void test('takes the sold out widget of the card itself for out of stock whatever it says', (): void => {
+  const snapshot = parser.parse(reference, { ...base, outOfStockText: 'Сообщить о поступлении' });
+
+  assert.ok(snapshot);
+  assert.equal(snapshot.availability, 'out_of_stock');
 });
 
 void test('takes the picture of the product from its markup, else from the page, and only an address a browser loads', (): void => {

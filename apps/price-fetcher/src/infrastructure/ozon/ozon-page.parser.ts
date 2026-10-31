@@ -73,6 +73,9 @@ export class OzonPageParser {
         )
           .map((element): string => element.innerText)
           .join('\n'),
+        outOfStockText:
+          window.document.querySelector<HTMLElement>('[data-widget^="webOutOfStock"]')?.innerText ??
+          '',
         imageUrl:
           window.document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '',
         structuredData: Array.from(

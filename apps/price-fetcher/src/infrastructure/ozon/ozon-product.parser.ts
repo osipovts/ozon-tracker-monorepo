@@ -21,6 +21,7 @@ const productSchema = z.object({
   offers: z.union([offerSchema, z.array(offerSchema)]).optional(),
 });
 const graphSchema = z.object({ '@graph': z.array(z.unknown()) });
+const moneyLinePattern = /^[\d\p{Zs},.]+\s*(?:₽|руб\.?)$/iu;
 const moneyPattern = /(\d+(?:\p{Zs}\d{3})*(?:[,.]\d{1,2})?)\s*(?:₽|руб\.?)/giu;
 
 /** What the JSON-LD markup of the page tells about the product. */
@@ -65,13 +66,16 @@ export class OzonProductParser {
     reference: ProductReferenceEntity,
     page: OzonPageInterface,
   ): ProductSnapshotInterface | null {
-    if (!this.isPageOf(reference, page.url)) return null;
+    if (!this.isPageOf(reference, page.url)) return this.readOutOfStockRedirect(page);
 
     const structured = this.readStructuredData(reference, page.structuredData);
     const widgetPrices = this.readWidgetPrices(page.priceText);
     // Prefer rendered prices over possibly stale structured markup.
     const prices = widgetPrices.length > 0 ? widgetPrices : structured.prices;
-    const availability = this.readAvailability(page.purchaseText) ?? structured.availability;
+    const availability =
+      page.outOfStockText === ''
+        ? (this.readAvailability(page.purchaseText) ?? structured.availability)
+        : 'out_of_stock';
     const title = page.heading || structured.title;
     if (title === '' || (prices.length === 0 && availability !== 'out_of_stock')) return null;
 
@@ -81,6 +85,36 @@ export class OzonProductParser {
       prices,
       availability,
       imageUrl: structured.imageUrl ?? httpUrlOf(page.imageUrl),
+    };
+  }
+
+  /**
+   * Ozon sends the address of a product that is out of stock to a search for its name, where the product is
+   * shown as sold out. The page does not name the product, but only the product we asked for leads there.
+   */
+  private readOutOfStockRedirect(page: OzonPageInterface): ProductSnapshotInterface | null {
+    try {
+      const url = new URL(page.url);
+      if (!/(?:^|\.)ozon\.ru$/.test(url.hostname) || !url.pathname.startsWith('/search/'))
+        return null;
+    } catch {
+      return null;
+    }
+
+    // The widget gives the last price the product had, which is kept as the price: the title is its other line.
+    const title = page.outOfStockText
+      .split('\n')
+      .map((line): string => line.trim())
+      .find((line): boolean => line !== '' && !moneyLinePattern.test(line));
+    if (title === undefined) return null;
+
+    return {
+      title,
+      observedAt: new Date().toISOString(),
+      prices: this.readWidgetPrices(page.outOfStockText),
+      availability: 'out_of_stock',
+      // The page names the picture of Ozon itself, not of the product.
+      imageUrl: null,
     };
   }
 
