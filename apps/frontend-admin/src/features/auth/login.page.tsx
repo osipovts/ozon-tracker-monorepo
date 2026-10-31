@@ -3,29 +3,39 @@ import {
   Button,
   Card,
   Container,
+  Group,
   PasswordInput,
   Stack,
   TextInput,
   Title,
 } from '@mantine/core';
+import type { TFunction } from 'i18next';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
+import { LanguageControl } from '../../app/language.component.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { useLogin, useMe } from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
-function explain(error: Error): string {
-  if (!(error instanceof ApiError)) return 'The hub could not be reached.';
-  if (error.status === 401) return 'The email or the password is wrong.';
+function explain(error: Error, t: TFunction): string {
+  if (!(error instanceof ApiError)) return t('errors.unreachable');
+  if (error.status === 401) return t('login.wrongCredentials');
   if (error.status === 429) {
-    return `Too many attempts.${error.retryAfterSeconds === null ? '' : ` Try again in ${String(error.retryAfterSeconds)} s.`}`;
+    const wait =
+      error.retryAfterSeconds === null
+        ? ''
+        : ` ${t('errors.tryAgain', { seconds: error.retryAfterSeconds })}`;
+
+    return `${t('login.tooManyAttempts')}${wait}`;
   }
 
   return error.message;
 }
 
 export function LoginPage(): ReactElement {
+  const { t } = useTranslation();
   const me = useMe();
   const login = useLogin();
   const navigate = useNavigate();
@@ -44,9 +54,12 @@ export function LoginPage(): ReactElement {
       <Card withBorder padding="xl">
         <form onSubmit={submit}>
           <Stack>
-            <Title order={2}>Hub admin</Title>
+            <Group justify="space-between">
+              <Title order={2}>{t('login.title')}</Title>
+              <LanguageControl />
+            </Group>
             <TextInput
-              label="Email"
+              label={t('login.email')}
               type="email"
               autoComplete="username"
               required
@@ -56,7 +69,7 @@ export function LoginPage(): ReactElement {
               }}
             />
             <PasswordInput
-              label="Password"
+              label={t('login.password')}
               autoComplete="current-password"
               required
               value={password}
@@ -66,11 +79,11 @@ export function LoginPage(): ReactElement {
             />
             {login.error !== null && (
               <Alert color="red" role="alert">
-                {explain(login.error)}
+                {explain(login.error, t)}
               </Alert>
             )}
             <Button type="submit" loading={login.isPending}>
-              Log in
+              {t('login.submit')}
             </Button>
           </Stack>
         </form>

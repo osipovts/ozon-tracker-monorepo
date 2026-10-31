@@ -15,8 +15,13 @@ export type ProxyPageType =
 export interface ProxyFilterInterface {
   alive: 'true' | 'false' | undefined;
   disabled: 'true' | 'false' | undefined;
+  /** Whether the proxy has an active session of `sessionMarketplace`. */
+  ready: 'true' | 'false' | undefined;
   page: number;
 }
+
+/** The marketplace whose sessions the list shows: the only one the hub reads so far. */
+export const sessionMarketplace = 'ozon';
 
 export const proxyPageSize = 20;
 
@@ -32,8 +37,10 @@ export function useProxies(
             query: {
               page: filter.page,
               pageSize: proxyPageSize,
+              marketplace: sessionMarketplace,
               ...(filter.alive === undefined ? {} : { alive: filter.alive }),
               ...(filter.disabled === undefined ? {} : { disabled: filter.disabled }),
+              ...(filter.ready === undefined ? {} : { ready: filter.ready }),
             },
           },
         }),

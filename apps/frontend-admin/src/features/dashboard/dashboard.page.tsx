@@ -1,6 +1,8 @@
 import { Badge, Card, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
 import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { useDashboard } from './use-dashboard.hook.js';
 
@@ -29,6 +31,8 @@ function Stat({
 }
 
 export function DashboardPage(): ReactElement {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const dashboard = useDashboard();
   const data = dashboard.data;
 
@@ -40,55 +44,58 @@ export function DashboardPage(): ReactElement {
 
   return (
     <Stack>
-      <Title order={2}>Dashboard</Title>
+      <Title order={2}>{t('dashboard.title')}</Title>
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <Stat
-          title="Users"
+          title={t('dashboard.users')}
           value={String(users.total)}
-          note={`${String(users.verified)} verified, ${String(users.joinedLastDay)} joined in a day`}
+          note={t('dashboard.usersNote', {
+            verified: users.verified,
+            joined: users.joinedLastDay,
+          })}
         />
         <Stat
-          title="Products"
+          title={t('dashboard.products')}
           value={String(products.products)}
-          note={`${String(products.trackings)} trackings`}
+          note={t('dashboard.productsNote', { trackings: products.trackings })}
         />
         <Stat
-          title="Proxies alive"
+          title={t('dashboard.proxiesAlive')}
           value={`${String(proxies.alive)} / ${String(proxies.total)}`}
-          note={`${String(proxies.disabled)} turned off`}
+          note={t('dashboard.proxiesNote', { disabled: proxies.disabled })}
         />
         <Stat
-          title="Browser sessions"
+          title={t('dashboard.sessions')}
           value={String(sessions.active)}
-          note={`${String(sessions.stale)} stale`}
+          note={t('dashboard.sessionsNote', { stale: sessions.stale })}
         />
       </SimpleGrid>
       <Card withBorder>
         <Title order={4} mb="xs">
-          Jobs in the last day
+          {t('dashboard.jobsTitle')}
         </Title>
         <Group>
-          <Badge color="gray">queued {counts.queued}</Badge>
-          <Badge color="blue">running {counts.running}</Badge>
-          <Badge color="yellow">retrying {counts.retrying}</Badge>
-          <Badge color="green">completed {counts.completed}</Badge>
-          <Badge color="red">failed {counts.failed}</Badge>
+          <Badge color="gray">{t('dashboard.queued', { count: counts.queued })}</Badge>
+          <Badge color="blue">{t('dashboard.running', { count: counts.running })}</Badge>
+          <Badge color="yellow">{t('dashboard.retrying', { count: counts.retrying })}</Badge>
+          <Badge color="green">{t('dashboard.completed', { count: counts.completed })}</Badge>
+          <Badge color="red">{t('dashboard.failed', { count: counts.failed })}</Badge>
         </Group>
       </Card>
       <Card withBorder>
         <Title order={4} mb="xs">
-          Recent failures
+          {t('dashboard.failuresTitle')}
         </Title>
         {jobs.recentFailures.length === 0 ? (
-          <Text c="dimmed">None.</Text>
+          <Text c="dimmed">{t('dashboard.none')}</Text>
         ) : (
           <Table>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Kind</Table.Th>
-                <Table.Th>Subject</Table.Th>
-                <Table.Th>Error</Table.Th>
-                <Table.Th>Finished</Table.Th>
+                <Table.Th>{t('dashboard.kind')}</Table.Th>
+                <Table.Th>{t('dashboard.subject')}</Table.Th>
+                <Table.Th>{t('dashboard.error')}</Table.Th>
+                <Table.Th>{t('dashboard.finished')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -98,7 +105,9 @@ export function DashboardPage(): ReactElement {
                   <Table.Td>{job.subject}</Table.Td>
                   <Table.Td>{job.error ?? '-'}</Table.Td>
                   <Table.Td>
-                    {job.finishedAt === null ? '-' : new Date(job.finishedAt).toLocaleString()}
+                    {job.finishedAt === null
+                      ? '-'
+                      : new Date(job.finishedAt).toLocaleString(locale)}
                   </Table.Td>
                 </Table.Tr>
               ))}

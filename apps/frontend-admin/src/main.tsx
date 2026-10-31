@@ -7,7 +7,9 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 
 import { createAppRouter } from './app/router.js';
+import { createI18n } from './i18n/i18n.js';
 
+createI18n();
 const queryClient = new QueryClient();
 const container = document.getElementById('root');
 if (container === null) throw new Error('The page has no #root');
