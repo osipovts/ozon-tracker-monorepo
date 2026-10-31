@@ -14,6 +14,7 @@ import { ListBestProxyServersUseCase } from '../../proxy/application/index.js';
 import { ProxyEntity } from '../../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
+import { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
 import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
@@ -93,10 +94,13 @@ async function createUseCase(
   return {
     useCase: new RequestPriceObservationUseCase(
       products,
-      new ListBestProxyServersUseCase(repository),
-      new ListMarketplaceSessionsUseCase(sessionRepository),
+      new ChoosePriceRoutesUseCase(
+        new ListBestProxyServersUseCase(repository),
+        new ListMarketplaceSessionsUseCase(sessionRepository),
+        2,
+      ),
       new ScheduleJobUseCase(queue, jobs),
-      { proxyCount: 2, timeoutMs: 30000 },
+      30000,
     ),
     requests,
     jobs,

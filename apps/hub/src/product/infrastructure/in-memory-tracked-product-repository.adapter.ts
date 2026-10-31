@@ -17,6 +17,7 @@ function keyOf(reference: TrackedProductReferenceInterface): string {
 
 export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRepositoryPort {
   private readonly products = new Map<string, TrackedProductEntity>();
+  private readonly requested = new Map<string, Date>();
   /** In the order of subscribing: the newest subscription is the last one. */
   private readonly subscriptions: Array<{ userId: string; productId: string }> = [];
 
@@ -59,6 +60,30 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     }
 
     return Promise.resolve(true);
+  }
+
+  listDueForRefresh(before: Date, limit: number): Promise<TrackedProductEntity[]> {
+    const lastTouch = (product: TrackedProductEntity): number =>
+      Math.max(
+        product.snapshot.lastCheckedAt?.getTime() ?? 0,
+        this.requested.get(product.snapshot.id)?.getTime() ?? 0,
+      );
+    const due = Array.from(this.products.values())
+      .filter(
+        (product): boolean =>
+          this.subscriptions.some(({ productId }): boolean => productId === product.snapshot.id) &&
+          lastTouch(product) < before.getTime(),
+      )
+      .toSorted((a, b): number => lastTouch(a) - lastTouch(b))
+      .slice(0, limit);
+
+    return Promise.resolve(due);
+  }
+
+  markRequested(productIds: string[], at: Date): Promise<void> {
+    for (const id of productIds) this.requested.set(id, at);
+
+    return Promise.resolve();
   }
 
   findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {

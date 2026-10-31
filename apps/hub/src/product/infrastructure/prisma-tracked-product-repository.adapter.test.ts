@@ -118,3 +118,41 @@ void test(
     }
   },
 );
+
+void test(
+  'lists the tracked products whose last read and request are both before a time, the longest waiting first',
+  { skip },
+  async (): Promise<void> => {
+    const [fresh, waiting, never, untracked] = [
+      await newProduct(),
+      await newProduct(),
+      await newProduct(),
+      await newProduct(),
+    ];
+    for (const id of [fresh, waiting, never]) await products.subscribe(jane, id);
+    const before = new Date('2026-10-31T10:00:00Z');
+    await products.markChecked(waiting, 'ok', new Date(before.getTime() - 3_600_000));
+    await products.markRequested([fresh], new Date(before.getTime() + 60_000));
+    await products.markChecked(fresh, 'ok', new Date(before.getTime() - 7_200_000));
+
+    const due = (await products.listDueForRefresh(before, 1000)).map(
+      (product): string => product.snapshot.id,
+    );
+
+    assert.ok(due.includes(never));
+    assert.ok(due.includes(waiting));
+    assert.equal(due.includes(fresh), false);
+    assert.equal(due.includes(untracked), false);
+    assert.ok(due.indexOf(never) < due.indexOf(waiting));
+
+    await products.markRequested([never, waiting], new Date(before.getTime() + 1000));
+    const after = (await products.listDueForRefresh(before, 1000)).map(
+      (product): string => product.snapshot.id,
+    );
+    assert.equal(after.includes(never) || after.includes(waiting), false);
+
+    for (const id of [fresh, waiting, never, untracked]) {
+      await prisma.trackedProduct.delete({ where: { id } });
+    }
+  },
+);

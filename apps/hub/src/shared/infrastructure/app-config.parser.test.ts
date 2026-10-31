@@ -90,3 +90,13 @@ void test('sends mail through the SMTP service it is given, and writes it to the
   assert.throws(() => parser.parse(env(['SMTP_URL', 'http://mail.example.com'])));
   assert.equal(parser.parse(env()).emailVerificationTtlMs, 86_400_000);
 });
+
+void test('refreshes the prices every quarter of an hour of those older than six hours, and can be turned off', (): void => {
+  const config = parser.parse(env());
+
+  assert.equal(config.priceRefreshIntervalMs, 15 * 60_000);
+  assert.equal(config.priceRefreshMaxAgeMs, 6 * 60 * 60_000);
+  assert.equal(config.priceRefreshBatchSize, 200);
+  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '0'])).priceRefreshIntervalMs, 0);
+  assert.throws(() => parser.parse(env(['PRICE_REFRESH_MAX_AGE_MS', '10'])));
+});

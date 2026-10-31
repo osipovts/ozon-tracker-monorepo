@@ -42,7 +42,7 @@ export class ScheduleJobUseCase {
         return JobEntity.queued(
           jobId,
           request.kind,
-          request.productId,
+          request.subject,
           request.products.length,
           new Date(),
           request.requestedBy,

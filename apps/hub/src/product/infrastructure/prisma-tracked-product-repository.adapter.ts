@@ -94,6 +94,33 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     });
   }
 
+  async listDueForRefresh(before: Date, limit: number): Promise<TrackedProductEntity[]> {
+    const rows = await this.prisma.trackedProduct.findMany({
+      where: {
+        subscriptions: { some: {} },
+        AND: [
+          { OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: before } }] },
+          { OR: [{ lastRequestedAt: null }, { lastRequestedAt: { lt: before } }] },
+        ],
+      },
+      // The ones nothing has touched come first, then the longest waiting.
+      orderBy: [
+        { lastRequestedAt: { sort: 'asc', nulls: 'first' } },
+        { lastCheckedAt: { sort: 'asc', nulls: 'first' } },
+      ],
+      take: limit,
+    });
+
+    return rows.map(toEntity);
+  }
+
+  async markRequested(productIds: string[], at: Date): Promise<void> {
+    await this.prisma.trackedProduct.updateMany({
+      where: { id: { in: productIds } },
+      data: { lastRequestedAt: at },
+    });
+  }
+
   async findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
     const row = await this.prisma.trackedProduct.findFirst({
       where: { id: productId, subscriptions: { some: { userId } } },

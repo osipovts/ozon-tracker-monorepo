@@ -33,6 +33,13 @@ export interface TrackedProductRepositoryPort {
   findById(id: string): Promise<TrackedProductEntity | null>;
   /** The product, if the user tracks it. */
   findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null>;
+  /**
+   * The products somebody tracks whose last read and last request are both before the time, the
+   * longest waiting first: the ones the schedule reads next.
+   */
+  listDueForRefresh(before: Date, limit: number): Promise<TrackedProductEntity[]>;
+  /** Notes that a read of the products was queued at the time, so that the schedule leaves them be for a while. */
+  markRequested(productIds: string[], at: Date): Promise<void>;
   /** The products of the user, tracked most recently first. */
   listSubscribed(
     userId: string,

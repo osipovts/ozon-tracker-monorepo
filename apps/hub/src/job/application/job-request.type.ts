@@ -8,7 +8,7 @@ export type JobRequestType = {
   | ({ kind: 'proxy_fetch' } & Omit<ProxyFetchRequestInterface, 'jobId'>)
   | ({
       kind: 'price_fetch';
-      /** The tracked product the job reads the price of. */
-      productId: string;
+      /** What the job is about: the tracked product it reads the price of, or the marketplace of a batch. */
+      subject: string;
     } & Omit<PriceFetchRequestInterface, 'jobId'>)
 );

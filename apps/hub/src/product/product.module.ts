@@ -9,10 +9,12 @@ import { JobModule } from '../job/job.module.js';
 import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ProxyModule } from '../proxy/proxy.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
+import { systemClock } from '../shared/application/clock.port.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddProductUseCase } from './application/add-product.use-case.js';
+import { ChoosePriceRoutesUseCase } from './application/choose-price-routes.use-case.js';
 import { ListPriceHistoryUseCase } from './application/list-price-history.use-case.js';
 import { ListProductsUseCase } from './application/list-products.use-case.js';
 import {
@@ -20,12 +22,14 @@ import {
   type PriceObservationRepositoryPort,
 } from './application/price-observation-repository.port.js';
 import { RecordPriceResultUseCase } from './application/record-price-result.use-case.js';
+import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
 import { RequestPriceObservationUseCase } from './application/request-price-observation.use-case.js';
 import {
   TRACKED_PRODUCT_REPOSITORY,
   type TrackedProductRepositoryPort,
 } from './application/tracked-product-repository.port.js';
+import { PeriodicPriceRefreshAdapter } from './infrastructure/periodic-price-refresh.adapter.js';
 import { PrismaPriceObservationRepositoryAdapter } from './infrastructure/prisma-price-observation-repository.adapter.js';
 import { PrismaTrackedProductRepositoryAdapter } from './infrastructure/prisma-tracked-product-repository.adapter.js';
 import { PriceResultsConsumer } from './presentation/price-results.consumer.js';
@@ -100,31 +104,83 @@ import { ProductsController } from './presentation/products.controller.js';
       inject: [TRACKED_PRODUCT_REPOSITORY, PRICE_OBSERVATION_REPOSITORY],
     },
     {
+      provide: ChoosePriceRoutesUseCase,
+      useFactory: (
+        proxyServers: ListBestProxyServersUseCase,
+        sessions: ListMarketplaceSessionsUseCase,
+        config: AppConfigInterface,
+      ): ChoosePriceRoutesUseCase =>
+        new ChoosePriceRoutesUseCase(proxyServers, sessions, config.priceProxyCount),
+      inject: [ListBestProxyServersUseCase, ListMarketplaceSessionsUseCase, APP_CONFIG],
+    },
+    {
       provide: RequestPriceObservationUseCase,
       useFactory: (
         products: TrackedProductRepositoryPort,
-        proxyServers: ListBestProxyServersUseCase,
-        sessions: ListMarketplaceSessionsUseCase,
+        chooseRoutes: ChoosePriceRoutesUseCase,
         scheduleJob: ScheduleJobUseCase,
         config: AppConfigInterface,
         logger: LoggerPort,
       ): RequestPriceObservationUseCase =>
         new RequestPriceObservationUseCase(
           products,
-          proxyServers,
-          sessions,
+          chooseRoutes,
           scheduleJob,
-          { proxyCount: config.priceProxyCount, timeoutMs: config.priceTimeoutMs },
+          config.priceTimeoutMs,
           logger.child('products'),
         ),
       inject: [
         TRACKED_PRODUCT_REPOSITORY,
-        ListBestProxyServersUseCase,
-        ListMarketplaceSessionsUseCase,
+        ChoosePriceRoutesUseCase,
         ScheduleJobUseCase,
         APP_CONFIG,
         LOGGER,
       ],
+    },
+    {
+      provide: RefreshPricesUseCase,
+      useFactory: (
+        products: TrackedProductRepositoryPort,
+        chooseRoutes: ChoosePriceRoutesUseCase,
+        scheduleJob: ScheduleJobUseCase,
+        config: AppConfigInterface,
+        logger: LoggerPort,
+      ): RefreshPricesUseCase =>
+        new RefreshPricesUseCase(
+          products,
+          chooseRoutes,
+          scheduleJob,
+          {
+            maxAgeMs: config.priceRefreshMaxAgeMs,
+            batchSize: config.priceRefreshBatchSize,
+            timeoutMs: config.priceTimeoutMs,
+          },
+          systemClock,
+          logger.child('price-refresh'),
+        ),
+      inject: [
+        TRACKED_PRODUCT_REPOSITORY,
+        ChoosePriceRoutesUseCase,
+        ScheduleJobUseCase,
+        APP_CONFIG,
+        LOGGER,
+      ],
+    },
+    {
+      provide: PeriodicPriceRefreshAdapter,
+      useFactory: (
+        refresh: RefreshPricesUseCase,
+        limiter: RateLimiterPort,
+        config: AppConfigInterface,
+        logger: LoggerPort,
+      ): PeriodicPriceRefreshAdapter =>
+        new PeriodicPriceRefreshAdapter(
+          refresh,
+          limiter,
+          config.priceRefreshIntervalMs,
+          logger.child('price-refresh'),
+        ),
+      inject: [RefreshPricesUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
     },
     {
       provide: ListPriceHistoryUseCase,

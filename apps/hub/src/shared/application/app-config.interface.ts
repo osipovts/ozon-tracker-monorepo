@@ -33,6 +33,12 @@ export interface AppConfigInterface {
   emailVerificationTtlMs: number;
   /** Mails of the link to confirm an email, that a user may ask for per window. */
   authVerificationResendMaxAttempts: number;
+  /** How often the hub looks for stale prices to queue; 0 leaves the refresh off. */
+  priceRefreshIntervalMs: number;
+  /** A product is read again once its last read or request is older than this. */
+  priceRefreshMaxAgeMs: number;
+  /** How many products one run of the refresh queues at most. */
+  priceRefreshBatchSize: number;
   /** How often the sessions that ended are deleted. */
   authSessionPurgeIntervalMs: number;
   /** The window the attempts of logging in and signing up are counted in. */

@@ -27,6 +27,7 @@ import { RecordJobEventUseCase } from '../job/application/record-job-event.use-c
 import { InMemoryJobRepositoryAdapter } from '../job/infrastructure/in-memory-job-repository.adapter.js';
 import { JobsController } from '../job/presentation/jobs.controller.js';
 import { AddProductUseCase } from '../product/application/add-product.use-case.js';
+import { ChoosePriceRoutesUseCase } from '../product/application/choose-price-routes.use-case.js';
 import { ListPriceHistoryUseCase } from '../product/application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../product/application/list-products.use-case.js';
 import { RemoveProductUseCase } from '../product/application/remove-product.use-case.js';
@@ -70,10 +71,13 @@ const queue: JobQueuePort = {
 const scheduleJob = new ScheduleJobUseCase(queue, jobs);
 const requestObservation = new RequestPriceObservationUseCase(
   products,
-  new ListBestProxyServersUseCase(proxies),
-  new ListMarketplaceSessionsUseCase(sessions),
+  new ChoosePriceRoutesUseCase(
+    new ListBestProxyServersUseCase(proxies),
+    new ListMarketplaceSessionsUseCase(sessions),
+    3,
+  ),
   scheduleJob,
-  { proxyCount: 3, timeoutMs: 30000 },
+  30000,
 );
 const listMarketplaceSessions = new ListMarketplaceSessionsUseCase(sessions);
 
@@ -87,6 +91,9 @@ const config: AppConfigInterface = {
   port: 3000,
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
+  priceRefreshIntervalMs: 0,
+  priceRefreshMaxAgeMs: 21_600_000,
+  priceRefreshBatchSize: 200,
   authSessionIdleTtlMs: 60_000,
   authSessionAbsoluteTtlMs: 120_000,
   authCookieSecure: false,

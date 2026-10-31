@@ -31,17 +31,19 @@ model Proxy {
 }
 
 model TrackedProduct {
-  id            String                @id @default(uuid()) @db.Uuid
-  marketplace   String
-  externalId    String
+  id              String                @id @default(uuid()) @db.Uuid
+  marketplace     String
+  externalId      String
   /// Canonical product URL.
-  url           String
+  url             String
   /// Status of the last fetch, including failed ones.
-  lastStatus    String?
-  lastCheckedAt DateTime?
-  createdAt     DateTime              @default(now())
-  observations  PriceObservation[]
-  subscriptions ProductSubscription[]
+  lastStatus      String?
+  lastCheckedAt   DateTime?
+  /// When a read of the product was last queued: the schedule leaves it be for a while after that.
+  lastRequestedAt DateTime?
+  createdAt       DateTime              @default(now())
+  observations    PriceObservation[]
+  subscriptions   ProductSubscription[]
 
   @@unique([marketplace, externalId], name: "marketplaceExternalId")
   @@map("tracked_products")

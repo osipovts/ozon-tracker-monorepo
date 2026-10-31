@@ -70,7 +70,7 @@ void test('records a queued price job for the product and publishes its routes',
   const { jobId } = await useCase.execute({
     kind: 'price_fetch',
     requestedBy: userId,
-    productId,
+    subject: productId,
     routes,
     products,
     timeoutMs: 30000,
