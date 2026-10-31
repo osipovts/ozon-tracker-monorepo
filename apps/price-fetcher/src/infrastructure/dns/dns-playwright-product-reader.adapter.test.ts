@@ -197,3 +197,22 @@ void test('reports an HTTP error and a page that is no card', async (): Promise<
     status: 'parse_error',
   });
 });
+
+void test('waits for the price that the card draws after an empty block of it is on the page', async (): Promise<void> => {
+  const { reader } = createReader({
+    pages: [
+      `<h1>Notebook</h1><div class="product-buy"><div class="product-buy__price" style="height:10px"></div></div>
+       <script>setTimeout(() => {
+         const buy = document.querySelector('.product-buy');
+         buy.querySelector('.product-buy__price').textContent = '152 999 ₽';
+         buy.insertAdjacentHTML('beforeend', '<button class="buy-btn">Купить</button>');
+       }, 60);</script>`,
+    ],
+  });
+
+  const result = await reader.read(reference, null, new AbortController().signal);
+
+  assert.ok('snapshot' in result);
+  assert.deepEqual(result.snapshot.prices, [{ amountMinor: 15299900, currency: 'RUB' }]);
+  assert.equal(result.snapshot.availability, 'in_stock');
+});

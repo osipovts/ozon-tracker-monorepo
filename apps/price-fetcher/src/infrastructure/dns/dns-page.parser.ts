@@ -5,11 +5,15 @@ import type { DnsPageInterface } from './dns-page.interface.js';
 /** Reads the parts of a rendered DNS card that the product parser needs. */
 export class DnsPageParser {
   async parse(browserPage: Page): Promise<DnsPageInterface> {
-    // The buying block is drawn by the page after it has loaded.
+    // The buying block is drawn by the page after it has loaded: first empty, then with the price in it.
     await browserPage
-      .locator('.product-buy__price')
-      .first()
-      .waitFor({ state: 'visible' })
+      .waitForFunction(
+        (): boolean =>
+          (
+            window.document.querySelector<HTMLElement>('.product-buy .product-buy__price')
+              ?.innerText ?? ''
+          ).trim() !== '',
+      )
       .catch((): void => {
         /* Inspect the final document on timeout as well. */
       });
