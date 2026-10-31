@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
-import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  OzonReferenceParser,
+  OzonShortLinkParser,
+  ResolveProductReferenceUseCase,
+} from 'product-reference';
 
 import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
@@ -19,6 +23,7 @@ import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-l
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddProductUseCase } from './application/add-product.use-case.js';
 import { ChoosePriceRoutesUseCase } from './application/choose-price-routes.use-case.js';
+import { ExpandProductLinkUseCase } from './application/expand-product-link.use-case.js';
 import { GetProductStatsUseCase } from './application/get-product-stats.use-case.js';
 import { GetProductThumbnailUrlUseCase } from './application/get-product-thumbnail-url.use-case.js';
 import { IMAGE_DOWNLOADER, type ImageDownloaderPort } from './application/image-downloader.port.js';
@@ -32,6 +37,10 @@ import {
   priceRefreshScheduleOf,
   schedulePeriodMs,
 } from './application/price-refresh-schedule.type.js';
+import {
+  PRODUCT_LINK_EXPANDER,
+  type ProductLinkExpanderPort,
+} from './application/product-link-expander.port.js';
 import { RecordPriceResultUseCase } from './application/record-price-result.use-case.js';
 import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
@@ -42,6 +51,7 @@ import {
   TRACKED_PRODUCT_REPOSITORY,
   type TrackedProductRepositoryPort,
 } from './application/tracked-product-repository.port.js';
+import { BullmqProductLinkExpanderAdapter } from './infrastructure/bullmq-product-link-expander.adapter.js';
 import { HttpImageDownloaderAdapter } from './infrastructure/http-image-downloader.adapter.js';
 import { PeriodicPriceRefreshAdapter } from './infrastructure/periodic-price-refresh.adapter.js';
 import { PrismaPriceObservationRepositoryAdapter } from './infrastructure/prisma-price-observation-repository.adapter.js';
@@ -87,6 +97,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         limiter: RateLimiterPort,
         config: AppConfigInterface,
         logger: LoggerPort,
+        expandLink: ExpandProductLinkUseCase,
       ): AddProductUseCase =>
         new AddProductUseCase(
           resolve,
@@ -99,6 +110,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
             add: { limit: config.productAddMaxAttempts, windowMs: config.productAddWindowMs },
           },
           logger.child('products'),
+          expandLink,
         ),
       inject: [
         ResolveProductReferenceUseCase,
@@ -108,7 +120,31 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         RATE_LIMITER,
         APP_CONFIG,
         LOGGER,
+        ExpandProductLinkUseCase,
       ],
+    },
+    {
+      provide: PRODUCT_LINK_EXPANDER,
+      useFactory: (config: AppConfigInterface, logger: LoggerPort): ProductLinkExpanderPort =>
+        new BullmqProductLinkExpanderAdapter(config.redisUrl, logger.child('queue')),
+      inject: [APP_CONFIG, LOGGER],
+    },
+    {
+      provide: ExpandProductLinkUseCase,
+      useFactory: (
+        choose: ChoosePriceRoutesUseCase,
+        expander: ProductLinkExpanderPort,
+        config: AppConfigInterface,
+        logger: LoggerPort,
+      ): ExpandProductLinkUseCase =>
+        new ExpandProductLinkUseCase(
+          new OzonShortLinkParser(),
+          choose,
+          expander,
+          config.priceTimeoutMs,
+          logger.child('products'),
+        ),
+      inject: [ChoosePriceRoutesUseCase, PRODUCT_LINK_EXPANDER, APP_CONFIG, LOGGER],
     },
     {
       provide: GetProductStatsUseCase,

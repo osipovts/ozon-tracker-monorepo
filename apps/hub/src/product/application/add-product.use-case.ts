@@ -4,6 +4,8 @@ import type { ProductReferenceEntity, ResolveProductReferenceUseCase } from 'pro
 import { enforceRateLimits } from '../../shared/application/enforce-rate-limits.type.js';
 import type { RateLimiterPort } from '../../shared/application/rate-limiter.port.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
+import { unchangedLinks } from './add-product-defaults.type.js';
+import type { ExpandProductLinkUseCase } from './expand-product-link.use-case.js';
 import type { PriceObservationRepositoryPort } from './price-observation-repository.port.js';
 import { ProductGoneError } from './product-gone.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';
@@ -37,12 +39,15 @@ export class AddProductUseCase {
     private readonly limiter: RateLimiterPort,
     private readonly limits: ProductLimitsInterface,
     private readonly logger: LoggerPort = silentLogger,
+    private readonly expandLink: Pick<ExpandProductLinkUseCase, 'execute'> = unchangedLinks,
   ) {}
 
   async execute(userId: string, url: string): Promise<AddedProductInterface> {
+    const productUrl = await this.expandLink.execute(url);
+
     let reference: ProductReferenceEntity;
     try {
-      reference = this.resolveReference.execute(url);
+      reference = this.resolveReference.execute(productUrl);
     } catch {
       throw new UnsupportedProductUrlError();
     }

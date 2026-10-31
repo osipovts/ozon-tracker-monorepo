@@ -1,0 +1,41 @@
+import { type LoggerPort, silentLogger } from 'logger';
+import type { OzonShortLinkParser } from 'product-reference';
+
+import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
+import { NoProxiesAvailableError } from './no-proxies-available.error.js';
+import type { ProductLinkExpanderPort } from './product-link-expander.port.js';
+import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
+
+/** Turns a short link of a marketplace into the address of its product; any other link is left as it is. */
+export class ExpandProductLinkUseCase {
+  constructor(
+    private readonly shortLinks: OzonShortLinkParser,
+    private readonly chooseRoutes: Pick<ChoosePriceRoutesUseCase, 'execute'>,
+    private readonly expander: ProductLinkExpanderPort,
+    private readonly timeoutMs: number,
+    private readonly logger: LoggerPort = silentLogger,
+  ) {}
+
+  async execute(url: string): Promise<string> {
+    if (!this.isShortLink(url)) return url;
+
+    const routes = await this.chooseRoutes.execute('ozon');
+    if (routes.length === 0) throw new NoProxiesAvailableError();
+
+    try {
+      return await this.expander.expand({ url, routes, timeoutMs: this.timeoutMs });
+    } catch (error: unknown) {
+      this.logger.warn(`A short link was not expanded: ${String(error)}`);
+
+      throw new UnsupportedProductUrlError();
+    }
+  }
+
+  private isShortLink(url: string): boolean {
+    try {
+      return this.shortLinks.isShortLink(new URL(url));
+    } catch {
+      return false;
+    }
+  }
+}

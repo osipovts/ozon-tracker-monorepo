@@ -1,6 +1,7 @@
 export * from './browser-session.type.js';
 export * from './job-lifecycle.type.js';
 export * from './job-progress.type.js';
+export * from './link-expand-job.type.js';
 export * from './marketplace.type.js';
 export * from './price-fetch-job.type.js';
 export * from './price-fetch-result.type.js';

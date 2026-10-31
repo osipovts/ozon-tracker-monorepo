@@ -4,22 +4,26 @@ import type { LoggerPort } from 'logger';
 export interface QueueWorkerSettingsInterface {
   redisUrl: string;
   jobsQueue: string;
-  resultsQueue: string;
+  /** Where the results are published; none for a worker that returns them to the one who waits. */
+  resultsQueue?: string;
   /** Jobs handled in parallel. */
   concurrency: number;
 }
 
-/** Handles a raw job message; `willRetry` tells whether the queue delivers the job again after a failure. */
+/**
+ * Handles a raw job message; `willRetry` tells whether the queue delivers the job again after a failure.
+ * What it returns is the return value of the job.
+ */
 export type JobHandlerType = (
   data: unknown,
   signal: AbortSignal,
   willRetry: boolean,
-) => Promise<void>;
+) => Promise<unknown>;
 
 /** Takes the jobs of one queue and publishes their results to another one. */
 export class QueueWorkerRunner<ResultType extends { type: string; jobId: string }> {
   private readonly connection: { url: string };
-  private readonly results: Queue;
+  private readonly results: Queue | null;
   private worker: Worker | null = null;
 
   constructor(
@@ -27,16 +31,21 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
     private readonly logger: LoggerPort,
   ) {
     this.connection = { url: settings.redisUrl };
-    this.results = new Queue(settings.resultsQueue, {
-      connection: this.connection,
-      defaultJobOptions: { removeOnComplete: { age: 3600 }, removeOnFail: { age: 86400 } },
-    });
-    this.results.on('error', (error): void => {
+    this.results =
+      settings.resultsQueue === undefined
+        ? null
+        : new Queue(settings.resultsQueue, {
+            connection: this.connection,
+            defaultJobOptions: { removeOnComplete: { age: 3600 }, removeOnFail: { age: 86400 } },
+          });
+    this.results?.on('error', (error): void => {
       this.logger.error(`Results queue error: ${error.message}`);
     });
   }
 
   async publish(message: ResultType): Promise<void> {
+    if (this.results === null) throw new Error('The worker has no results queue');
+
     this.logger.verbose(`Publishing ${message.type} of job ${message.jobId}`);
     await this.results.add(message.type, message);
   }
@@ -44,12 +53,12 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
   start(handle: JobHandlerType): void {
     this.worker = new Worker(
       this.settings.jobsQueue,
-      async (job, _token, signal): Promise<void> => {
+      async (job, _token, signal): Promise<unknown> => {
         // The queue redelivers a failed job until its attempts are used up.
         const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
         this.logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
 
-        await handle(job.data, signal ?? new AbortController().signal, willRetry);
+        return handle(job.data, signal ?? new AbortController().signal, willRetry);
       },
       { connection: this.connection, concurrency: this.settings.concurrency },
     );
@@ -69,7 +78,7 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
   /** Stops taking jobs, lets the one in progress finish, and closes the queues. */
   async close(): Promise<void> {
     await this.worker?.close();
-    await this.results.close();
+    await this.results?.close();
   }
 
   /** Stops taking jobs on SIGINT or SIGTERM, then releases the other resources with `cleanup`. */

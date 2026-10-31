@@ -1,5 +1,6 @@
 export * from './marketplace.type.js';
 export * from './marketplace-reference-parser.port.js';
 export * from './ozon-reference.parser.js';
+export * from './ozon-short-link.parser.js';
 export * from './product-reference.entity.js';
 export * from './resolve-product-reference.use-case.js';

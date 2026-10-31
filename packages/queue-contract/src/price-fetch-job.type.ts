@@ -3,17 +3,15 @@ import { z } from 'zod';
 import { browserSessionSchema } from './browser-session.type.js';
 import { proxyServerSchema } from './proxy-server.type.js';
 
+export const priceFetchRouteSchema = z.object({
+  server: proxyServerSchema.nullable(),
+  session: browserSessionSchema.optional(),
+});
+
 export const priceFetchJobSchema = z.object({
   jobId: z.uuid(),
   /** Routes in the order they are tried; a null server is a direct connection. */
-  proxies: z
-    .array(
-      z.object({
-        server: proxyServerSchema.nullable(),
-        session: browserSessionSchema.optional(),
-      }),
-    )
-    .min(1),
+  proxies: z.array(priceFetchRouteSchema).min(1),
   products: z
     .array(z.object({ trackedProductId: z.uuid(), url: z.url() }))
     .min(1)

@@ -1,13 +1,19 @@
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
 import { chromium } from 'playwright';
-import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  OzonReferenceParser,
+  OzonShortLinkParser,
+  ResolveProductReferenceUseCase,
+} from 'product-reference';
 import { type PriceFetchResultType, queueNames } from 'queue-contract';
 import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
+import { ExpandLinkUseCase } from './application/link/expand-link.use-case.js';
 import { FetchPricesUseCase } from './application/product/fetch-prices.use-case.js';
 import { OzonChallengeParser } from './infrastructure/ozon/ozon-challenge.parser.js';
 import { OzonPageParser } from './infrastructure/ozon/ozon-page.parser.js';
+import { OzonPlaywrightLinkExpanderAdapter } from './infrastructure/ozon/ozon-playwright-link-expander.adapter.js';
 import {
   OzonPlaywrightProductReaderAdapter,
   type OzonReaderParsersInterface,
@@ -17,6 +23,7 @@ import { MarketplaceProductReaderAdapter } from './infrastructure/product/market
 import { InMemorySessionStoreAdapter } from './infrastructure/session/in-memory-session-store.adapter.js';
 import { ChromiumOptionsFactory } from './infrastructure/shared/chromium-options.factory.js';
 import { GeoIpPageParser } from './infrastructure/shared/geo-ip-page.parser.js';
+import { LinkExpandController } from './presentation/link/link-expand.controller.js';
 import { PriceFetchController } from './presentation/product/price-fetch.controller.js';
 
 const env = z
@@ -72,6 +79,11 @@ const runner = new QueueWorkerRunner<PriceFetchResultType>(
 );
 const publish = (message: PriceFetchResultType): Promise<void> => runner.publish(message);
 
+const expandRunner = new QueueWorkerRunner<never>(
+  { redisUrl: env.redisUrl, jobsQueue: queueNames.linkExpandJobs, concurrency: env.jobConcurrency },
+  logger,
+);
+
 const references = new OzonReferenceParser();
 const parsers: OzonReaderParsersInterface = {
   geoIp: new GeoIpPageParser(),
@@ -102,10 +114,31 @@ const controller = new PriceFetchController(
   logger.child('controller'),
 );
 
+const expandController = new LinkExpandController(
+  new ExpandLinkUseCase(
+    new OzonShortLinkParser(),
+    new ResolveProductReferenceUseCase([references]),
+    (routes) => new InMemorySessionStoreAdapter(routes),
+    (sessions, timeoutMs) =>
+      new OzonPlaywrightLinkExpanderAdapter(
+        browser,
+        options,
+        timeoutMs,
+        sessions,
+        logger.child('ozon'),
+      ),
+    logger.child('links'),
+  ),
+  new QueueMessageParser(logger.child('links')),
+  logger.child('links'),
+);
+
+expandRunner.start((data, signal): Promise<unknown> => expandController.handle(data, signal));
 runner.start((data, signal, willRetry): Promise<void> =>
   controller.handle(data, signal, willRetry),
 );
 runner.stopOnSignals(async (): Promise<void> => {
   stopping = true;
+  await expandRunner.close();
   await browser.close();
 });
