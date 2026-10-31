@@ -35,11 +35,15 @@ RUN pnpm config set store-dir /pnpm-store
 ################################
 FROM base AS fetch
 # better-sqlite3 of camoufox-js has no binary for this Node.js and is compiled.
-# The headers come with the Node.js image: node-gyp need not download them.
-ENV NODEDIR=/usr/local
+# The headers come with the Node.js image: they are put where node-gyp looks for them, so that it
+# does not download them (the build machine may not reach nodejs.org).
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 make g++ && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    headers="/root/.cache/node-gyp/$(node -p 'process.versions.node')" && \
+    mkdir -p "$headers" && \
+    cp -r /usr/local/include "$headers/include" && \
+    echo 11 > "$headers/installVersion"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY .npmrc* ./
 # Downloads the packages of the whole lockfile into the store: the layer depends on the lockfile
