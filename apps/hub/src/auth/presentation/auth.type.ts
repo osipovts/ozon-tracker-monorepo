@@ -9,6 +9,10 @@ export const registerBodySchema = z.object({
 
 export type RegisterBodyType = z.infer<typeof registerBodySchema>;
 
+export const registeredResponseSchema = z.strictObject({ accepted: z.literal(true) });
+
+export type RegisteredResponseType = z.infer<typeof registeredResponseSchema>;
+
 export const loginBodySchema = z.object({
   email: emailSchema,
   password: z.string().min(1).max(128),

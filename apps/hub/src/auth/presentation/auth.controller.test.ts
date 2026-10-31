@@ -86,7 +86,7 @@ async function createApp(attempts: number): Promise<INestApplication> {
       { provide: APP_CONFIG, useValue: config },
       {
         provide: SignUpUseCase,
-        useValue: new SignUpUseCase(register, startSession, limiter, {
+        useValue: new SignUpUseCase(register, limiter, {
           limit: attempts,
           windowMs: 60_000,
         }),
@@ -179,19 +179,32 @@ function cookieOf(reply: ReplyInterface): string {
   return pair;
 }
 
+/** Signs a user up and logs them in: a sign-up gives no session, the login after it does. */
+async function signUp(email: string, password = 'secret-pass'): Promise<string> {
+  const registered = await post('/auth/register', { email, password });
+  assert.equal(registered.status, 202);
+
+  return login(email, 'Firefox', password);
+}
+
 const jane = { email: 'Jane@Example.com', password: 'secret-pass' };
 const notSignedIn = { statusCode: 401, message: 'Sign in first' };
 const wrongLogin = { statusCode: 401, message: 'The email or the password is wrong' };
 
-void test('registers a user and starts their session in a hardened cookie', async (): Promise<void> => {
+void test('accepts a sign-up without a session: the user logs in after it, into a hardened cookie', async (): Promise<void> => {
   const reply = await post('/auth/register', jane);
 
-  assert.equal(reply.status, 201);
-  const { user } = authResponseSchema.parse(reply.body);
+  assert.equal(reply.status, 202);
+  assert.deepEqual(reply.body, { accepted: true });
+  assert.equal(reply.setCookie.length, 0);
+
+  const loggedIn = await post('/auth/login', jane);
+  assert.equal(loggedIn.status, 200);
+  const { user } = authResponseSchema.parse(loggedIn.body);
   assert.equal(user.email, 'jane@example.com');
 
-  assert.equal(reply.setCookie.length, 1);
-  const attributes = reply.setCookie[0]?.split('; ') ?? [];
+  assert.equal(loggedIn.setCookie.length, 1);
+  const attributes = loggedIn.setCookie[0]?.split('; ') ?? [];
   assert.match(attributes[0] ?? '', /^session=[A-Za-z0-9_-]{43}$/);
   assert.ok(attributes.includes('HttpOnly'));
   assert.ok(attributes.includes('Secure'));
@@ -200,25 +213,39 @@ void test('registers a user and starts their session in a hardened cookie', asyn
   assert.ok(attributes.some((attribute): boolean => attribute.startsWith('Expires=')));
 });
 
-void test('refuses a registered email, a bad email and a short password', async (): Promise<void> => {
-  const twin = await post('/auth/register', { ...jane, email: 'JANE@example.com' });
-  assert.equal(twin.status, 409);
-  assert.equal(twin.setCookie.length, 0);
+void test('answers a sign-up with a taken email exactly as one with a free email, and keeps the first password', async (): Promise<void> => {
+  const free = await post('/auth/register', { email: 'twin@example.com', password: 'first-pass' });
+  const taken = await post('/auth/register', {
+    email: 'TWIN@example.com',
+    password: 'second-pass',
+  });
 
+  assert.equal(taken.status, free.status);
+  assert.deepEqual(taken.body, free.body);
+  assert.equal(taken.setCookie.length, 0);
+  assert.equal(free.setCookie.length, 0);
+
+  assert.equal(
+    (await post('/auth/login', { email: 'twin@example.com', password: 'first-pass' })).status,
+    200,
+  );
+  assert.equal(
+    (await post('/auth/login', { email: 'twin@example.com', password: 'second-pass' })).status,
+    401,
+  );
+});
+
+void test('refuses a bad email and a short password', async (): Promise<void> => {
   assert.equal((await post('/auth/register', { ...jane, email: 'nope' })).status, 400);
   assert.equal((await post('/auth/register', { ...jane, password: 'short' })).status, 400);
 });
 
 void test('answers who the session cookie belongs to, and 401 without a live one', async (): Promise<void> => {
-  const registered = await post('/auth/register', {
-    email: 'sam@example.com',
-    password: 'secret-pass',
-  });
-  const { user } = authResponseSchema.parse(registered.body);
+  const cookie = await signUp('sam@example.com');
 
-  const own = await me(cookieOf(registered));
+  const own = await me(cookie);
   assert.equal(own.status, 200);
-  assert.deepEqual(authResponseSchema.parse(own.body).user, user);
+  assert.equal(authResponseSchema.parse(own.body).user.email, 'sam@example.com');
 
   const anonymous = await me();
   assert.equal(anonymous.status, 401);
@@ -230,7 +257,7 @@ void test('answers who the session cookie belongs to, and 401 without a live one
 });
 
 void test('logs in with the password into a new session; a wrong login tells nothing about why', async (): Promise<void> => {
-  await post('/auth/register', { email: 'ann@example.com', password: 'secret-pass' });
+  await signUp('ann@example.com');
 
   const first = await post('/auth/login', { email: 'ANN@example.com', password: 'secret-pass' });
   const second = await post('/auth/login', { email: 'ann@example.com', password: 'secret-pass' });
@@ -255,11 +282,7 @@ void test('logs in with the password into a new session; a wrong login tells not
 });
 
 void test('logs out: the session is gone and the cookie is cleared; logging out twice is harmless', async (): Promise<void> => {
-  const registered = await post('/auth/register', {
-    email: 'bob@example.com',
-    password: 'secret-pass',
-  });
-  const cookie = cookieOf(registered);
+  const cookie = await signUp('bob@example.com');
 
   const first = await post('/auth/logout', {}, cookie);
   assert.equal(first.status, 204);
@@ -315,11 +338,7 @@ async function sessionsOf(cookie: string): Promise<ReplyInterface> {
 }
 
 void test('lists the sessions of the user with where they come from, and marks the one asking', async (): Promise<void> => {
-  const registered = await post('/auth/register', {
-    email: 'dan@example.com',
-    password: 'secret-pass',
-  });
-  const laptop = cookieOf(registered);
+  const laptop = await signUp('dan@example.com');
   const phone = await login('dan@example.com', 'Safari Mobile');
 
   const reply = await sessionsOf(phone);
@@ -339,11 +358,7 @@ void test('lists the sessions of the user with where they come from, and marks t
 });
 
 void test('ends one session of the user by its id, the one asking included', async (): Promise<void> => {
-  const registered = await post('/auth/register', {
-    email: 'eve@example.com',
-    password: 'secret-pass',
-  });
-  const laptop = cookieOf(registered);
+  const laptop = await signUp('eve@example.com');
   const phone = await login('eve@example.com', 'Safari Mobile');
   const { sessions } = authSessionsResponseSchema.parse((await sessionsOf(laptop)).body);
   const other = sessions.find((session): boolean => !session.current);
@@ -364,12 +379,8 @@ void test('ends one session of the user by its id, the one asking included', asy
 });
 
 void test('does not end the session of somebody else', async (): Promise<void> => {
-  const kim = cookieOf(
-    await post('/auth/register', { email: 'kim@example.com', password: 'secret-pass' }),
-  );
-  const lee = cookieOf(
-    await post('/auth/register', { email: 'lee@example.com', password: 'secret-pass' }),
-  );
+  const kim = await signUp('kim@example.com', 'secret-pass');
+  const lee = await signUp('lee@example.com', 'secret-pass');
   const kimSession = authSessionsResponseSchema.parse((await sessionsOf(kim)).body).sessions[0];
   assert.ok(kimSession !== undefined);
 
@@ -383,9 +394,7 @@ void test('does not end the session of somebody else', async (): Promise<void> =
 });
 
 void test('ends every session but the one asking, and says how many', async (): Promise<void> => {
-  const laptop = cookieOf(
-    await post('/auth/register', { email: 'zoe@example.com', password: 'secret-pass' }),
-  );
+  const laptop = await signUp('zoe@example.com', 'secret-pass');
   const phone = await login('zoe@example.com', 'Safari Mobile');
   const tablet = await login('zoe@example.com', 'iPad');
 
@@ -402,9 +411,7 @@ void test('ends every session but the one asking, and says how many', async (): 
 });
 
 void test('changes the password with the current one, and signs out the other devices only', async (): Promise<void> => {
-  const laptop = cookieOf(
-    await post('/auth/register', { email: 'ray@example.com', password: 'old-password' }),
-  );
+  const laptop = await signUp('ray@example.com', 'old-password');
   const phone = await login('ray@example.com', 'Safari Mobile', 'old-password');
 
   const changed = await post(
@@ -427,9 +434,7 @@ void test('changes the password with the current one, and signs out the other de
 });
 
 void test('does not change the password on a wrong current one or a weak new one, nor for the anonymous', async (): Promise<void> => {
-  const cookie = cookieOf(
-    await post('/auth/register', { email: 'ivy@example.com', password: 'old-password' }),
-  );
+  const cookie = await signUp('ivy@example.com', 'old-password');
 
   const wrong = await post(
     '/auth/password',

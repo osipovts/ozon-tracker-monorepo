@@ -30,7 +30,8 @@
 
 Маршруты hub закрыты по умолчанию. Доступ бывает двух видов:
 
-- **Пользователь** - товары, цены и `GET /jobs/{id}`. Регистрация: `POST /auth/register`, вход: `POST /auth/login`;
+- **Пользователь** - товары, цены и `GET /jobs/{id}`. Регистрация: `POST /auth/register` (отвечает одинаково для свободной и занятой почты и сессию не
+  выдаёт, чтобы не раскрывать, у каких почт есть аккаунт), затем вход: `POST /auth/login`;
   сессия живёт в HttpOnly cookie `session`, выход: `POST /auth/logout`. Устройства, где вошёл пользователь:
   `GET /auth/sessions`; завершить одну - `DELETE /auth/sessions/{id}`, все остальные -
   `DELETE /auth/sessions`. Смена пароля: `POST /auth/password` (нужен текущий пароль; остальные
@@ -147,7 +148,7 @@ xvfb-run -a pnpm --filter price-fetcher start:worker
 
 ### 4. Добавить ссылку на товар
 
-Сначала зарегистрируйтесь (`POST /auth/register`), затем `POST /products`.
+Сначала зарегистрируйтесь (`POST /auth/register`) и войдите (`POST /auth/login`), затем `POST /products`.
 
 ### 5. Запустить задачу обновления цены
 

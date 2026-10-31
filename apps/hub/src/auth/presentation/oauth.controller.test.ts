@@ -103,12 +103,10 @@ before(async (): Promise<void> => {
       },
       {
         provide: SignUpUseCase,
-        useValue: new SignUpUseCase(
-          new RegisterAccountUseCase(registration, hasher),
-          startSession,
-          limiter,
-          { limit: 1000, windowMs: 60_000 },
-        ),
+        useValue: new SignUpUseCase(new RegisterAccountUseCase(registration, hasher), limiter, {
+          limit: 1000,
+          windowMs: 60_000,
+        }),
       },
       {
         provide: LogInUseCase,
@@ -251,12 +249,15 @@ void test('knows only the providers that are set up', async (): Promise<void> =>
 });
 
 void test('gives a password account of an email to the provider that proves it, and ends the way in of whoever signed up with it', async (): Promise<void> => {
-  const registered = await fetch(`${baseUrl}/auth/register`, {
+  const credentials = JSON.stringify({ email: 'sam@example.com', password: 'squatter-pass' });
+  const headers = { 'content-type': 'application/json' };
+  await fetch(`${baseUrl}/auth/register`, { method: 'POST', headers, body: credentials });
+  const loggedIn = await fetch(`${baseUrl}/auth/login`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'sam@example.com', password: 'squatter-pass' }),
+    headers,
+    body: credentials,
   });
-  const squatterCookie = registered.headers.getSetCookie()[0]?.split(';')[0] ?? '';
+  const squatterCookie = loggedIn.headers.getSetCookie()[0]?.split(';')[0] ?? '';
   assert.equal((await call('/auth/me', squatterCookie)).status, 200);
   google.profile = { subject: '2002', email: 'sam@example.com', emailVerified: true };
   const { cookie, state } = await startLogin();

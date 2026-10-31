@@ -10,8 +10,8 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
-  ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -42,6 +42,8 @@ import {
   type PasswordChangeBodyType,
   registerBodySchema,
   type RegisterBodyType,
+  registeredResponseSchema,
+  type RegisteredResponseType,
 } from './auth.type.js';
 import { cookieOptionsOf } from './cookie-options.type.js';
 import { sessionCookieName, SessionCookieParser } from './session-cookie.parser.js';
@@ -73,20 +75,21 @@ export class AuthController {
 
   @Post('register')
   @routeAccess('public')
+  @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary: 'Sign up by the email and the password',
-    description: 'Logs the user in: the session token comes in an HttpOnly cookie.',
+    description:
+      'Answers the same whether the email was free or not, so that it does not tell which emails have ' +
+      'an account, and starts no session: log in with `POST /auth/login` after it.',
   })
-  @ApiCreatedResponse({ standardSchema: authResponseSchema })
+  @ApiAcceptedResponse({ standardSchema: registeredResponseSchema })
   async register(
     @Body({ schema: registerBodySchema }) body: RegisterBodyType,
     @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<AuthResponseType> {
-    const { user, token, expiresAt } = await this.signUp.execute({ ...body, ...clientOf(request) });
-    response.cookie(sessionCookieName, token, { ...this.cookieOptions, expires: expiresAt });
+  ): Promise<RegisteredResponseType> {
+    await this.signUp.execute({ ...body, ip: clientOf(request).ip });
 
-    return toAuthResponse(user);
+    return { accepted: true };
   }
 
   @Post('login')

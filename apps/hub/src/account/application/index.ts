@@ -12,6 +12,7 @@ export {
   type ChangeAccountPasswordInterface,
   ChangeAccountPasswordUseCase,
 } from './change-account-password.use-case.js';
+export { EmailTakenError } from './email-taken.error.js';
 export { GetAccountUseCase } from './get-account.use-case.js';
 export {
   type RegisterAccountInterface,

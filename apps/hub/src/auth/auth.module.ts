@@ -42,15 +42,14 @@ const OAUTH_PROVIDERS = Symbol('OauthProvidersType');
       provide: SignUpUseCase,
       useFactory: (
         register: RegisterAccountUseCase,
-        start: StartAuthSessionUseCase,
         limiter: RateLimiterPort,
         config: AppConfigInterface,
       ): SignUpUseCase =>
-        new SignUpUseCase(register, start, limiter, {
+        new SignUpUseCase(register, limiter, {
           limit: config.authRegisterMaxAttempts,
           windowMs: config.authRateLimitWindowMs,
         }),
-      inject: [RegisterAccountUseCase, StartAuthSessionUseCase, RATE_LIMITER, APP_CONFIG],
+      inject: [RegisterAccountUseCase, RATE_LIMITER, APP_CONFIG],
     },
     {
       provide: LogInUseCase,
