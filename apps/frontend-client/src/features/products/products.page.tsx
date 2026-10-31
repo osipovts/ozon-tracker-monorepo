@@ -182,18 +182,19 @@ function ProductCards({
             <Text component={Link} to={`/products/${item.id}`} fw={500} lineClamp={2}>
               {titleOf(item)}
             </Text>
-            <Group justify="space-between" align="center" wrap="nowrap">
-              <Text fw={600} size="lg">
-                <Price item={item} />
-              </Text>
-              <RemoveButton item={item} onDeleted={onDeleted} />
-            </Group>
-            <Text size="xs" c="dimmed">
+            <Text fw={600} size="lg">
+              <Price item={item} />
+            </Text>
+            <Text size="sm" c="dimmed">
               {t('products.checked')}:{' '}
               {item.lastCheckedAt === null ? '-' : formatMoment(item.lastCheckedAt, locale)}
-              {' · '}
+            </Text>
+            <Text size="sm" c="dimmed">
               {t('products.nextCheck')}: <NextCheck at={item.nextCheckAt} />
             </Text>
+            <Group>
+              <RemoveButton item={item} onDeleted={onDeleted} />
+            </Group>
           </Stack>
         </Card>
       ))}

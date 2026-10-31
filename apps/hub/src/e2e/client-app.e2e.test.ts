@@ -186,6 +186,22 @@ void test('on a phone the list is cards and nothing is wider than the screen', a
     .first()
     .waitFor();
   assert.equal(await screen.locator('table').count(), 0);
+
+  // Every line of a card is under the one before it, the button last.
+  const card = screen.locator('main .mantine-Card-root').filter({ hasText: 'Checked:' }).first();
+  const lines = [
+    card.getByRole('link'),
+    card.getByText('Checked:'),
+    card.getByText('Next check:'),
+    card.getByRole('button', { name: 'Delete' }),
+  ];
+  let bottom = -1;
+  for (const line of lines) {
+    const box = await line.boundingBox();
+    assert.ok(box);
+    assert.ok(box.y >= bottom - 1, 'a line is under the one before it');
+    bottom = box.y + box.height;
+  }
   assert.equal(await widerThanScreen(), false);
 
   await screen.goto(`${hub.baseUrl}/app/products/${product.id}`);
