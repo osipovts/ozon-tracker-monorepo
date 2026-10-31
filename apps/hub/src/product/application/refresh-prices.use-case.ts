@@ -95,10 +95,7 @@ export class RefreshPricesUseCase {
         requestedBy: null,
         subject: marketplace,
         routes,
-        products: chunk.map(({ snapshot }) => ({
-          trackedProductId: snapshot.id,
-          url: snapshot.url,
-        })),
+        products: chunk.map(({ readRequest }) => readRequest),
         timeoutMs: this.settings.timeoutMs,
       });
       await this.products.markRequested(

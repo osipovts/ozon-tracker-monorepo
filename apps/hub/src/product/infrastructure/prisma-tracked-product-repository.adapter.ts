@@ -30,6 +30,7 @@ function toEntity(row: TrackedProductRow): TrackedProductEntity {
     marketplace: marketplaceSchema.parse(row.marketplace),
     externalId: row.externalId,
     url: row.url,
+    cityId: row.cityId === '' ? null : row.cityId,
     lastStatus: row.lastStatus,
     lastCheckedAt: row.lastCheckedAt,
     lastRequestedAt: row.lastRequestedAt,
@@ -46,14 +47,15 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
   ): Promise<{ product: TrackedProductEntity; created: boolean }> {
     // Skipping a duplicate instead of reading first keeps concurrent adds of a product apart.
     const { count } = await this.prisma.trackedProduct.createMany({
-      data: [reference],
+      data: [{ ...reference, cityId: reference.cityId ?? '' }],
       skipDuplicates: true,
     });
     const row = await this.prisma.trackedProduct.findUniqueOrThrow({
       where: {
-        marketplaceExternalId: {
+        marketplaceExternalIdCity: {
           marketplace: reference.marketplace,
           externalId: reference.externalId,
+          cityId: reference.cityId ?? '',
         },
       },
     });

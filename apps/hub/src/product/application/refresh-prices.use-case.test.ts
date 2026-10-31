@@ -77,6 +77,7 @@ async function track(
     marketplace: 'ozon',
     externalId: String(n),
     url: `https://www.ozon.ru/product/${String(n)}/`,
+    cityId: null,
   });
   if (userId !== null) await products.subscribe(userId, product.snapshot.id);
 
@@ -191,4 +192,22 @@ void test('a job the queue refuses leaves its products due for the next run, and
   queue.failing = false;
   assert.deepEqual(await refresh.execute(), { products: 1, jobs: 1 });
   assert.equal(requests.length, 1);
+});
+
+void test('names the city of a product in the job of the schedule', async (): Promise<void> => {
+  const { refresh, products, requests } = setup();
+  const cityId = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
+  const { product } = await products.add({
+    marketplace: 'dns',
+    externalId: '0463bb2411a1d582',
+    url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+    cityId,
+  });
+  await products.subscribe(jane, product.snapshot.id);
+
+  await refresh.execute();
+
+  assert.deepEqual(requests[0]?.products, [
+    { trackedProductId: product.snapshot.id, url: product.snapshot.url, cityId },
+  ]);
 });

@@ -30,7 +30,7 @@ export class RequestPriceObservationUseCase {
       requestedBy: userId,
       subject: product.id,
       routes,
-      products: [{ trackedProductId: product.id, url: product.url }],
+      products: [found.readRequest],
       timeoutMs: this.timeoutMs,
     });
     // The scheduled refresh leaves a product alone while a read of it is on its way.

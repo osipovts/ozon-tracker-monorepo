@@ -6,10 +6,13 @@ import { GetProductStatsUseCase } from './get-product-stats.use-case.js';
 
 void test('counts the products and the trackings: users share products', async (): Promise<void> => {
   const products = new InMemoryTrackedProductRepositoryAdapter();
-  const reference = (n: number): { marketplace: 'ozon'; externalId: string; url: string } => ({
+  const reference = (
+    n: number,
+  ): { marketplace: 'ozon'; externalId: string; url: string; cityId: null } => ({
     marketplace: 'ozon',
     externalId: String(n),
     url: `https://www.ozon.ru/product/${String(n)}/`,
+    cityId: null,
   });
   const [first, second] = [await products.add(reference(1)), await products.add(reference(2))];
   await products.subscribe('jane', first.product.snapshot.id);

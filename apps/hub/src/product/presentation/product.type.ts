@@ -8,6 +8,8 @@ export const productIdParamSchema = z.uuid();
 export const productCreateBodySchema = z.object({
   /** Product page URL of a supported marketplace; share links are canonicalized. */
   url: z.url(),
+  /** The city whose price is read, by the id of the marketplace, for one whose prices depend on it; the default city when omitted, ignored where there are no cities. */
+  cityId: z.string().min(1).max(100).optional(),
 });
 
 export type ProductCreateBodyType = z.infer<typeof productCreateBodySchema>;
@@ -19,6 +21,8 @@ export const productSchema = z.object({
   externalId: z.string(),
   /** Canonical link to the product page on the marketplace. */
   url: z.string(),
+  /** The city whose price is read, by the id of the marketplace; null where it has no cities. */
+  cityId: z.string().nullable(),
   /** Status of the last fetch, including failed ones. */
   lastStatus: z.string().nullable(),
   lastCheckedAt: z.iso.datetime().nullable(),

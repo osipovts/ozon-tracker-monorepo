@@ -38,6 +38,7 @@ async function setup(
     marketplace: 'ozon',
     externalId: '1',
     url: 'https://www.ozon.ru/product/1/',
+    cityId: null,
   });
 
   return {

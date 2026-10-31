@@ -6,6 +6,8 @@ export interface TrackedProductInterface {
   externalId: string;
   /** Canonical product URL. */
   url: string;
+  /** The city whose price is read, by the id of the marketplace; null where the marketplace has no cities. */
+  cityId: string | null;
   /** Status of the last fetch, including failed ones. */
   lastStatus: string | null;
   lastCheckedAt: Date | null;
@@ -19,4 +21,11 @@ export interface TrackedProductInterface {
 
 export class TrackedProductEntity {
   constructor(readonly snapshot: TrackedProductInterface) {}
+
+  /** What a worker is asked to read: the page, and the city of a marketplace that has them. */
+  get readRequest(): { trackedProductId: string; url: string; cityId?: string } {
+    const { id, url, cityId } = this.snapshot;
+
+    return { trackedProductId: id, url, ...(cityId === null ? {} : { cityId }) };
+  }
 }

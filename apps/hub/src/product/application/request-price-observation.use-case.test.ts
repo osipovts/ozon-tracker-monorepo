@@ -18,6 +18,7 @@ import { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
 import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
+import type { TrackedProductReferenceInterface } from './tracked-product-repository.port.js';
 
 function proxy(server: string, alive: boolean, checksAlive: number): ProxyEntity {
   return new ProxyEntity({
@@ -61,6 +62,12 @@ async function createUseCase(
   proxies: ProxyEntity[],
   sessions: BrowserSessionEntity[] = [],
   failQueue = false,
+  tracked: TrackedProductReferenceInterface = {
+    marketplace: 'ozon',
+    externalId: '4775581891',
+    url: productUrl,
+    cityId: null,
+  },
 ): Promise<{
   useCase: RequestPriceObservationUseCase;
   requests: PriceFetchRequestInterface[];
@@ -74,11 +81,7 @@ async function createUseCase(
   for (const item of sessions) await sessionRepository.save(item);
 
   const products = new InMemoryTrackedProductRepositoryAdapter();
-  const { product } = await products.add({
-    marketplace: 'ozon',
-    externalId: '4775581891',
-    url: productUrl,
-  });
+  const { product } = await products.add(tracked);
   await products.subscribe(userId, product.snapshot.id);
 
   const jobs = new InMemoryJobRepositoryAdapter();
@@ -225,4 +228,25 @@ void test('marks the job failed if it cannot be queued', async (): Promise<void>
   await assert.rejects(useCase.execute(userId, productId), /redis is down/);
   const [job] = (await jobs.list({}, { page: 1, pageSize: 10 })).items;
   assert.equal(job?.snapshot.status, 'failed');
+});
+
+void test('names the city of the product in the job, for a marketplace that has cities, and only then', async (): Promise<void> => {
+  const dns = {
+    marketplace: 'dns',
+    externalId: '0463bb2411a1d582',
+    url: 'https://www.dns-shop.ru/product/0463bb2411a1d582/',
+    cityId: '30b7c1f1-03fb-11dc-95ee-00151716f9f5',
+  } as const;
+  const { useCase, requests, productId } = await createUseCase(
+    [proxy('socks5://217.71.230.1:1080', true, 4)],
+    [],
+    false,
+    dns,
+  );
+
+  await useCase.execute(userId, productId);
+
+  assert.deepEqual(requests[0]?.products, [
+    { trackedProductId: productId, url: dns.url, cityId: dns.cityId },
+  ]);
 });

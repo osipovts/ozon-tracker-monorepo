@@ -12,7 +12,7 @@ import type {
 import { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 
 function keyOf(reference: TrackedProductReferenceInterface): string {
-  return `${reference.marketplace}/${reference.externalId}`;
+  return `${reference.marketplace}/${reference.externalId}/${reference.cityId ?? ''}`;
 }
 
 export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRepositoryPort {

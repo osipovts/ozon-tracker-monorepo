@@ -1,11 +1,16 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
-import type { ProductReferenceEntity, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  marketplaceDefaultCities,
+  type ProductReferenceEntity,
+  type ResolveProductReferenceUseCase,
+} from 'product-reference';
 
 import { enforceRateLimits } from '../../shared/application/enforce-rate-limits.type.js';
 import type { RateLimiterPort } from '../../shared/application/rate-limiter.port.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 import { unchangedLinks } from './add-product-defaults.type.js';
 import type { ExpandProductLinkUseCase } from './expand-product-link.use-case.js';
+import type { MarketplaceCitiesPort } from './marketplace-cities.port.js';
 import type { PriceObservationRepositoryPort } from './price-observation-repository.port.js';
 import { ProductAddingInProgressError } from './product-adding-in-progress.error.js';
 import { ProductGoneError } from './product-gone.error.js';
@@ -16,6 +21,7 @@ import type {
   TrackedProductReferenceInterface,
   TrackedProductRepositoryPort,
 } from './tracked-product-repository.port.js';
+import { UnknownCityError } from './unknown-city.error.js';
 import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
 
 export interface AddedProductInterface {
@@ -41,35 +47,47 @@ export class AddProductUseCase {
     private readonly limits: ProductLimitsInterface,
     private readonly logger: LoggerPort = silentLogger,
     private readonly expandLink: Pick<ExpandProductLinkUseCase, 'execute'> = unchangedLinks,
+    private readonly cities: MarketplaceCitiesPort = {
+      exists: (): Promise<boolean> => Promise.resolve(false),
+    },
   ) {}
 
   /** The adds in progress by user: a link can take minutes to expand, and a reload sends it again. */
   private readonly running = new Map<
     string,
-    { url: string; result: Promise<AddedProductInterface> }
+    { key: string; result: Promise<AddedProductInterface> }
   >();
 
   /**
    * One product at a time per user. The same link while it is being added joins the add in progress
    * instead of starting another one, and is not counted against the rate limit again.
    */
-  execute(userId: string, url: string): Promise<AddedProductInterface> {
+  execute(
+    userId: string,
+    url: string,
+    cityId: string | null = null,
+  ): Promise<AddedProductInterface> {
+    const key = `${url}\n${cityId ?? ''}`;
     const running = this.running.get(userId);
     if (running !== undefined) {
-      return running.url === url
+      return running.key === key
         ? running.result
         : Promise.reject(new ProductAddingInProgressError());
     }
 
-    const result = this.add(userId, url).finally((): void => {
+    const result = this.add(userId, url, cityId).finally((): void => {
       this.running.delete(userId);
     });
-    this.running.set(userId, { url, result });
+    this.running.set(userId, { key, result });
 
     return result;
   }
 
-  private async add(userId: string, url: string): Promise<AddedProductInterface> {
+  private async add(
+    userId: string,
+    url: string,
+    askedCityId: string | null,
+  ): Promise<AddedProductInterface> {
     // Before the link is expanded: that takes a browser of the worker.
     await enforceRateLimits(this.limiter, [[`product-add:user:${userId}`, this.limits.add]]);
 
@@ -82,6 +100,8 @@ export class AddProductUseCase {
       throw new UnsupportedProductUrlError();
     }
 
+    const cityId = await this.cityOf(reference, askedCityId);
+
     // Before the product is created: a refused one would be left, tracked by nobody.
     const tracking = await this.products.listSubscribed(userId, { page: 1, pageSize: 1 });
     if (tracking.total >= this.limits.maxProducts) {
@@ -92,6 +112,7 @@ export class AddProductUseCase {
       marketplace: reference.marketplace,
       externalId: reference.id,
       url: reference.url,
+      cityId,
     };
 
     let added: { product: TrackedProductEntity; created: boolean };
@@ -110,6 +131,20 @@ export class AddProductUseCase {
       : null;
 
     return { ...added, jobId };
+  }
+
+  /** A marketplace with cities has the city asked for if it knows it, else its default one; one without has none. */
+  private async cityOf(
+    reference: ProductReferenceEntity,
+    askedCityId: string | null,
+  ): Promise<string | null> {
+    const defaultCityId = marketplaceDefaultCities[reference.marketplace];
+    if (defaultCityId === undefined) return null;
+    if (askedCityId === null || askedCityId === defaultCityId) return defaultCityId;
+    if (!(await this.cities.exists(reference.marketplace, askedCityId)))
+      throw new UnknownCityError(askedCityId);
+
+    return askedCityId;
   }
 
   private async track(

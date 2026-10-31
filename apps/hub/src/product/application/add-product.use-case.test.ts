@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  DnsReferenceParser,
+  marketplaceDefaultCities,
+  OzonReferenceParser,
+  ResolveProductReferenceUseCase,
+} from 'product-reference';
 
 import { TooManyRequestsError } from '../../shared/application/too-many-requests.error.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
@@ -10,12 +15,14 @@ import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-me
 import { AddProductUseCase } from './add-product.use-case.js';
 import { ListPriceHistoryUseCase } from './list-price-history.use-case.js';
 import { ListProductsUseCase } from './list-products.use-case.js';
+import type { MarketplaceCitiesPort } from './marketplace-cities.port.js';
 import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductAddingInProgressError } from './product-adding-in-progress.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';
 import { ProductQuotaExceededError } from './product-quota-exceeded.error.js';
 import type { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
+import { UnknownCityError } from './unknown-city.error.js';
 import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
 
 const jane = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
@@ -44,6 +51,7 @@ function setup(
   limits: ProductLimitsInterface = roomy,
   request: Pick<RequestPriceObservationUseCase, 'execute'> | null = null,
   products: InMemoryTrackedProductRepositoryAdapter = new InMemoryTrackedProductRepositoryAdapter(),
+  cities: MarketplaceCitiesPort = { exists: (): Promise<boolean> => Promise.resolve(false) },
 ): {
   add: AddProductUseCase;
   products: InMemoryTrackedProductRepositoryAdapter;
@@ -62,12 +70,15 @@ function setup(
 
   return {
     add: new AddProductUseCase(
-      new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
+      new ResolveProductReferenceUseCase([new OzonReferenceParser(), new DnsReferenceParser()]),
       products,
       observations,
       reading,
       new InMemoryRateLimiterAdapter(),
       limits,
+      undefined,
+      undefined,
+      cities,
     ),
     products,
     observations,
@@ -300,4 +311,53 @@ void test('refuses another link of a user while one is being added, and takes it
   await other;
 
   await add.execute(jane, 'https://ozon.ru/t/Other');
+});
+
+const irkutsk = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
+const dnsLink = 'https://www.dns-shop.ru/product/0463bb2411a1d582/156-noutbuk-asus/';
+const knownCities: MarketplaceCitiesPort = {
+  exists: (_marketplace, cityId): Promise<boolean> => Promise.resolve(cityId === irkutsk),
+};
+
+void test('a product of a marketplace with cities is tracked in the default city unless a city is asked for', async (): Promise<void> => {
+  const { add } = setup(roomy, null, undefined, knownCities);
+
+  const byDefault = await add.execute(jane, dnsLink);
+  const asked = await add.execute(jane, dnsLink, irkutsk);
+
+  assert.equal(byDefault.product.snapshot.cityId, marketplaceDefaultCities.dns);
+  assert.equal(asked.product.snapshot.cityId, irkutsk);
+  assert.equal(asked.created, true);
+  assert.notEqual(asked.product.snapshot.id, byDefault.product.snapshot.id);
+  assert.equal(asked.product.snapshot.externalId, byDefault.product.snapshot.externalId);
+});
+
+void test('users who track a product in the same city share it, and not across cities', async (): Promise<void> => {
+  const { add } = setup(roomy, null, undefined, knownCities);
+
+  const janes = await add.execute(jane, dnsLink, irkutsk);
+  const sams = await add.execute(sam, dnsLink, irkutsk);
+  const other = await add.execute(sam, dnsLink);
+
+  assert.equal(sams.product.snapshot.id, janes.product.snapshot.id);
+  assert.notEqual(other.product.snapshot.id, janes.product.snapshot.id);
+});
+
+void test('refuses a city the marketplace is not known to have, but not its default city', async (): Promise<void> => {
+  const { add } = setup(roomy, null, undefined, knownCities);
+
+  await assert.rejects(
+    add.execute(jane, dnsLink, '11111111-1111-1111-1111-111111111111'),
+    UnknownCityError,
+  );
+  const byDefault = await add.execute(jane, dnsLink, marketplaceDefaultCities.dns);
+  assert.equal(byDefault.product.snapshot.cityId, marketplaceDefaultCities.dns);
+});
+
+void test('a marketplace without cities has no city whatever is asked for', async (): Promise<void> => {
+  const { add } = setup(roomy, null, undefined, knownCities);
+
+  const added = await add.execute(jane, 'https://www.ozon.ru/product/4775581891/', irkutsk);
+
+  assert.equal(added.product.snapshot.cityId, null);
 });

@@ -12,6 +12,8 @@ export interface TrackedProductReferenceInterface {
   marketplace: MarketplaceType;
   externalId: string;
   url: string;
+  /** The city whose price is read; null where the marketplace has no cities. */
+  cityId: string | null;
 }
 
 export interface TrackedProductRepositoryPort {

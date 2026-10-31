@@ -41,6 +41,7 @@ async function newProduct(): Promise<string> {
     marketplace: 'ozon',
     externalId,
     url: `https://www.ozon.ru/product/${externalId}/`,
+    cityId: null,
   });
 
   return product.snapshot.id;

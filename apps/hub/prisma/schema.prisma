@@ -41,6 +41,8 @@ model TrackedProduct {
   externalId         String
   /// Canonical product URL.
   url                String
+  /// The city whose price is read, by the id of the marketplace; empty where the marketplace has no cities.
+  cityId             String                @default("")
   /// Status of the last fetch, including failed ones.
   lastStatus         String?
   lastCheckedAt      DateTime?
@@ -54,8 +56,18 @@ model TrackedProduct {
   observations       PriceObservation[]
   subscriptions      ProductSubscription[]
 
-  @@unique([marketplace, externalId], name: "marketplaceExternalId")
+  @@unique([marketplace, externalId, cityId], name: "marketplaceExternalIdCity")
   @@map("tracked_products")
+}
+
+/// What the workers read of the marketplaces to keep: the cities of DNS, by the name of the fetcher.
+model Handbook {
+  key       String   @id
+  /// The entries of the handbook as the fetcher gave them.
+  data      Json
+  fetchedAt DateTime
+
+  @@map("handbooks")
 }
 
 model PriceObservation {

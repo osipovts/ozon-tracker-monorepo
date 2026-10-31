@@ -6,7 +6,12 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import { silentLogger } from 'logger';
-import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
+import {
+  DnsReferenceParser,
+  marketplaceDefaultCities,
+  OzonReferenceParser,
+  ResolveProductReferenceUseCase,
+} from 'product-reference';
 
 import { GetAccountUseCase } from '../account/application/get-account.use-case.js';
 import { InMemoryUserRepositoryAdapter } from '../account/infrastructure/in-memory-user-repository.adapter.js';
@@ -63,6 +68,7 @@ const jobs = new InMemoryJobRepositoryAdapter();
 const sessions = new InMemoryBrowserSessionRepositoryAdapter();
 
 const queued: unknown[] = [];
+const irkutskId = '30b7c1f1-03fb-11dc-95ee-00151716f9f5';
 const queue: JobQueuePort = {
   enqueueProxyFetch: (request): Promise<void> => {
     queued.push(request);
@@ -183,12 +189,18 @@ before(async (): Promise<void> => {
       {
         provide: AddProductUseCase,
         useValue: new AddProductUseCase(
-          new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
+          new ResolveProductReferenceUseCase([new OzonReferenceParser(), new DnsReferenceParser()]),
           products,
           observations,
           requestObservation,
           new InMemoryRateLimiterAdapter(),
           { maxProducts: 100, add: { limit: 1000, windowMs: 60_000 } },
+          undefined,
+          undefined,
+          {
+            exists: (_marketplace, cityId): Promise<boolean> =>
+              Promise.resolve(cityId === irkutskId),
+          },
         ),
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
@@ -372,6 +384,7 @@ void test('tracks a product once whatever the link and lists it with its newest 
     marketplace: 'ozon',
     externalId: '4775581891',
     url: productUrl,
+    cityId: null,
     lastStatus: null,
     lastCheckedAt: null,
     // The schedule is off in this test.
@@ -431,6 +444,7 @@ void test('queues the read of the first price when a product is added, and serve
       marketplace: 'ozon',
       externalId: '9000',
       url,
+      cityId: null,
       lastStatus: null,
       lastCheckedAt: null,
       nextCheckAt: null,
@@ -797,4 +811,20 @@ void test('an operator adds a proxy with credentials by hand: they are never lis
     400,
   );
   assert.equal((await call('/proxies', post({ server: 'http://10.0.0.1:3128' }))).status, 400);
+});
+
+void test('tracks a product of DNS in the city asked for, in the default city without one, and refuses an unknown city', async (): Promise<void> => {
+  const url = 'https://www.dns-shop.ru/product/0463bb2411a1d582/156-noutbuk-asus/';
+
+  const byDefault = await call('/products', post({ url }));
+  const asked = await call('/products', post({ url, cityId: irkutskId }));
+  const unknown = await call('/products', post({ url, cityId: 'nowhere' }));
+  const ozon = await call('/products', post({ url: productUrl, cityId: irkutskId }));
+
+  assert.equal(byDefault.body['cityId'], marketplaceDefaultCities.dns);
+  assert.equal(asked.status, 201);
+  assert.equal(asked.body['cityId'], irkutskId);
+  assert.notEqual(asked.body['id'], byDefault.body['id']);
+  assert.equal(unknown.status, 400);
+  assert.equal(ozon.body['cityId'], null);
 });

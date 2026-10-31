@@ -100,6 +100,7 @@ export class ProductsController {
       marketplace: snapshot.marketplace,
       externalId: snapshot.externalId,
       url: snapshot.url,
+      cityId: snapshot.cityId,
       lastStatus: snapshot.lastStatus,
       lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null,
       nextCheckAt: next?.toISOString() ?? null,
@@ -143,7 +144,9 @@ export class ProductsController {
     standardSchema: productAddedSchema,
     description: 'The user tracked the product already',
   })
-  @ApiBadRequestResponse({ description: 'Unsupported marketplace or product URL' })
+  @ApiBadRequestResponse({
+    description: 'Unsupported marketplace or product URL, or a city the marketplace does not have',
+  })
   @ApiForbiddenResponse({ description: 'The user tracks the most products the hub allows' })
   @ApiTooManyRequestsResponse({ description: 'The user adds products too fast' })
   async add(
@@ -154,6 +157,7 @@ export class ProductsController {
     const { product, created, jobId } = await this.addProduct.execute(
       requireIdentity(request).userId,
       body.url,
+      body.cityId ?? null,
     );
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
 

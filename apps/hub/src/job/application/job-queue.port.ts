@@ -18,7 +18,7 @@ export interface RouteInterface {
 export interface PriceFetchRequestInterface {
   jobId: string;
   routes: RouteInterface[];
-  products: Array<{ trackedProductId: string; url: string }>;
+  products: Array<{ trackedProductId: string; url: string; cityId?: string }>;
   timeoutMs: number;
 }
 

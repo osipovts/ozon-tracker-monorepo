@@ -81,6 +81,7 @@ async function setup(): Promise<{
     marketplace: 'ozon',
     externalId: '4775581891',
     url: 'https://www.ozon.ru/product/4775581891/',
+    cityId: null,
   });
   await products.subscribe(userId, product.snapshot.id);
 
