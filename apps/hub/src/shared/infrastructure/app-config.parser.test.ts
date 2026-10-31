@@ -109,3 +109,9 @@ void test('takes the administrators of the hub from a list of emails, normalized
   );
   assert.throws(() => parser.parse(env(['ADMIN_EMAILS', 'not an email'])));
 });
+
+void test('serves no admin panel unless a directory of the built one is given', (): void => {
+  assert.equal(parser.parse(env()).adminUiDir, null);
+  assert.equal(parser.parse(env(['ADMIN_UI_DIR', ''])).adminUiDir, null);
+  assert.equal(parser.parse(env(['ADMIN_UI_DIR', '/app/panel'])).adminUiDir, '/app/panel');
+});

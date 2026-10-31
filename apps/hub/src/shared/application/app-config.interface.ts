@@ -67,6 +67,8 @@ export interface AppConfigInterface {
   githubOauth: OauthClientConfigInterface | null;
   /** The emails of the administrators; one is an administrator once the email is proven to be theirs. */
   adminEmails: string[];
+  /** The built admin panel, served at `/panel`; there is no panel without one. */
+  adminUiDir: string | null;
   /** The key of the operator routes; without one they stay closed. */
   operatorApiKey: string | null;
   /** error, warn, info, debug or verbose. */

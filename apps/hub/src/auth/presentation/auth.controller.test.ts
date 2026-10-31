@@ -73,6 +73,7 @@ const config: AppConfigInterface = {
   googleOauth: null,
   githubOauth: null,
   adminEmails: ['boss@example.com'],
+  adminUiDir: null,
   operatorApiKey: null,
   authCookieSecure: true,
   logLevel: 'error',

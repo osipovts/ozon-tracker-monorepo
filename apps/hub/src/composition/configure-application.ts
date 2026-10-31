@@ -2,6 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
+import { serveAdminUi } from '../shared/presentation/admin-ui.type.js';
 import { applyBodyLimits } from '../shared/presentation/body-limits.type.js';
 
 /** The title and the ways to sign in of the API docs, which the admin panel builds its types from. */
@@ -25,6 +26,7 @@ export function configureApplication(app: NestExpressApplication): void {
   applyBodyLimits(app);
   // Behind a reverse proxy the address of a client is in X-Forwarded-For; the limits count by it.
   if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
+  if (config.adminUiDir !== null) serveAdminUi(app, config.adminUiDir);
   app.enableShutdownHooks();
   SwaggerModule.setup('docs', app, () => SwaggerModule.createDocument(app, apiDocumentOptions()), {
     jsonDocumentUrl: 'docs/json',

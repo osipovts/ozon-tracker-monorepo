@@ -121,6 +121,7 @@ const config: AppConfigInterface = {
   googleOauth: null,
   githubOauth: null,
   adminEmails: [],
+  adminUiDir: null,
   operatorApiKey,
   logLevel: 'error',
 };
