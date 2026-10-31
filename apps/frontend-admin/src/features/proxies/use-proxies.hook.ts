@@ -167,7 +167,22 @@ export function useRefreshSources(): {
       return jobs.filter((jobId): jobId is string => jobId !== undefined);
     },
   });
-  const jobIds = start.data ?? [];
+  // After a reload the jobs that still run are followed again.
+  const running = useQuery({
+    queryKey: ['proxy-jobs', 'running'],
+    queryFn: async (): Promise<string[]> => {
+      const page = ensure(
+        await api.GET('/jobs', { params: { query: { kind: 'proxy_fetch', pageSize: 100 } } }),
+      );
+
+      return (page?.items ?? [])
+        .filter((job): boolean => !isFinished(job.status))
+        .map((job): string => job.id);
+    },
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  const jobIds = start.data ?? running.data ?? [];
   const jobs = useQueries({
     queries: jobIds.map((jobId): JobQueryType => jobQuery(jobId, refreshed)),
   });
@@ -192,6 +207,6 @@ export function useRefreshSources(): {
             ? 'failed'
             : 'completed',
     error: start.error ?? jobs.find((job) => job.error !== null)?.error ?? null,
-    isStarting: start.isPending,
+    isStarting: start.isPending || running.isPending,
   };
 }
