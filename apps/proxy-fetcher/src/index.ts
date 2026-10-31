@@ -3,9 +3,13 @@ import { type ProxyFetchResultType, queueNames } from 'queue-contract';
 import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
+import type { ProxySourcePort } from './application/proxy-source.port.js';
 import { RefreshProxySourceUseCase } from './application/refresh-proxy-source.use-case.js';
 import { GeoIpProxyProbeAdapter } from './infrastructure/geo-ip-proxy-probe.adapter.js';
 import { GithubFreeProxyListSourceAdapter } from './infrastructure/github-free-proxy-list-source.adapter.js';
+import { ProxiflySourceAdapter } from './infrastructure/proxifly-source.adapter.js';
+import { ProxyListParser } from './infrastructure/proxy-list.parser.js';
+import { ProxyscrapeSourceAdapter } from './infrastructure/proxyscrape-source.adapter.js';
 import { ProxyFetchController } from './presentation/proxy-fetch.controller.js';
 
 const env = z
@@ -37,14 +41,25 @@ const runner = new QueueWorkerRunner<ProxyFetchResultType>(
 );
 const publish = (message: ProxyFetchResultType): Promise<void> => runner.publish(message);
 
+const proxyListParser = new ProxyListParser();
+const probe = new GeoIpProxyProbeAdapter(undefined, logger.child('probe'));
+const refreshSource = (source: ProxySourcePort): RefreshProxySourceUseCase =>
+  new RefreshProxySourceUseCase(
+    source,
+    probe,
+    env.probeConcurrency,
+    env.resultBatchSize,
+    logger.child('refresh'),
+  );
+
 const controller = new ProxyFetchController(
   {
-    'github-free-proxy-list': new RefreshProxySourceUseCase(
-      new GithubFreeProxyListSourceAdapter(logger.child('source')),
-      new GeoIpProxyProbeAdapter(undefined, logger.child('probe')),
-      env.probeConcurrency,
-      env.resultBatchSize,
-      logger.child('refresh'),
+    'github-free-proxy-list': refreshSource(
+      new GithubFreeProxyListSourceAdapter(proxyListParser, logger.child('source')),
+    ),
+    proxifly: refreshSource(new ProxiflySourceAdapter(proxyListParser, logger.child('source'))),
+    proxyscrape: refreshSource(
+      new ProxyscrapeSourceAdapter(proxyListParser, logger.child('source')),
     ),
   },
   new QueueMessageParser(logger.child('controller')),

@@ -96,6 +96,10 @@ export const en = {
     deleteTitle: 'Delete the proxy?',
     deleteText:
       '{{server}} goes from the list. The next refresh of its source finds it again if it is still listed there: turn it off instead to keep it away.',
+    deleteAll: 'Delete all',
+    deleteAllTitle: 'Delete all proxies?',
+    deleteAllText:
+      'Every proxy goes from the list. The next refresh of a source finds the ones still listed there again.',
     jobStatus: {
       queued: 'queued',
       running: 'running',

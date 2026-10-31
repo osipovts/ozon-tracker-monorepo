@@ -7,6 +7,7 @@ import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 import { unchangedLinks } from './add-product-defaults.type.js';
 import type { ExpandProductLinkUseCase } from './expand-product-link.use-case.js';
 import type { PriceObservationRepositoryPort } from './price-observation-repository.port.js';
+import { ProductAddingInProgressError } from './product-adding-in-progress.error.js';
 import { ProductGoneError } from './product-gone.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';
 import { ProductQuotaExceededError } from './product-quota-exceeded.error.js';
@@ -42,7 +43,36 @@ export class AddProductUseCase {
     private readonly expandLink: Pick<ExpandProductLinkUseCase, 'execute'> = unchangedLinks,
   ) {}
 
-  async execute(userId: string, url: string): Promise<AddedProductInterface> {
+  /** The adds in progress by user: a link can take minutes to expand, and a reload sends it again. */
+  private readonly running = new Map<
+    string,
+    { url: string; result: Promise<AddedProductInterface> }
+  >();
+
+  /**
+   * One product at a time per user. The same link while it is being added joins the add in progress
+   * instead of starting another one, and is not counted against the rate limit again.
+   */
+  execute(userId: string, url: string): Promise<AddedProductInterface> {
+    const running = this.running.get(userId);
+    if (running !== undefined) {
+      return running.url === url
+        ? running.result
+        : Promise.reject(new ProductAddingInProgressError());
+    }
+
+    const result = this.add(userId, url).finally((): void => {
+      this.running.delete(userId);
+    });
+    this.running.set(userId, { url, result });
+
+    return result;
+  }
+
+  private async add(userId: string, url: string): Promise<AddedProductInterface> {
+    // Before the link is expanded: that takes a browser of the worker.
+    await enforceRateLimits(this.limiter, [[`product-add:user:${userId}`, this.limits.add]]);
+
     const productUrl = await this.expandLink.execute(url);
 
     let reference: ProductReferenceEntity;
@@ -51,8 +81,6 @@ export class AddProductUseCase {
     } catch {
       throw new UnsupportedProductUrlError();
     }
-
-    await enforceRateLimits(this.limiter, [[`product-add:user:${userId}`, this.limits.add]]);
 
     // Before the product is created: a refused one would be left, tracked by nobody.
     const tracking = await this.products.listSubscribed(userId, { page: 1, pageSize: 1 });

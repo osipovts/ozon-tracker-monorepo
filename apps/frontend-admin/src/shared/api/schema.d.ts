@@ -185,6 +185,26 @@ export interface paths {
     patch: operations['ProxiesController_setProxyDisabled'];
     trace?: never;
   };
+  '/proxies/all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete all proxies
+     * @description The next refresh of a source finds the ones still listed there again: turn them off instead to keep them away.
+     */
+    delete: operations['ProxiesController_removeAll'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/proxy-sources/{source}/refresh': {
     parameters: {
       query?: never;
@@ -1139,12 +1159,29 @@ export interface operations {
       };
     };
   };
+  ProxiesController_removeAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   ProxySourcesController_refresh: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        source: 'github-free-proxy-list';
+        source: 'github-free-proxy-list' | 'proxifly' | 'proxyscrape';
       };
       cookie?: never;
     };

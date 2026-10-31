@@ -98,6 +98,9 @@ export const en = {
     soon: 'soon',
     nextAt: 'at {{when}}',
     waiting: 'waiting for the first price',
+    waitingHint: 'It can take up to 10 minutes.',
+    addSlow:
+      'Adding a product can take a few minutes - this is normal. You can close the page, the adding will not be interrupted.',
     noPrice: 'no price',
     empty: 'Nothing is tracked yet.',
   },

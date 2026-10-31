@@ -141,7 +141,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
           new OzonShortLinkParser(),
           choose,
           expander,
-          config.priceTimeoutMs,
+          config.linkExpandTimeoutMs,
           logger.child('products'),
         ),
       inject: [ChoosePriceRoutesUseCase, PRODUCT_LINK_EXPANDER, APP_CONFIG, LOGGER],

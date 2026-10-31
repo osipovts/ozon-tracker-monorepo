@@ -27,7 +27,11 @@ function createController(
   };
 
   return new ProxyFetchController(
-    { 'github-free-proxy-list': { execute } },
+    {
+      'github-free-proxy-list': { execute },
+      proxifly: { execute },
+      proxyscrape: { execute },
+    },
     new QueueMessageParser(silentLogger),
     new JobLifecycleReporter(publish, silentLogger),
     publish,

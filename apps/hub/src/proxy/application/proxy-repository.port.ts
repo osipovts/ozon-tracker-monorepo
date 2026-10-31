@@ -33,6 +33,8 @@ export interface ProxyRepositoryPort {
   saveMany(proxies: ProxyEntity[]): Promise<void>;
   /** Deletes the proxy; false if there was none. */
   delete(server: string): Promise<boolean>;
+  /** Deletes every proxy; returns how many there were. */
+  deleteAll(): Promise<number>;
   /** Best first: alive, then the success rate, then the latency. */
   list(
     filter: ProxyFilterInterface,

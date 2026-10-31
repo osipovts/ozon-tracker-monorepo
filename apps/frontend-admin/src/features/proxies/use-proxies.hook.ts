@@ -92,6 +92,17 @@ export function useDeleteProxy(): UseMutationResult<void, Error, string> {
   });
 }
 
+export function useDeleteAllProxies(): UseMutationResult<void, Error, void> {
+  const refreshed = useRefreshedViews();
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      ensure(await api.DELETE('/proxies/all'));
+    },
+    onSuccess: refreshed,
+  });
+}
+
 /** Queues the read of the source and follows its job until it ends. */
 export function useRefreshSource(): {
   start: () => void;

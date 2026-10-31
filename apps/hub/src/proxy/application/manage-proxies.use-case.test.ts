@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { ProxyEntity } from '../domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
+import { DeleteAllProxiesUseCase } from './delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from './delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from './list-best-proxy-servers.use-case.js';
 import { ProxyNotFoundError } from './proxy-not-found.error.js';
@@ -72,4 +73,11 @@ void test('deletes a proxy, and refuses one that is unknown', async (): Promise<
   assert.deepEqual(await proxies.findByServers([first]), []);
   await assert.rejects(remove.execute(first), ProxyNotFoundError);
   await assert.rejects(setDisabled.execute('socks5://203.0.113.9:1080', true), ProxyNotFoundError);
+});
+
+void test('deleting all proxies leaves none for the workers', async (): Promise<void> => {
+  const { proxies, best } = await setup();
+
+  assert.equal(await new DeleteAllProxiesUseCase(proxies).execute(), 2);
+  assert.deepEqual(await best.execute({ country: 'RU', limit: 5 }), []);
 });

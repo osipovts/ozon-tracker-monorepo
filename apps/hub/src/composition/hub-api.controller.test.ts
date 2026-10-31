@@ -38,6 +38,7 @@ import { RequestPriceObservationUseCase } from '../product/application/request-p
 import { InMemoryPriceObservationRepositoryAdapter } from '../product/infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../product/infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { ProductsController } from '../product/presentation/products.controller.js';
+import { DeleteAllProxiesUseCase } from '../proxy/application/delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from '../proxy/application/delete-proxy.use-case.js';
 import { ListBestProxyServersUseCase } from '../proxy/application/index.js';
 import { ListProxiesUseCase } from '../proxy/application/list-proxies.use-case.js';
@@ -97,6 +98,7 @@ const config: AppConfigInterface = {
   port: 3000,
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
+  linkExpandTimeoutMs: 15000,
   priceRefreshIntervalMs: 0,
   priceRefreshMinute: 55,
   priceRefreshMaxAgeMs: 21_600_000,
@@ -196,6 +198,7 @@ before(async (): Promise<void> => {
       },
       { provide: SetProxyDisabledUseCase, useValue: new SetProxyDisabledUseCase(proxies) },
       { provide: DeleteProxyUseCase, useValue: new DeleteProxyUseCase(proxies) },
+      { provide: DeleteAllProxiesUseCase, useValue: new DeleteAllProxiesUseCase(proxies) },
       { provide: RequestPriceObservationUseCase, useValue: requestObservation },
       {
         provide: ListPriceHistoryUseCase,
@@ -450,6 +453,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     '/products/{id}',
     '/products/{id}/prices',
     '/proxies',
+    '/proxies/all',
     '/proxy-sources/{source}/refresh',
     '/sessions',
     '/sessions/{id}',

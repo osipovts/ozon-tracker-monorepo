@@ -48,6 +48,7 @@ const config: AppConfigInterface = {
   port: 3000,
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
+  linkExpandTimeoutMs: 15000,
   priceRefreshIntervalMs: 0,
   priceRefreshMinute: 55,
   priceRefreshMaxAgeMs: 21_600_000,

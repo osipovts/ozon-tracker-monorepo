@@ -20,6 +20,7 @@ import {
 
 import { toPageResponse } from '../../shared/presentation/pagination-query.type.js';
 import { routeAccess } from '../../shared/presentation/route-access.type.js';
+import { DeleteAllProxiesUseCase } from '../application/delete-all-proxies.use-case.js';
 import { DeleteProxyUseCase } from '../application/delete-proxy.use-case.js';
 import { ListProxiesUseCase } from '../application/list-proxies.use-case.js';
 import { SetProxyDisabledUseCase } from '../application/set-proxy-disabled.use-case.js';
@@ -43,6 +44,7 @@ export class ProxiesController {
     @Inject(ListProxiesUseCase) private readonly listProxies: ListProxiesUseCase,
     @Inject(SetProxyDisabledUseCase) private readonly setDisabled: SetProxyDisabledUseCase,
     @Inject(DeleteProxyUseCase) private readonly deleteProxy: DeleteProxyUseCase,
+    @Inject(DeleteAllProxiesUseCase) private readonly deleteAllProxies: DeleteAllProxiesUseCase,
   ) {}
 
   @Get()
@@ -119,5 +121,17 @@ export class ProxiesController {
     @Query({ schema: proxyServerQuerySchema }) query: ProxyServerQueryType,
   ): Promise<void> {
     await this.deleteProxy.execute(query.server);
+  }
+
+  @Delete('all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete all proxies',
+    description:
+      'The next refresh of a source finds the ones still listed there again: turn them off instead to keep them away.',
+  })
+  @ApiNoContentResponse()
+  async removeAll(): Promise<void> {
+    await this.deleteAllProxies.execute();
   }
 }

@@ -1683,6 +1683,25 @@
         "tags": ["proxies"]
       }
     },
+    "/proxies/all": {
+      "delete": {
+        "description": "The next refresh of a source finds the ones still listed there again: turn them off instead to keep them away.",
+        "operationId": "ProxiesController_removeAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete all proxies",
+        "tags": ["proxies"]
+      }
+    },
     "/proxy-sources/{source}/refresh": {
       "post": {
         "operationId": "ProxySourcesController_refresh",
@@ -1693,7 +1712,7 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["github-free-proxy-list"]
+              "enum": ["github-free-proxy-list", "proxifly", "proxyscrape"]
             }
           }
         ],

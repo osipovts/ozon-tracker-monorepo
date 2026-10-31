@@ -11,6 +11,7 @@ import { AddProductUseCase } from './add-product.use-case.js';
 import { ListPriceHistoryUseCase } from './list-price-history.use-case.js';
 import { ListProductsUseCase } from './list-products.use-case.js';
 import { NoProxiesAvailableError } from './no-proxies-available.error.js';
+import { ProductAddingInProgressError } from './product-adding-in-progress.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';
 import { ProductQuotaExceededError } from './product-quota-exceeded.error.js';
@@ -236,4 +237,67 @@ void test('the history of a product is for those who track it: to the others it 
     history.execute(sam, product.snapshot.id, { page: 1, pageSize: 10 }),
     ProductNotFoundError,
   );
+});
+
+/** An add whose link takes its time to expand, until the test lets it go. */
+function slowAdd(limits: ProductLimitsInterface = roomy): {
+  add: AddProductUseCase;
+  expansions: string[];
+  finish: () => void;
+} {
+  const expansions: string[] = [];
+  let finish = (): void => undefined;
+  const expanded = new Promise<void>((resolve): void => {
+    finish = resolve;
+  });
+
+  return {
+    add: new AddProductUseCase(
+      new ResolveProductReferenceUseCase([new OzonReferenceParser()]),
+      new InMemoryTrackedProductRepositoryAdapter(),
+      new InMemoryPriceObservationRepositoryAdapter(),
+      { execute: (): Promise<{ jobId: string }> => Promise.reject(new NoProxiesAvailableError()) },
+      new InMemoryRateLimiterAdapter(),
+      limits,
+      undefined,
+      {
+        execute: async (url): Promise<string> => {
+          expansions.push(url);
+          await expanded;
+
+          return 'https://www.ozon.ru/product/1/';
+        },
+      },
+    ),
+    expansions,
+    finish,
+  };
+}
+
+void test('joins the same link sent again while it is being added, and counts it once', async (): Promise<void> => {
+  const { add, expansions, finish } = slowAdd({
+    maxProducts: 100,
+    add: { limit: 1, windowMs: 60_000 },
+  });
+
+  const first = add.execute(jane, 'https://ozon.ru/t/AbC');
+  const again = add.execute(jane, 'https://ozon.ru/t/AbC');
+  finish();
+
+  assert.equal((await first).product.snapshot.id, (await again).product.snapshot.id);
+  assert.deepEqual(expansions, ['https://ozon.ru/t/AbC']);
+});
+
+void test('refuses another link of a user while one is being added, and takes it afterwards', async (): Promise<void> => {
+  const { add, finish } = slowAdd();
+
+  const first = add.execute(jane, 'https://ozon.ru/t/AbC');
+  await assert.rejects(add.execute(jane, 'https://ozon.ru/t/Other'), ProductAddingInProgressError);
+  // Another user is not held by it.
+  const other = add.execute(sam, 'https://ozon.ru/t/Third');
+  finish();
+  await first;
+  await other;
+
+  await add.execute(jane, 'https://ozon.ru/t/Other');
 });

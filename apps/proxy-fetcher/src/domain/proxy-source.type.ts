@@ -1,1 +1,1 @@
-export type ProxySourceType = 'github-free-proxy-list';
+export type ProxySourceType = 'github-free-proxy-list' | 'proxifly' | 'proxyscrape';

@@ -22,7 +22,7 @@ function useCaseOf(
     new OzonShortLinkParser(),
     { execute: (): Promise<RouteInterface[]> => Promise.resolve(chosen) },
     expander,
-    5000,
+    20_000,
   );
 }
 
@@ -49,7 +49,7 @@ void test('asks the worker to expand a short link through the routes', async ():
   });
 
   assert.equal(await useCase.execute('https://ozon.ru/t/AbC'), 'https://www.ozon.ru/product/1/');
-  assert.deepEqual(asked, [{ url: 'https://ozon.ru/t/AbC', routes, timeoutMs: 5000 }]);
+  assert.deepEqual(asked, [{ url: 'https://ozon.ru/t/AbC', routes, timeoutMs: 20_000 }]);
 });
 
 void test('refuses a short link when there is no route or no answer', async (): Promise<void> => {

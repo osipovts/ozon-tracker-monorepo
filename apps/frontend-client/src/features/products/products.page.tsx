@@ -13,7 +13,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { type ReactElement, type SyntheticEvent, useState } from 'react';
+import { type ReactElement, type SyntheticEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -22,6 +22,7 @@ import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { DeleteProduct } from './delete-product.component.js';
 import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
+import { readPendingAdd } from './pending-add.type.js';
 import { formatPrice } from './price-format.type.js';
 import { ProductThumbnail } from './product-thumbnail.component.js';
 import {
@@ -31,6 +32,9 @@ import {
   useProducts,
 } from './use-products.hook.js';
 
+/** How long a product may be added before the user is told that it can take minutes. */
+const slowAddDelayMs = 5000;
+
 function titleOf(item: ProductListItemType): string {
   return item.latest?.title ?? `${item.marketplace} ${item.externalId}`;
 }
@@ -39,15 +43,43 @@ function AddProduct(): ReactElement {
   const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const add = useAddProduct();
+  const [slow, setSlow] = useState(false);
 
-  const submit = (event: SyntheticEvent): void => {
-    event.preventDefault();
-    add.mutate(url, {
+  useEffect((): (() => void) | undefined => {
+    if (!add.isPending) return undefined;
+
+    const timer = setTimeout((): void => {
+      setSlow(true);
+    }, slowAddDelayMs);
+
+    return (): void => {
+      clearTimeout(timer);
+      setSlow(false);
+    };
+  }, [add.isPending]);
+
+  const track = (value: string): void => {
+    add.mutate(value, {
       onSuccess: (): void => {
         setUrl('');
       },
     });
   };
+
+  const submit = (event: SyntheticEvent): void => {
+    event.preventDefault();
+    track(url);
+  };
+
+  // A reload cut the add short, not stopped it: the hub joins it when the same link is sent again.
+  useEffect((): void => {
+    const pending = readPendingAdd();
+    if (pending === null) return;
+
+    setUrl(pending);
+    track(pending);
+    // Once, when the page opens.
+  }, []);
 
   return (
     <Card withBorder>
@@ -60,6 +92,7 @@ function AddProduct(): ReactElement {
               placeholder="https://www.ozon.ru/product/..."
               type="url"
               required
+              disabled={add.isPending}
               value={url}
               onChange={(event): void => {
                 setUrl(event.currentTarget.value);
@@ -72,6 +105,11 @@ function AddProduct(): ReactElement {
           <Text size="xs" c="dimmed">
             {t('products.supported')}
           </Text>
+          {slow && (
+            <Text size="xs" c="dimmed">
+              {t('products.addSlow')}
+            </Text>
+          )}
           {add.error !== null && <ErrorAlert error={add.error} />}
         </Stack>
       </form>
@@ -145,6 +183,11 @@ function ProductCards({
               <Text fw={600} size="lg">
                 <Price item={item} />
               </Text>
+              {item.latest === null && (
+                <Text size="xs" c="dimmed">
+                  {t('products.waitingHint')}
+                </Text>
+              )}
               {/* The gap above is 6: this block is 9 away from the price (one and a half times) and its lines 1 apart (a third). */}
               <Stack gap={1} mt={3}>
                 <Text size="sm" c="dimmed">

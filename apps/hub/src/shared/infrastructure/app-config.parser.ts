@@ -59,7 +59,8 @@ const configSchema = z.object({
   redisUrl: z.string().min(1).default('redis://localhost:6379'),
   port: z.coerce.number().int().min(1).max(65535).default(3000),
   priceProxyCount: z.coerce.number().int().min(1).max(20).default(5),
-  priceTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(60000),
+  priceTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(30000),
+  linkExpandTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(15000),
   // Not given: the prices are refreshed every hour at `priceRefreshMinute`.
   priceRefreshIntervalMs: z.coerce.number().int().min(0).nullable(),
   priceRefreshMinute: z.coerce.number().int().min(0).max(59).default(55),
@@ -171,6 +172,7 @@ export class AppConfigParser {
         port: env['PORT'],
         priceProxyCount: env['PRICE_PROXY_COUNT'],
         priceTimeoutMs: env['PRICE_TIMEOUT_MS'],
+        linkExpandTimeoutMs: env['LINK_EXPAND_TIMEOUT_MS'],
         priceRefreshIntervalMs:
           env['PRICE_REFRESH_INTERVAL_MS'] === undefined || env['PRICE_REFRESH_INTERVAL_MS'] === ''
             ? null

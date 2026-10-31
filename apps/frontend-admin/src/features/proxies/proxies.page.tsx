@@ -23,6 +23,7 @@ import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import {
   proxyPageSize,
   sessionMarketplace,
+  useDeleteAllProxies,
   useDeleteProxy,
   useProxies,
   useRefreshSource,
@@ -156,6 +157,7 @@ export function ProxiesPage(): ReactElement {
   const [ready, setReady] = useState<ChoiceType>('all');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const proxies = useProxies({
     alive: toFilter(alive),
     disabled: toFilter(disabled),
@@ -164,13 +166,25 @@ export function ProxiesPage(): ReactElement {
   });
   const setProxyDisabled = useSetProxyDisabled();
   const deleteProxy = useDeleteProxy();
+  const deleteAllProxies = useDeleteAllProxies();
   const data = proxies.data;
 
   return (
     <Stack>
       <Group justify="space-between" align="flex-start">
         <Title order={2}>{t('proxies.title')}</Title>
-        <RefreshSource />
+        <Group align="flex-start">
+          <Button
+            color="red"
+            variant="light"
+            onClick={(): void => {
+              setDeletingAll(true);
+            }}
+          >
+            {t('proxies.deleteAll')}
+          </Button>
+          <RefreshSource />
+        </Group>
       </Group>
       <Group>
         <Choice
@@ -316,6 +330,31 @@ export function ProxiesPage(): ReactElement {
             }}
           >
             {t('proxies.delete')}
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={deletingAll}
+        title={t('proxies.deleteAllTitle')}
+        onClose={(): void => {
+          setDeletingAll(false);
+        }}
+      >
+        <Stack>
+          <Text>{t('proxies.deleteAllText')}</Text>
+          {deleteAllProxies.error !== null && <ErrorAlert error={deleteAllProxies.error} />}
+          <Button
+            color="red"
+            loading={deleteAllProxies.isPending}
+            onClick={(): void => {
+              deleteAllProxies.mutate(undefined, {
+                onSuccess: (): void => {
+                  setDeletingAll(false);
+                },
+              });
+            }}
+          >
+            {t('proxies.deleteAll')}
           </Button>
         </Stack>
       </Modal>

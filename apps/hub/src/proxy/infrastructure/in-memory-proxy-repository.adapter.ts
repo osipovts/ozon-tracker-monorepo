@@ -74,6 +74,13 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     return Promise.resolve(this.proxies.delete(server));
   }
 
+  deleteAll(): Promise<number> {
+    const { size } = this.proxies;
+    this.proxies.clear();
+
+    return Promise.resolve(size);
+  }
+
   list(
     filter: ProxyFilterInterface,
     pagination: PaginationInterface,

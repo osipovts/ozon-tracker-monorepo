@@ -79,6 +79,12 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
     return count > 0;
   }
 
+  async deleteAll(): Promise<number> {
+    const { count } = await this.prisma.proxy.deleteMany();
+
+    return count;
+  }
+
   async list(
     filter: ProxyFilterInterface,
     pagination: PaginationInterface,

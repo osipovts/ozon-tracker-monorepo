@@ -8,6 +8,7 @@ import {
 
 import { api, ensure } from '../../shared/api/api.client.js';
 import type { operations } from '../../shared/api/schema.js';
+import { forgetPendingAdd, rememberPendingAdd } from './pending-add.type.js';
 
 export type ProductPageType =
   operations['ProductsController_list']['responses'][200]['content']['application/json'];
@@ -65,9 +66,12 @@ export function useAddProduct(): UseMutationResult<void, Error, string> {
 
   return useMutation({
     mutationFn: async (url: string): Promise<void> => {
+      rememberPendingAdd(url);
       ensure(await api.POST('/products', { body: { url } }));
     },
     onSuccess: (): Promise<void> => client.invalidateQueries({ queryKey: ['products'] }),
+    // Here, not in the call: the page that made it may be gone by then.
+    onSettled: forgetPendingAdd,
   });
 }
 
