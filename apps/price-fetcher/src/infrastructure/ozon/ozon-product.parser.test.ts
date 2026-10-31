@@ -20,6 +20,7 @@ const base: OzonPageInterface = {
   priceText: '',
   purchaseText: '',
   structuredData: [],
+  imageUrl: '',
 };
 
 void test('reads the prices of the card and leaves customs payments out of them', (): void => {
@@ -136,4 +137,71 @@ void test('returns out-of-stock without inventing a zero price', (): void => {
   assert.ok(snapshot);
   assert.equal(snapshot.availability, 'out_of_stock');
   assert.deepEqual(snapshot.prices, []);
+});
+
+void test('takes the picture of the product from its markup, else from the page, and only an address a browser loads', (): void => {
+  const withMarkup = (image: unknown): OzonPageInterface => ({
+    ...base,
+    priceText: '100 ₽',
+    structuredData: [
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Notebook',
+        sku: reference.id,
+        image,
+        offers: { price: '100', priceCurrency: 'RUB' },
+      }),
+    ],
+  });
+
+  assert.equal(
+    parser.parse(reference, withMarkup(['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg']))
+      ?.imageUrl,
+    'https://cdn.example/a.jpg',
+  );
+  assert.equal(
+    parser.parse(reference, withMarkup('https://cdn.example/one.jpg'))?.imageUrl,
+    'https://cdn.example/one.jpg',
+  );
+
+  // None in the markup: the picture the page names for sharing.
+  assert.equal(
+    parser.parse(reference, { ...withMarkup(undefined), imageUrl: 'https://cdn.example/og.jpg' })
+      ?.imageUrl,
+    'https://cdn.example/og.jpg',
+  );
+
+  // Not an address to load: none.
+  assert.equal(parser.parse(reference, withMarkup('javascript:alert(1)'))?.imageUrl, null);
+  assert.equal(parser.parse(reference, withMarkup('/relative.jpg'))?.imageUrl, null);
+  assert.equal(parser.parse(reference, { ...withMarkup(undefined), imageUrl: '' })?.imageUrl, null);
+});
+
+void test('asks the CDN of Ozon for the small size of the picture, of a full-size address or of another size', (): void => {
+  const pictureOf = (image: string): string | null | undefined =>
+    parser.parse(reference, {
+      ...base,
+      priceText: '100 ₽',
+      structuredData: [
+        JSON.stringify({
+          '@type': 'Product',
+          name: 'Notebook',
+          sku: reference.id,
+          image,
+          offers: { price: '100', priceCurrency: 'RUB' },
+        }),
+      ],
+    })?.imageUrl;
+
+  assert.equal(
+    pictureOf('https://ir.ozone.ru/s3/multimedia-1-u/11648158482.jpg'),
+    'https://ir.ozone.ru/s3/multimedia-1-u/wc300/11648158482.jpg',
+  );
+  assert.equal(
+    pictureOf('https://ir.ozone.ru/s3/multimedia-1-u/c1000/11648158482.jpg'),
+    'https://ir.ozone.ru/s3/multimedia-1-u/wc300/11648158482.jpg',
+  );
+  // Another host, or an address of another shape, is left as the page gave it.
+  assert.equal(pictureOf('https://cdn.example/s3/b/1.jpg'), 'https://cdn.example/s3/b/1.jpg');
+  assert.equal(pictureOf('https://ir.ozone.ru/other/1.jpg'), 'https://ir.ozone.ru/other/1.jpg');
 });

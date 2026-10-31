@@ -48,4 +48,6 @@ export interface TrackedProductRepositoryPort {
     pagination: PaginationInterface,
   ): Promise<PageInterface<TrackedProductEntity>>;
   markChecked(id: string, status: string, checkedAt: Date): Promise<void>;
+  /** Notes where the picture of the product is kept, and the address it was taken from. */
+  setThumbnail(id: string, key: string, sourceUrl: string): Promise<void>;
 }

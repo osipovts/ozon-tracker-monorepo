@@ -73,6 +73,8 @@ export class OzonPageParser {
         )
           .map((element): string => element.innerText)
           .join('\n'),
+        imageUrl:
+          window.document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '',
         structuredData: Array.from(
           window.document.querySelectorAll('script[type="application/ld+json"]'),
         ).map((element): string => element.textContent),

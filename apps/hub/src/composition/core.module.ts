@@ -7,12 +7,18 @@ import { QueueMessageParser } from 'queue-worker';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { MAILER, type MailerPort } from '../shared/application/mailer.port.js';
+import {
+  OBJECT_STORAGE,
+  type ObjectStoragePort,
+} from '../shared/application/object-storage.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { AppConfigParser } from '../shared/infrastructure/app-config.parser.js';
+import { InMemoryObjectStorageAdapter } from '../shared/infrastructure/in-memory-object-storage.adapter.js';
 import { LogMailerAdapter } from '../shared/infrastructure/log-mailer.adapter.js';
 import { NestLoggerAdapter } from '../shared/infrastructure/nest-logger.adapter.js';
 import { NodemailerMailerAdapter } from '../shared/infrastructure/nodemailer-mailer.adapter.js';
 import { RedisRateLimiterAdapter } from '../shared/infrastructure/redis-rate-limiter.adapter.js';
+import { S3ObjectStorageAdapter } from '../shared/infrastructure/s3-object-storage.adapter.js';
 
 const REDIS = Symbol('Redis');
 
@@ -61,13 +67,32 @@ const REDIS = Symbol('Redis');
       inject: [APP_CONFIG, LOGGER],
     },
     {
+      provide: OBJECT_STORAGE,
+      useFactory: (config: AppConfigInterface, logger: LoggerPort): ObjectStoragePort => {
+        if (config.s3 !== null) return new S3ObjectStorageAdapter(config.s3, logger.child('s3'));
+
+        logger.warn('S3_ENDPOINT is not set: the pictures of the products are not kept');
+
+        return new InMemoryObjectStorageAdapter(false);
+      },
+      inject: [APP_CONFIG, LOGGER],
+    },
+    {
       provide: QueueMessageParser,
       useFactory: (logger: LoggerPort): QueueMessageParser =>
         new QueueMessageParser(logger.child('results')),
       inject: [LOGGER],
     },
   ],
-  exports: [APP_CONFIG, LOGGER, NestLoggerAdapter, QueueMessageParser, RATE_LIMITER, MAILER],
+  exports: [
+    APP_CONFIG,
+    LOGGER,
+    NestLoggerAdapter,
+    QueueMessageParser,
+    RATE_LIMITER,
+    MAILER,
+    OBJECT_STORAGE,
+  ],
 })
 export class CoreModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS) private readonly redis: Redis) {}

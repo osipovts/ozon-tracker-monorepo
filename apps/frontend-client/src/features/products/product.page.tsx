@@ -28,6 +28,7 @@ import {
   type GranularityType,
   type PricePointInterface,
 } from './price-series.type.js';
+import { ProductThumbnail } from './product-thumbnail.component.js';
 import { type ObservationType, usePriceHistory } from './use-products.hook.js';
 
 /** The hours the first chart shows, and the days the second. */
@@ -94,6 +95,7 @@ export function ProductPage(): ReactElement {
 
   const [newest] = data.observations;
   const newestPrice = newest === undefined ? null : priceOf(newest);
+  const productTitle = newest?.title ?? `${data.product.marketplace} ${data.product.externalId}`;
   const next = describeNextCheck(data.product.nextCheckAt, new Date(), locale);
   const rows = data.observations.slice((page - 1) * tablePageSize, page * tablePageSize);
 
@@ -102,22 +104,27 @@ export function ProductPage(): ReactElement {
       <Anchor component={Link} to="/" size="sm">
         {t('common.backToProducts')}
       </Anchor>
-      <Title order={2} fz={{ base: 20, sm: 28 }}>
-        {newest?.title ?? `${data.product.marketplace} ${data.product.externalId}`}
-      </Title>
-      <Group gap="sm">
-        <Title order={3}>
-          {newestPrice === null ? t('product.noPriceYet') : formatPrice(newestPrice)}
-        </Title>
-        {newest !== undefined && <Badge>{availabilityLabel(newest.availability, t)}</Badge>}
-        <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
-          {t('product.openOn', { marketplace: data.product.marketplace })}
-        </Anchor>
-        <DeleteProduct
-          productId={data.product.id}
-          title={newest?.title ?? `${data.product.marketplace} ${data.product.externalId}`}
-          onDeleted={(): void => void navigate('/')}
-        />
+      <Group wrap="nowrap" align="flex-start" gap="md">
+        <ProductThumbnail url={data.product.thumbnailUrl} alt={productTitle} size={112} />
+        <Stack gap="xs" flex={1} miw={0}>
+          <Title order={2} fz={{ base: 20, sm: 28 }}>
+            {productTitle}
+          </Title>
+          <Group gap="sm">
+            <Title order={3}>
+              {newestPrice === null ? t('product.noPriceYet') : formatPrice(newestPrice)}
+            </Title>
+            {newest !== undefined && <Badge>{availabilityLabel(newest.availability, t)}</Badge>}
+            <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
+              {t('product.openOn', { marketplace: data.product.marketplace })}
+            </Anchor>
+            <DeleteProduct
+              productId={data.product.id}
+              title={productTitle}
+              onDeleted={(): void => void navigate('/')}
+            />
+          </Group>
+        </Stack>
       </Group>
       {next !== null && (
         <Text size="sm" c="dimmed">
@@ -164,11 +171,13 @@ export function ProductPage(): ReactElement {
         </Table>
       </Table.ScrollContainer>
       {data.observations.length === 0 && <Text c="dimmed">{t('product.noHistory')}</Text>}
-      <Pagination
-        total={Math.max(1, Math.ceil(data.observations.length / tablePageSize))}
-        value={page}
-        onChange={setPage}
-      />
+      {data.observations.length > tablePageSize && (
+        <Pagination
+          total={Math.max(1, Math.ceil(data.observations.length / tablePageSize))}
+          value={page}
+          onChange={setPage}
+        />
+      )}
     </Stack>
   );
 }

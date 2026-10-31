@@ -59,6 +59,7 @@ const success: ReadProductResultType = {
     observedAt: '2026-10-24T12:00:00.000Z',
     prices: [{ amountMinor: 10000000, currency: 'RUB' }],
     availability: 'in_stock',
+    imageUrl: null,
   },
   exitIp: '217.71.230.103',
 };

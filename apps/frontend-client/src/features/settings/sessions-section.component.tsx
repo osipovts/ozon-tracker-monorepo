@@ -99,7 +99,7 @@ export function SessionsSection(): ReactElement {
         {others.length > 0 && (
           <Group>
             <Button
-              variant="default"
+              color="red"
               loading={revokeOthers.isPending}
               onClick={(): void => {
                 revokeOthers.mutate();

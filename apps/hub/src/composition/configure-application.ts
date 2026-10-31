@@ -26,8 +26,12 @@ export function configureApplication(app: NestExpressApplication): void {
   applyBodyLimits(app);
   // Behind a reverse proxy the address of a client is in X-Forwarded-For; the limits count by it.
   if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
+  // The pictures of the products are loaded from where the storage hands them out.
+  const imageOrigins = config.s3 === null ? [] : [new URL(config.s3.publicUrl).origin];
   if (config.adminUiDir !== null) serveStaticUi(app, adminUiPath, config.adminUiDir);
-  if (config.clientUiDir !== null) serveStaticUi(app, clientUiPath, config.clientUiDir);
+  if (config.clientUiDir !== null) {
+    serveStaticUi(app, clientUiPath, config.clientUiDir, imageOrigins);
+  }
   app.enableShutdownHooks();
   SwaggerModule.setup('docs', app, () => SwaggerModule.createDocument(app, apiDocumentOptions()), {
     jsonDocumentUrl: 'docs/json',

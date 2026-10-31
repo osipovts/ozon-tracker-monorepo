@@ -34,9 +34,6 @@ export function SettingsPage(): ReactElement {
           <LanguageControl size="sm" />
         </Stack>
       </Card>
-      <Text size="xs" c="dimmed">
-        {t('settings.kept')}
-      </Text>
     </Stack>
   );
 }

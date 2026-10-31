@@ -7,6 +7,7 @@ import {
   PasswordInput,
   Stack,
   Tabs,
+  Text,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -65,7 +66,12 @@ export function LoginPage(): ReactElement {
         <form onSubmit={submit}>
           <Stack>
             <Group justify="space-between">
-              <Title order={2}>{t('login.title')}</Title>
+              <Stack gap={0}>
+                <Title order={2}>{t('login.title')}</Title>
+                <Text size="sm" c="dimmed">
+                  {t('brand.slogan')}
+                </Text>
+              </Stack>
               <LanguageControl />
             </Group>
             <Tabs value={mode} onChange={setMode}>

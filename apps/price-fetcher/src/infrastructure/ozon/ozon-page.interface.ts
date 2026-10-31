@@ -7,4 +7,6 @@ export interface OzonPageInterface {
   priceText: string;
   purchaseText: string;
   structuredData: string[];
+  /** The picture the page names for sharing (`og:image`); empty when it names none. */
+  imageUrl: string;
 }

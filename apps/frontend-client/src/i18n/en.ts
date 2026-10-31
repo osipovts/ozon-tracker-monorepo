@@ -14,8 +14,11 @@ export const en = {
     tryAgain: 'Try again in {{seconds}} s.',
     unreachable: 'The hub could not be reached.',
   },
+  brand: {
+    slogan: 'price tracker',
+  },
   login: {
-    title: 'Price tracker',
+    title: 'Нищебродская',
     logIn: 'Log in',
     signUp: 'Sign up',
     email: 'Email',
@@ -25,7 +28,7 @@ export const en = {
     tooManyAttempts: 'Too many attempts.',
   },
   shell: {
-    title: 'Price tracker',
+    title: 'Нищебродская',
     settings: 'Settings',
     confirmTitle: 'Confirm your email',
     confirmText: 'We sent a link to {{email}}.',
@@ -38,7 +41,6 @@ export const en = {
     appearanceHint: 'The theme of the app. Auto follows the one of your device.',
     language: 'Language',
     languageHint: 'Auto follows the language of your browser.',
-    kept: 'Kept in this browser.',
     account: 'Account',
     emailVerified: 'confirmed',
     emailNotVerified: 'not confirmed',
@@ -59,6 +61,8 @@ export const en = {
   products: {
     title: 'Products',
     linkLabel: 'Link to a product',
+    supported: 'Supported marketplaces: ozon.ru',
+    noPicture: 'No picture',
     track: 'Track',
     product: 'Product',
     price: 'Price',

@@ -526,6 +526,8 @@ export interface operations {
               lastCheckedAt: string | null;
               /** Format: date-time */
               nextCheckAt: string | null;
+              /** Format: uri */
+              thumbnailUrl: string | null;
               latest: {
                 /** Format: uuid */
                 id: string;
@@ -583,6 +585,8 @@ export interface operations {
             lastCheckedAt: string | null;
             /** Format: date-time */
             nextCheckAt: string | null;
+            /** Format: uri */
+            thumbnailUrl: string | null;
             /** Format: uuid */
             jobId: string | null;
           };
@@ -605,6 +609,8 @@ export interface operations {
             lastCheckedAt: string | null;
             /** Format: date-time */
             nextCheckAt: string | null;
+            /** Format: uri */
+            thumbnailUrl: string | null;
             /** Format: uuid */
             jobId: string | null;
           };
@@ -682,6 +688,8 @@ export interface operations {
               lastCheckedAt: string | null;
               /** Format: date-time */
               nextCheckAt: string | null;
+              /** Format: uri */
+              thumbnailUrl: string | null;
             };
           };
         };

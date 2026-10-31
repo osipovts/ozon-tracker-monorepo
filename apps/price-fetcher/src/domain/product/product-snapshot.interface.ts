@@ -8,6 +8,8 @@ export interface ProductSnapshotInterface {
   observedAt: string;
   prices: PriceObservationInterface[];
   availability: 'in_stock' | 'out_of_stock' | 'unknown';
+  /** The picture of the product on its page; null when the page shows none. */
+  imageUrl: string | null;
 }
 
 export type ReadProductResultType =

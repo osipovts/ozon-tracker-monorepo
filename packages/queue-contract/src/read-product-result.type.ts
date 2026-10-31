@@ -10,6 +10,11 @@ const productSnapshotSchema = z.object({
   observedAt: z.iso.datetime(),
   prices: z.array(priceObservationSchema),
   availability: z.enum(['in_stock', 'out_of_stock', 'unknown']),
+  /** The picture of the product on its page: the hub keeps a copy of it. Absent from older workers. */
+  imageUrl: z
+    .url({ protocol: /^https?$/ })
+    .nullable()
+    .optional(),
 });
 
 export const readProductResultSchema = z.union([

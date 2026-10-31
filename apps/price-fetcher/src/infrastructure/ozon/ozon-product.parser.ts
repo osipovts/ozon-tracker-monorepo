@@ -17,6 +17,7 @@ const productSchema = z.object({
   sku: z.union([z.string(), z.number()]).optional(),
   url: z.string().optional(),
   name: z.string(),
+  image: z.union([z.string(), z.array(z.string())]).optional(),
   offers: z.union([offerSchema, z.array(offerSchema)]).optional(),
 });
 const graphSchema = z.object({ '@graph': z.array(z.unknown()) });
@@ -27,6 +28,33 @@ interface StructuredProductInterface {
   title: string;
   prices: PriceObservationInterface[];
   availability: ProductSnapshotInterface['availability'];
+  imageUrl: string | null;
+}
+
+/** The pictures of Ozon are served in sizes, named by the folder before the file: `wc300` is 300 pixels wide, in WebP. */
+const ozonPicturePath = /^(\/s3\/[^/]+\/)(?:w?c\d+\/)?([^/]+)$/;
+const thumbnailFolder = 'wc300';
+
+/**
+ * An address a browser can load: the page may give a relative one, or none. A picture of the CDN of Ozon is
+ * the small size of it: a card shows it at less than 120 pixels, and the full size is hundreds of kilobytes.
+ */
+function httpUrlOf(value: string | undefined): string | null {
+  if (value === undefined || value === '') return null;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+
+    const parts = url.hostname === 'ir.ozone.ru' ? ozonPicturePath.exec(url.pathname) : null;
+    if (parts?.[1] !== undefined && parts[2] !== undefined) {
+      url.pathname = `${parts[1]}${thumbnailFolder}/${parts[2]}`;
+    }
+
+    return url.href;
+  } catch {
+    return null;
+  }
 }
 
 export class OzonProductParser {
@@ -52,6 +80,7 @@ export class OzonProductParser {
       observedAt: new Date().toISOString(),
       prices,
       availability,
+      imageUrl: structured.imageUrl ?? httpUrlOf(page.imageUrl),
     };
   }
 
@@ -71,6 +100,7 @@ export class OzonProductParser {
       title: '',
       prices: [],
       availability: 'unknown',
+      imageUrl: null,
     };
 
     for (const text of texts) {
@@ -85,6 +115,9 @@ export class OzonProductParser {
         if (!matches) continue;
 
         structured.title ||= product.data.name;
+        structured.imageUrl ??= httpUrlOf(
+          Array.isArray(product.data.image) ? product.data.image[0] : product.data.image,
+        );
         const offers =
           product.data.offers === undefined
             ? []

@@ -51,6 +51,13 @@ export async function startHub(options: HubOptionsInterface): Promise<RunningHub
     // Off, unless a test asks for it: a refresh in the background would answer for what a test does.
     PRICE_REFRESH_INTERVAL_MS: '0',
     ...(options.smtpUrl === undefined ? {} : { SMTP_URL: options.smtpUrl }),
+    ...(options.stack.s3 === undefined
+      ? {}
+      : {
+          S3_ENDPOINT: options.stack.s3.endpoint,
+          S3_ACCESS_KEY_ID: options.stack.s3.accessKeyId,
+          S3_SECRET_ACCESS_KEY: options.stack.s3.secretAccessKey,
+        }),
     ...options.env,
   });
 

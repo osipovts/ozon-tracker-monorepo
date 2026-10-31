@@ -11,11 +11,17 @@ import { ProxyModule } from '../proxy/proxy.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { systemClock } from '../shared/application/clock.port.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
+import {
+  OBJECT_STORAGE,
+  type ObjectStoragePort,
+} from '../shared/application/object-storage.port.js';
 import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-limiter.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddProductUseCase } from './application/add-product.use-case.js';
 import { ChoosePriceRoutesUseCase } from './application/choose-price-routes.use-case.js';
 import { GetProductStatsUseCase } from './application/get-product-stats.use-case.js';
+import { GetProductThumbnailUrlUseCase } from './application/get-product-thumbnail-url.use-case.js';
+import { IMAGE_DOWNLOADER, type ImageDownloaderPort } from './application/image-downloader.port.js';
 import { ListPriceHistoryUseCase } from './application/list-price-history.use-case.js';
 import { ListProductsUseCase } from './application/list-products.use-case.js';
 import {
@@ -30,10 +36,12 @@ import { RecordPriceResultUseCase } from './application/record-price-result.use-
 import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
 import { RequestPriceObservationUseCase } from './application/request-price-observation.use-case.js';
+import { StoreProductThumbnailUseCase } from './application/store-product-thumbnail.use-case.js';
 import {
   TRACKED_PRODUCT_REPOSITORY,
   type TrackedProductRepositoryPort,
 } from './application/tracked-product-repository.port.js';
+import { HttpImageDownloaderAdapter } from './infrastructure/http-image-downloader.adapter.js';
 import { PeriodicPriceRefreshAdapter } from './infrastructure/periodic-price-refresh.adapter.js';
 import { PrismaPriceObservationRepositoryAdapter } from './infrastructure/prisma-price-observation-repository.adapter.js';
 import { PrismaTrackedProductRepositoryAdapter } from './infrastructure/prisma-tracked-product-repository.adapter.js';
@@ -109,9 +117,34 @@ function refreshScheduleSettings(config: AppConfigInterface): {
     },
     {
       provide: RemoveProductUseCase,
-      useFactory: (products: TrackedProductRepositoryPort): RemoveProductUseCase =>
-        new RemoveProductUseCase(products),
-      inject: [TRACKED_PRODUCT_REPOSITORY],
+      useFactory: (
+        products: TrackedProductRepositoryPort,
+        storage: ObjectStoragePort,
+        logger: LoggerPort,
+      ): RemoveProductUseCase =>
+        new RemoveProductUseCase(products, storage, logger.child('products')),
+      inject: [TRACKED_PRODUCT_REPOSITORY, OBJECT_STORAGE, LOGGER],
+    },
+    {
+      provide: IMAGE_DOWNLOADER,
+      useFactory: (): ImageDownloaderPort => new HttpImageDownloaderAdapter(),
+    },
+    {
+      provide: StoreProductThumbnailUseCase,
+      useFactory: (
+        products: TrackedProductRepositoryPort,
+        storage: ObjectStoragePort,
+        downloader: ImageDownloaderPort,
+        logger: LoggerPort,
+      ): StoreProductThumbnailUseCase =>
+        new StoreProductThumbnailUseCase(products, storage, downloader, logger.child('thumbnails')),
+      inject: [TRACKED_PRODUCT_REPOSITORY, OBJECT_STORAGE, IMAGE_DOWNLOADER, LOGGER],
+    },
+    {
+      provide: GetProductThumbnailUrlUseCase,
+      useFactory: (storage: ObjectStoragePort): GetProductThumbnailUrlUseCase =>
+        new GetProductThumbnailUrlUseCase(storage),
+      inject: [OBJECT_STORAGE],
     },
     {
       provide: ListProductsUseCase,
@@ -214,10 +247,21 @@ function refreshScheduleSettings(config: AppConfigInterface): {
       useFactory: (
         products: TrackedProductRepositoryPort,
         observations: PriceObservationRepositoryPort,
+        thumbnails: StoreProductThumbnailUseCase,
         logger: LoggerPort,
       ): RecordPriceResultUseCase =>
-        new RecordPriceResultUseCase(products, observations, logger.child('price-results')),
-      inject: [TRACKED_PRODUCT_REPOSITORY, PRICE_OBSERVATION_REPOSITORY, LOGGER],
+        new RecordPriceResultUseCase(
+          products,
+          observations,
+          thumbnails,
+          logger.child('price-results'),
+        ),
+      inject: [
+        TRACKED_PRODUCT_REPOSITORY,
+        PRICE_OBSERVATION_REPOSITORY,
+        StoreProductThumbnailUseCase,
+        LOGGER,
+      ],
     },
     PriceResultsConsumer,
   ],

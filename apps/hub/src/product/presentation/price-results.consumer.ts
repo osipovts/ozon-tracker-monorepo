@@ -107,6 +107,7 @@ export class PriceResultsConsumer extends ResultsConsumer<PriceFetchResultType> 
           prices: snapshot.prices,
           exitIp,
         },
+        imageUrl: snapshot.imageUrl ?? null,
       };
     }
 

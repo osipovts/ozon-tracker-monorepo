@@ -7,6 +7,17 @@ export interface OauthClientConfigInterface {
   clientSecret: string;
 }
 
+export interface ObjectStorageConfigInterface {
+  /** Where the hub reaches the S3 service. */
+  endpoint: string;
+  /** Where a browser reaches it: the addresses of the files it is given are signed for this one. */
+  publicUrl: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}
+
 export interface AppConfigInterface {
   databaseUrl: string;
   redisUrl: string;
@@ -70,6 +81,8 @@ export interface AppConfigInterface {
   githubOauth: OauthClientConfigInterface | null;
   /** The emails of the administrators; one is an administrator once the email is proven to be theirs. */
   adminEmails: string[];
+  /** The S3 service that keeps the pictures of the products; there are none without one. */
+  s3: ObjectStorageConfigInterface | null;
   /** The built admin panel, served at `/panel`; there is no panel without one. */
   adminUiDir: string | null;
   /** The built client app, served at `/app`; there is no app without one. */

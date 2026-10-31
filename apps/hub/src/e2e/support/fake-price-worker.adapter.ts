@@ -17,6 +17,8 @@ export class FakePriceWorkerAdapter {
   readonly jobs: PriceFetchJobType[] = [];
   /** What each product costs, by its URL; a product not in it is not on sale. */
   private readonly prices = new Map<string, number>();
+  /** The picture of each product, by its URL; a product not in it has none on its page. */
+  private readonly images = new Map<string, string>();
   private readonly runner: QueueWorkerRunner<PriceFetchResultType>;
   private readonly lifecycle: JobLifecycleReporter;
   private readonly messages = new QueueMessageParser(silentLogger);
@@ -39,6 +41,10 @@ export class FakePriceWorkerAdapter {
 
   setPrice(url: string, amountMinor: number): void {
     this.prices.set(url, amountMinor);
+  }
+
+  setImage(url: string, imageUrl: string): void {
+    this.images.set(url, imageUrl);
   }
 
   start(): void {
@@ -79,6 +85,7 @@ export class FakePriceWorkerAdapter {
                         observedAt: new Date().toISOString(),
                         prices: [{ amountMinor, currency: 'RUB' }],
                         availability: 'in_stock',
+                        imageUrl: this.images.get(product.url) ?? null,
                       },
                     },
             },

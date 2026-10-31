@@ -18,6 +18,13 @@ x-hub-env: &hub-env
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
   GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+  # The pictures of the products are kept in the S3 service of this stack; the files are handed to browsers
+  # by addresses signed for S3_PUBLIC_URL, which is where a browser reaches the service.
+  S3_ENDPOINT: http://s3:9000
+  S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+  S3_BUCKET: ${S3_BUCKET:-thumbnails}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-s3key}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-s3secret-change-me}
 
 x-depends-on-redis: &depends-on-redis
   redis:
@@ -99,6 +106,26 @@ services:
     stop_grace_period: 70s
     depends_on: *depends-on-redis
 
+  # An S3 service (SeaweedFS: MinIO no longer publishes images). The files are private: the hub signs
+  # the addresses it hands out.
+  s3:
+    image: chrislusf/seaweedfs:4.50
+    command: ['server', '-dir=/data', '-s3', '-s3.port=9000', '-ip.bind=0.0.0.0']
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-s3key}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-s3secret-change-me}
+    # From this machine only: a browser on it loads the pictures from here.
+    ports:
+      - '127.0.0.1:${S3_PORT:-9000}:9000'
+    volumes:
+      - s3_data:/data
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:9333/cluster/status']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     # Persistence keeps queued jobs across restarts. The port is reachable from this
@@ -135,3 +162,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  s3_data:

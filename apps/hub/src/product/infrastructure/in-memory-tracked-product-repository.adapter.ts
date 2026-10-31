@@ -35,6 +35,8 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
       lastStatus: null,
       lastCheckedAt: null,
       lastRequestedAt: null,
+      thumbnailKey: null,
+      thumbnailSourceUrl: null,
     });
     this.products.set(product.snapshot.id, product);
 
@@ -79,6 +81,22 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
       .slice(0, limit);
 
     return Promise.resolve(due);
+  }
+
+  setThumbnail(id: string, key: string, sourceUrl: string): Promise<void> {
+    const product = this.products.get(id);
+    if (product !== undefined) {
+      this.products.set(
+        id,
+        new TrackedProductEntity({
+          ...product.snapshot,
+          thumbnailKey: key,
+          thumbnailSourceUrl: sourceUrl,
+        }),
+      );
+    }
+
+    return Promise.resolve();
   }
 
   markRequested(productIds: string[], at: Date): Promise<void> {

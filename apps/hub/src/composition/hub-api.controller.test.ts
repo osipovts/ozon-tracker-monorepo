@@ -30,6 +30,7 @@ import { InMemoryJobRepositoryAdapter } from '../job/infrastructure/in-memory-jo
 import { JobsController } from '../job/presentation/jobs.controller.js';
 import { AddProductUseCase } from '../product/application/add-product.use-case.js';
 import { ChoosePriceRoutesUseCase } from '../product/application/choose-price-routes.use-case.js';
+import { GetProductThumbnailUrlUseCase } from '../product/application/get-product-thumbnail-url.use-case.js';
 import { ListPriceHistoryUseCase } from '../product/application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../product/application/list-products.use-case.js';
 import { RemoveProductUseCase } from '../product/application/remove-product.use-case.js';
@@ -48,6 +49,7 @@ import { ProxiesController } from '../proxy/presentation/proxies.controller.js';
 import { ProxySourcesController } from '../proxy/presentation/proxy-sources.controller.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER } from '../shared/application/logger.port.js';
+import { InMemoryObjectStorageAdapter } from '../shared/infrastructure/in-memory-object-storage.adapter.js';
 import { InMemoryRateLimiterAdapter } from '../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { ApplicationErrorFilter } from '../shared/presentation/application-error.filter.js';
 import { HttpLoggingInterceptor } from '../shared/presentation/http-logging.interceptor.js';
@@ -123,6 +125,7 @@ const config: AppConfigInterface = {
   githubOauth: null,
   adminEmails: [],
   adminUiDir: null,
+  s3: null,
   clientUiDir: null,
   operatorApiKey,
   logLevel: 'error',
@@ -182,7 +185,14 @@ before(async (): Promise<void> => {
         ),
       },
       { provide: ListProductsUseCase, useValue: new ListProductsUseCase(products, observations) },
-      { provide: RemoveProductUseCase, useValue: new RemoveProductUseCase(products) },
+      {
+        provide: RemoveProductUseCase,
+        useValue: new RemoveProductUseCase(products, new InMemoryObjectStorageAdapter(false)),
+      },
+      {
+        provide: GetProductThumbnailUrlUseCase,
+        useValue: new GetProductThumbnailUrlUseCase(new InMemoryObjectStorageAdapter(false)),
+      },
       { provide: SetProxyDisabledUseCase, useValue: new SetProxyDisabledUseCase(proxies) },
       { provide: DeleteProxyUseCase, useValue: new DeleteProxyUseCase(proxies) },
       { provide: RequestPriceObservationUseCase, useValue: requestObservation },
@@ -356,6 +366,7 @@ void test('tracks a product once whatever the link and lists it with its newest 
     lastCheckedAt: null,
     // The schedule is off in this test.
     nextCheckAt: null,
+    thumbnailUrl: null,
     jobId: null,
   });
 
@@ -412,6 +423,7 @@ void test('queues the read of the first price when a product is added, and serve
       lastStatus: null,
       lastCheckedAt: null,
       nextCheckAt: null,
+      thumbnailUrl: null,
     },
     items: [],
     page: 1,

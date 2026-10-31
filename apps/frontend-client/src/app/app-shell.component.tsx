@@ -16,11 +16,16 @@ export function ClientShell(): ReactElement {
     <AppShell header={{ height: 56 }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Title order={4}>
-            <Anchor component={Link} to="/" c="inherit" underline="never">
-              {t('shell.title')}
-            </Anchor>
-          </Title>
+          <Group gap="xs" align="baseline" wrap="nowrap">
+            <Title order={4}>
+              <Anchor component={Link} to="/" c="inherit" underline="never">
+                {t('shell.title')}
+              </Anchor>
+            </Title>
+            <Text size="sm" c="dimmed" visibleFrom="sm">
+              {t('brand.slogan')}
+            </Text>
+          </Group>
           <Group gap="xs" wrap="nowrap">
             <Text size="sm" visibleFrom="sm">
               {me.data?.email}

@@ -110,6 +110,9 @@ void test('an administrator sees the dashboard, then works with the proxies', as
   await page.getByText(servers[0] ?? '').waitFor();
   await page.getByText(servers[1] ?? '').waitFor();
 
+  // Two proxies are one page: there is no paginator.
+  assert.equal(await page.locator('.mantine-Pagination-root').count(), 0);
+
   // No proxy has a session of the marketplace yet.
   await page.getByRole('columnheader', { name: 'Session (ozon)' }).waitFor();
   assert.equal(await page.getByText('none', { exact: true }).count(), 2);

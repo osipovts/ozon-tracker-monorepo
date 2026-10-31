@@ -8,6 +8,37 @@ const oauthClientSchema = z
   .object({ clientId: z.string().min(1), clientSecret: z.string().min(1) })
   .nullable();
 
+/** The S3 service is on when it has an endpoint; then the keys are needed, and the rest has defaults. */
+const s3Schema = z
+  .object({
+    endpoint: z.url(),
+    publicUrl: z.url(),
+    region: z.string().min(1),
+    bucket: z.string().min(3),
+    accessKeyId: z.string().min(1),
+    secretAccessKey: z.string().min(1),
+  })
+  .nullable();
+
+/** A setting that is not given, or is empty, takes its default. */
+function given(value: string | undefined, fallback: string): string {
+  return value === undefined || value === '' ? fallback : value;
+}
+
+function s3Settings(env: NodeJS.ProcessEnv): Record<string, string | undefined> | null {
+  const endpoint = env['S3_ENDPOINT'];
+  if (endpoint === undefined || endpoint === '') return null;
+
+  return {
+    endpoint,
+    publicUrl: given(env['S3_PUBLIC_URL'], endpoint),
+    region: given(env['S3_REGION'], 'us-east-1'),
+    bucket: given(env['S3_BUCKET'], 'thumbnails'),
+    accessKeyId: env['S3_ACCESS_KEY_ID'],
+    secretAccessKey: env['S3_SECRET_ACCESS_KEY'],
+  };
+}
+
 function oauthClient(
   env: NodeJS.ProcessEnv,
   idName: string,
@@ -117,6 +148,7 @@ const configSchema = z.object({
         .filter((email): boolean => email !== ''),
     )
     .pipe(z.array(z.email())),
+  s3: s3Schema,
   adminUiDir: z.string().min(1).nullable(),
   clientUiDir: z.string().min(1).nullable(),
   operatorApiKey: z.string().min(16).nullable(),
@@ -165,6 +197,7 @@ export class AppConfigParser {
         googleOauth: oauthClient(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
         githubOauth: oauthClient(env, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
         adminEmails: env['ADMIN_EMAILS'],
+        s3: s3Settings(env),
         adminUiDir: env['ADMIN_UI_DIR'] === '' ? null : (env['ADMIN_UI_DIR'] ?? null),
         clientUiDir: env['CLIENT_UI_DIR'] === '' ? null : (env['CLIENT_UI_DIR'] ?? null),
         operatorApiKey: env['HUB_API_KEY'] === '' ? null : (env['HUB_API_KEY'] ?? null),

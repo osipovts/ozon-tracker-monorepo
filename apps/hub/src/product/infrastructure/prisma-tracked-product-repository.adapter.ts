@@ -33,6 +33,8 @@ function toEntity(row: TrackedProductRow): TrackedProductEntity {
     lastStatus: row.lastStatus,
     lastCheckedAt: row.lastCheckedAt,
     lastRequestedAt: row.lastRequestedAt,
+    thumbnailKey: row.thumbnailKey,
+    thumbnailSourceUrl: row.thumbnailSourceUrl,
   });
 }
 
@@ -113,6 +115,13 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     });
 
     return rows.map(toEntity);
+  }
+
+  async setThumbnail(id: string, key: string, sourceUrl: string): Promise<void> {
+    await this.prisma.trackedProduct.updateMany({
+      where: { id },
+      data: { thumbnailKey: key, thumbnailSourceUrl: sourceUrl },
+    });
   }
 
   async markRequested(productIds: string[], at: Date): Promise<void> {

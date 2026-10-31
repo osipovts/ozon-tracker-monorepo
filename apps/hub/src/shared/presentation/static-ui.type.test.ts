@@ -72,3 +72,26 @@ void test('answers a write under /panel with not found, not with the page', asyn
 
   assert.equal(reply.status, 404);
 });
+
+void test('lets the pictures in from the origins it is given, and from no others', async (): Promise<void> => {
+  const app = express();
+  serveStaticUi(app, '/app', directory, ['https://files.example.com']);
+  const listening = await new Promise<Server>((resolve): void => {
+    const started = app.listen(0, '127.0.0.1', (): void => {
+      resolve(started);
+    });
+  });
+  const address = listening.address();
+  if (address === null || typeof address === 'string') throw new Error('No port');
+
+  const reply = await fetch(`http://127.0.0.1:${String(address.port)}/app/`);
+  const policy = reply.headers.get('content-security-policy') ?? '';
+  await new Promise<void>((resolve): void => {
+    listening.close((): void => {
+      resolve();
+    });
+  });
+
+  assert.match(policy, /img-src 'self' https:\/\/files\.example\.com data:/);
+  assert.match(policy, /default-src 'self'/);
+});

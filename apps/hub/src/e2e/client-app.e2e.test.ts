@@ -13,6 +13,7 @@ import {
   seedProxies,
   startHub,
 } from './support/hub-harness.js';
+import { ImageServerAdapter, onePixelPng } from './support/image-server.adapter.js';
 
 /**
  * The client app as a person uses it: the built app in a real Chromium, served by the real hub over a real
@@ -25,18 +26,22 @@ const password = 'correct-horse';
 const productUrl = 'https://www.ozon.ru/product/4775581891/';
 let hub: RunningHubInterface;
 let worker: FakePriceWorkerAdapter;
+const marketplace = new ImageServerAdapter();
 let database: ReturnType<typeof connectDatabase>;
 let browser: Browser;
 let page: Page;
 
 before(
   async (): Promise<void> => {
-    const infrastructure = await stack.start();
+    const infrastructure = await stack.start({ s3: true });
     database = connectDatabase(infrastructure.databaseUrl);
     await seedProxies(database, ['socks5://217.71.230.1:1080']);
 
     worker = new FakePriceWorkerAdapter(infrastructure.redisUrl);
     worker.setPrice(productUrl, 129_900);
+    // The page of the product names a picture, which the marketplace serves.
+    marketplace.serve('/thumb.png', 'image/png', onePixelPng);
+    worker.setImage(productUrl, `${await marketplace.start()}/thumb.png`);
     worker.start();
 
     hub = await startHub({
@@ -58,6 +63,7 @@ after(
     await browser.close();
     await hub.stop();
     await worker.stop();
+    await marketplace.stop();
     await database.$disconnect();
     await stack.stop();
   },
@@ -68,6 +74,9 @@ void test('a visitor signs up, and is logged in', async (): Promise<void> => {
   await page.goto(`${hub.baseUrl}/app/`);
   await page.waitForURL('**/app/login');
 
+  await page.getByRole('heading', { name: 'Нищебродская' }).waitFor();
+  await page.getByText('price tracker', { exact: true }).waitFor();
+
   await page.getByRole('tab', { name: 'Sign up' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByRole('textbox', { name: 'Password' }).fill(password);
@@ -75,6 +84,10 @@ void test('a visitor signs up, and is logged in', async (): Promise<void> => {
 
   await page.getByRole('heading', { name: 'Products' }).waitFor();
   await page.getByRole('button', { name: 'Log out' }).waitFor();
+
+  // Under the field of the link: what can be tracked. One page of products has no paginator.
+  await page.getByText('Supported marketplaces: ozon.ru').waitFor();
+  assert.equal(await page.locator('.mantine-Pagination-root').count(), 0);
 });
 
 void test('a product is added by its link, and shows its first price when a worker has read it', async (): Promise<void> => {
@@ -84,9 +97,28 @@ void test('a product is added by its link, and shows its first price when a work
   // The list follows the job by itself: no reload.
   await page.getByText(/1\s299,00/).waitFor({ timeout: 20_000 });
   assert.equal(worker.jobs.length, 1);
+
+  // The picture is kept by the hub in S3 and handed out by an address that is signed.
+  // The first write to the storage can take a while: the picture comes after the price.
+  const picture = page.locator('main img').first();
+  await picture.waitFor({ timeout: 60_000 });
+  const address = (await picture.getAttribute('src')) ?? '';
+  assert.match(address, /\/thumbnails\/products\/.+\/thumbnail\?.*X-Amz-Signature=/);
+  const loaded = await fetch(address);
+  assert.equal(loaded.status, 200);
+  assert.equal(loaded.headers.get('content-type'), 'image/png');
+  assert.deepEqual(Buffer.from(await loaded.arrayBuffer()), onePixelPng);
+  assert.equal(
+    (await fetch(address.replace('X-Amz-Signature=', 'X-Amz-Signature=00'))).status,
+    403,
+  );
+  assert.equal((await fetch(address.split('?')[0] ?? '')).status, 403);
+
+  // The marketplace was asked for it once.
+  assert.deepEqual(marketplace.requests, ['/thumb.png']);
 });
 
-void test('a long title takes one line of the list, and is whole in its hint', async (): Promise<void> => {
+void test('a long title takes two lines of its card at most, and is whole in its hint', async (): Promise<void> => {
   const longTitle = `ASUS ${'ROG Strix gaming laptop with a very long name '.repeat(12)}`.trim();
   const original = (await database.priceObservation.findFirstOrThrow()).title;
   await database.priceObservation.updateMany({ data: { title: longTitle } });
@@ -98,10 +130,9 @@ void test('a long title takes one line of the list, and is whole in its hint', a
 
   const box = await link.boundingBox();
   assert.ok(box);
-  // One line, and not wider than the limit.
-  assert.ok(box.height < 40);
-  assert.ok(box.width <= 521);
-  assert.ok(await link.evaluate((node): boolean => node.scrollWidth > node.clientWidth));
+  // Two lines of a font of 16 pixels, and a title that is cut.
+  assert.ok(box.height < 60, `the title is ${String(box.height)} pixels high`);
+  assert.ok(await link.evaluate((node): boolean => node.scrollHeight > node.clientHeight));
 
   // The next tests read the page of the product, where a title this long would push the charts down.
   await database.priceObservation.updateMany({ data: { title: original } });
@@ -125,7 +156,8 @@ void test('the page of the product has the price, two charts side by side, and t
   await page.getByRole('link', { name: /.+/ }).filter({ hasText: /\S/ }).first().waitFor();
   await page.goto(`${hub.baseUrl}/app/products/${product.id}`);
   await page.getByRole('heading', { level: 3, name: /1\s299,00/ }).waitFor();
-  await page.getByText(/Next price check: about/).waitFor();
+  // Only the time of day: the price is read within the hour.
+  await page.getByText(/Next price check: about \d{1,2}:\d{2}/).waitFor();
 
   const charts = page.locator('.recharts-wrapper');
   await charts.nth(1).waitFor();
@@ -187,14 +219,9 @@ void test('on a phone the list is cards and nothing is wider than the screen', a
     .waitFor();
   assert.equal(await screen.locator('table').count(), 0);
 
-  // Every line of a card is under the one before it, the button last.
+  // The lines of a card are one under another, and the button is at the right of the last of them.
   const card = screen.locator('main .mantine-Card-root').filter({ hasText: 'Checked:' }).first();
-  const lines = [
-    card.getByRole('link'),
-    card.getByText('Checked:'),
-    card.getByText('Next check:'),
-    card.getByRole('button', { name: 'Delete' }),
-  ];
+  const lines = [card.getByRole('link'), card.getByText('Checked:'), card.getByText('Next check:')];
   let bottom = -1;
   for (const line of lines) {
     const box = await line.boundingBox();
@@ -202,6 +229,16 @@ void test('on a phone the list is cards and nothing is wider than the screen', a
     assert.ok(box.y >= bottom - 1, 'a line is under the one before it');
     bottom = box.y + box.height;
   }
+  const [next, remove] = await Promise.all([
+    card.getByText('Next check:').boundingBox(),
+    card.getByRole('button', { name: 'Delete' }).boundingBox(),
+  ]);
+  assert.ok(next && remove);
+  assert.ok(remove.x > next.x + next.width - 1, 'the button is at the right of the text');
+  assert.ok(
+    remove.y < next.y + next.height && remove.y + remove.height > next.y,
+    'the button is on the line of the text',
+  );
   assert.equal(await widerThanScreen(), false);
 
   await screen.goto(`${hub.baseUrl}/app/products/${product.id}`);
@@ -239,6 +276,9 @@ void test('a product is deleted from its page after a confirmation, and goes for
 void test('the theme and the language are set on the page of the settings, and kept by the browser', async (): Promise<void> => {
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('heading', { name: 'Settings', level: 2 }).waitFor();
+
+  // The note that the settings are kept by the browser is gone, and the sign-out of the others is a red button.
+  assert.equal(await page.getByText('Kept in this browser').count(), 0);
 
   // Nothing of the kind is in the header any more.
   assert.equal(await page.locator('header').getByText('Dark').count(), 0);
@@ -322,20 +362,20 @@ void test('the language follows the browser, and a language that is picked is ke
   const context = await browser.newContext({ locale: 'ru-RU' });
   const russian = await context.newPage();
   await russian.goto(`${hub.baseUrl}/app/login`);
-  await russian.getByRole('heading', { name: 'Трекер цен' }).waitFor();
+  await russian.getByText('трекер цен', { exact: true }).waitFor();
   assert.equal(await russian.locator('html').getAttribute('lang'), 'ru');
 
   await russian.getByText('EN', { exact: true }).click();
-  await russian.getByRole('heading', { name: 'Price tracker' }).waitFor();
+  await russian.getByText('price tracker', { exact: true }).waitFor();
 
   await russian.reload();
-  await russian.getByRole('heading', { name: 'Price tracker' }).waitFor();
+  await russian.getByText('price tracker', { exact: true }).waitFor();
   await context.close();
 
   // A browser with a language the app has no words in gets English.
   const german = await browser.newContext({ locale: 'de-DE' });
   const other = await german.newPage();
   await other.goto(`${hub.baseUrl}/app/login`);
-  await other.getByRole('heading', { name: 'Price tracker' }).waitFor();
+  await other.getByText('price tracker', { exact: true }).waitFor();
   await german.close();
 });

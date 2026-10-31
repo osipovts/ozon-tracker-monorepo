@@ -33,6 +33,19 @@ const historyPagesMax = 50;
 /** How long to wait for the first price of a product that has none yet, in milliseconds. */
 const firstPricePollMs = 3000;
 
+/** How long after a read the list waits for the picture of a product that has none. */
+const pictureWaitMs = 2 * 60_000;
+
+/** A product that has no price yet, or has just been read and has no picture yet. */
+function isAwaitingData(item: ProductListItemType): boolean {
+  if (item.latest === null) return true;
+
+  return (
+    item.thumbnailUrl === null &&
+    (item.lastCheckedAt === null || Date.now() - Date.parse(item.lastCheckedAt) < pictureWaitMs)
+  );
+}
+
 export function useProducts(page: number): UseQueryResult<ProductPageType | undefined> {
   return useQuery({
     queryKey: ['products', page],
@@ -41,11 +54,9 @@ export function useProducts(page: number): UseQueryResult<ProductPageType | unde
         await api.GET('/products', { params: { query: { page, pageSize: productPageSize } } }),
       ),
     placeholderData: (previous): ProductPageType | undefined => previous,
-    // A product that was just added has no price until a worker reads it.
+    // A product that was just added has no price until a worker reads it, and no picture until it is kept.
     refetchInterval: (query): number | false =>
-      query.state.data?.items.some((item): boolean => item.latest === null) === true
-        ? firstPricePollMs
-        : false,
+      query.state.data?.items.some(isAwaitingData) === true ? firstPricePollMs : false,
   });
 }
 

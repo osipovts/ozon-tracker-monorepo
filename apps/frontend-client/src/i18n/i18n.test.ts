@@ -18,7 +18,7 @@ test('takes the language the browser asks for first, and its regional variants',
   const i18n = createI18n();
 
   expect(i18n.resolvedLanguage).toBe('ru');
-  expect(i18n.t('shell.title')).toBe('Трекер цен');
+  expect(i18n.t('brand.slogan')).toBe('трекер цен');
   expect(document.documentElement.lang).toBe('ru');
 });
 
@@ -29,7 +29,7 @@ test('skips the languages it has no words in, and falls back to English', () => 
   browserAsks('de-DE', 'fr');
   const i18n = createI18n();
   expect(i18n.resolvedLanguage).toBe('en');
-  expect(i18n.t('shell.title')).toBe('Price tracker');
+  expect(i18n.t('brand.slogan')).toBe('price tracker');
 });
 
 test('keeps the language the person picked over the one of the browser', async () => {

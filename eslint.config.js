@@ -157,10 +157,11 @@ export default defineConfig(
   ]),
 
   {
-    // What the providers send and expect is snake_case, and Prisma queries say `OR` and `AND`: those names are theirs.
+    // What the providers send and expect is snake_case, Prisma queries say `OR` and `AND`, and the S3 commands take `Bucket` and `Key`: those names are theirs.
     files: [
       'apps/hub/src/auth/infrastructure/*.ts',
       'apps/hub/src/*/infrastructure/prisma-*.ts',
+      'apps/hub/src/shared/infrastructure/s3-*.ts',
       'apps/hub/src/e2e/**/*.ts',
     ],
     rules: {

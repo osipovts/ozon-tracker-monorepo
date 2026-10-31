@@ -128,3 +128,42 @@ void test('serves no admin panel unless a directory of the built one is given', 
   assert.equal(parser.parse(env()).clientUiDir, null);
   assert.equal(parser.parse(env(['CLIENT_UI_DIR', '/app/client'])).clientUiDir, '/app/client');
 });
+
+void test('keeps the pictures in S3 when it has an endpoint and keys, with defaults for the rest', (): void => {
+  assert.equal(parser.parse(env()).s3, null);
+
+  const config = parser.parse(
+    env(
+      ['S3_ENDPOINT', 'http://minio:9000'],
+      ['S3_ACCESS_KEY_ID', 'key'],
+      ['S3_SECRET_ACCESS_KEY', 'secret'],
+    ),
+  );
+  assert.deepEqual(config.s3, {
+    endpoint: 'http://minio:9000',
+    publicUrl: 'http://minio:9000',
+    region: 'us-east-1',
+    bucket: 'thumbnails',
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+  });
+
+  const custom = parser.parse(
+    env(
+      ['S3_ENDPOINT', 'http://minio:9000'],
+      ['S3_PUBLIC_URL', 'https://files.example.com'],
+      ['S3_BUCKET', 'pictures'],
+      ['S3_REGION', 'ru-central1'],
+      ['S3_ACCESS_KEY_ID', 'key'],
+      ['S3_SECRET_ACCESS_KEY', 'secret'],
+    ),
+  );
+  const { s3 } = custom;
+  assert.ok(s3);
+  assert.equal(s3.publicUrl, 'https://files.example.com');
+  assert.equal(s3.bucket, 'pictures');
+  assert.equal(s3.region, 'ru-central1');
+
+  // An endpoint without keys is a mistake to report.
+  assert.throws(() => parser.parse(env(['S3_ENDPOINT', 'http://minio:9000'])));
+});

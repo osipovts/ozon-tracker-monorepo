@@ -284,11 +284,13 @@ export function ProxiesPage(): ReactElement {
             </Table.Tbody>
           </Table>
           {data.items.length === 0 && <Text c="dimmed">{t('proxies.noMatch')}</Text>}
-          <Pagination
-            total={Math.max(1, Math.ceil(data.total / proxyPageSize))}
-            value={page}
-            onChange={setPage}
-          />
+          {data.total > proxyPageSize && (
+            <Pagination
+              total={Math.max(1, Math.ceil(data.total / proxyPageSize))}
+              value={page}
+              onChange={setPage}
+            />
+          )}
         </>
       )}
       <Modal

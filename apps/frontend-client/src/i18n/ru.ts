@@ -16,8 +16,11 @@ export const ru: DictionaryType = {
     tryAgain: 'Повторите через {{seconds}} с.',
     unreachable: 'Не удалось связаться с хабом.',
   },
+  brand: {
+    slogan: 'трекер цен',
+  },
   login: {
-    title: 'Трекер цен',
+    title: 'Нищебродская',
     logIn: 'Войти',
     signUp: 'Регистрация',
     email: 'Email',
@@ -27,7 +30,7 @@ export const ru: DictionaryType = {
     tooManyAttempts: 'Слишком много попыток.',
   },
   shell: {
-    title: 'Трекер цен',
+    title: 'Нищебродская',
     settings: 'Настройки',
     confirmTitle: 'Подтвердите почту',
     confirmText: 'Мы отправили ссылку на {{email}}.',
@@ -40,7 +43,6 @@ export const ru: DictionaryType = {
     appearanceHint: 'Тема приложения. Авто повторяет тему вашего устройства.',
     language: 'Язык',
     languageHint: 'Авто берёт язык вашего браузера.',
-    kept: 'Хранится в этом браузере.',
     account: 'Аккаунт',
     emailVerified: 'подтверждена',
     emailNotVerified: 'не подтверждена',
@@ -61,6 +63,8 @@ export const ru: DictionaryType = {
   products: {
     title: 'Товары',
     linkLabel: 'Ссылка на товар',
+    supported: 'Поддерживаемые маркетплейсы: ozon.ru',
+    noPicture: 'Нет картинки',
     track: 'Отслеживать',
     product: 'Товар',
     price: 'Цена',

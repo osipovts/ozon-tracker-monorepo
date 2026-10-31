@@ -1,5 +1,5 @@
 /**
- * When the price is read again, as a person reads it: the date and the time; or "soon" when the time
+ * When the price is read again, as a person reads it: the time of day; or "soon" when the time
  * has passed, since the product then waits only for the next look of the schedule. Null when unknown.
  */
 export function describeNextCheck(
@@ -14,11 +14,6 @@ export function describeNextCheck(
 
   return {
     soon: false,
-    when: next.toLocaleString(locale, {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
+    when: next.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
   };
 }

@@ -36,6 +36,7 @@ import {
 } from '../../shared/presentation/pagination-query.type.js';
 import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
 import { AddProductUseCase } from '../application/add-product.use-case.js';
+import { GetProductThumbnailUrlUseCase } from '../application/get-product-thumbnail-url.use-case.js';
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
 import { nextPriceCheckAt } from '../application/next-price-check.type.js';
@@ -51,6 +52,7 @@ import {
   productCreateBodySchema,
   type ProductCreateBodyType,
   productIdParamSchema,
+  type ProductListItemType,
   productListResponseSchema,
   type ProductListResponseType,
   type ProductType,
@@ -75,10 +77,12 @@ export class ProductsController {
     @Inject(ListProductsUseCase) private readonly listProducts: ListProductsUseCase,
     @Inject(ListPriceHistoryUseCase) private readonly listHistory: ListPriceHistoryUseCase,
     @Inject(RemoveProductUseCase) private readonly removeProduct: RemoveProductUseCase,
+    @Inject(GetProductThumbnailUrlUseCase)
+    private readonly thumbnailUrl: GetProductThumbnailUrlUseCase,
     @Inject(APP_CONFIG) private readonly config: AppConfigInterface,
   ) {}
 
-  private toProduct({ snapshot }: TrackedProductEntity): ProductType {
+  private async toProduct({ snapshot }: TrackedProductEntity): Promise<ProductType> {
     const next = nextPriceCheckAt(
       snapshot,
       {
@@ -99,6 +103,7 @@ export class ProductsController {
       lastStatus: snapshot.lastStatus,
       lastCheckedAt: snapshot.lastCheckedAt?.toISOString() ?? null,
       nextCheckAt: next?.toISOString() ?? null,
+      thumbnailUrl: await this.thumbnailUrl.execute(snapshot.thumbnailKey),
     };
   }
 
@@ -111,10 +116,14 @@ export class ProductsController {
   ): Promise<ProductListResponseType> {
     const page = await this.listProducts.execute(requireIdentity(request).userId, query);
 
-    return toPageResponse(page, query, ({ product, latest }) => ({
-      ...this.toProduct(product),
-      latest: latest === null ? null : toObservation(latest),
-    }));
+    const items = await Promise.all(
+      page.items.map(async ({ product, latest }): Promise<ProductListItemType> => ({
+        ...(await this.toProduct(product)),
+        latest: latest === null ? null : toObservation(latest),
+      })),
+    );
+
+    return { items, page: query.page, pageSize: query.pageSize, total: page.total };
   }
 
   @Post()
@@ -148,7 +157,7 @@ export class ProductsController {
     );
     response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
 
-    return { ...this.toProduct(product), jobId };
+    return { ...(await this.toProduct(product)), jobId };
   }
 
   @Get(':id/prices')
@@ -166,7 +175,10 @@ export class ProductsController {
       query,
     );
 
-    return { product: this.toProduct(product), ...toPageResponse(page, query, toObservation) };
+    return {
+      product: await this.toProduct(product),
+      ...toPageResponse(page, query, toObservation),
+    };
   }
 
   @Delete(':id')

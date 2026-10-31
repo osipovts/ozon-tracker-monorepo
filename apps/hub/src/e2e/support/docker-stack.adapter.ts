@@ -10,9 +10,23 @@ const run = promisify(execFile);
 /** apps/hub: where the Prisma config and the migrations are, from dist/e2e/support. */
 const hubDirectory = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
+export interface S3StackInterface {
+  /** Where the hub reaches the service, and where a browser does: here the same address. */
+  endpoint: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}
+
 export interface DockerStackInterface {
   databaseUrl: string;
   redisUrl: string;
+  /** Present when the stack was started with an S3 service. */
+  s3?: S3StackInterface;
+}
+
+export interface StackOptionsInterface {
+  /** Starts an S3 service as well: the pictures of the products are kept in it. */
+  s3?: boolean;
 }
 
 export async function freePort(): Promise<number> {
@@ -41,7 +55,7 @@ const wait = (ms: number): Promise<void> =>
 export class DockerStackAdapter {
   private readonly names: string[] = [];
 
-  async start(): Promise<DockerStackInterface> {
+  async start(options: StackOptionsInterface = {}): Promise<DockerStackInterface> {
     const [postgresPort, redisPort] = [await freePort(), await freePort()];
     const [postgres, redis] = [this.name('postgres'), this.name('redis')];
 
@@ -95,7 +109,41 @@ export class DockerStackAdapter {
       { cwd: hubDirectory, env: { ...process.env, DATABASE_URL: databaseUrl } },
     );
 
-    return { databaseUrl, redisUrl: `redis://127.0.0.1:${String(redisPort)}` };
+    return {
+      databaseUrl,
+      redisUrl: `redis://127.0.0.1:${String(redisPort)}`,
+      ...(options.s3 === true ? { s3: await this.startS3() } : {}),
+    };
+  }
+
+  /** A real S3 service (SeaweedFS), with keys of the test. */
+  private async startS3(): Promise<S3StackInterface> {
+    const [port, name] = [await freePort(), this.name('s3')];
+    const [accessKeyId, secretAccessKey] = ['e2e-key', 'e2e-secret-0123456789'];
+
+    await run('docker', [
+      'run',
+      '-d',
+      '--rm',
+      '--name',
+      name,
+      '-e',
+      `AWS_ACCESS_KEY_ID=${accessKeyId}`,
+      '-e',
+      `AWS_SECRET_ACCESS_KEY=${secretAccessKey}`,
+      '-p',
+      `127.0.0.1:${String(port)}:8333`,
+      'chrislusf/seaweedfs:4.50',
+      'server',
+      '-dir=/data',
+      '-s3',
+      '-s3.port=8333',
+      '-ip.bind=0.0.0.0',
+    ]);
+    // The gateway answers once it is up, with a refusal of an anonymous request, which is an answer.
+    await this.untilReady(name, ['curl', '-s', '-o', '/dev/null', 'http://localhost:8333/']);
+
+    return { endpoint: `http://127.0.0.1:${String(port)}`, accessKeyId, secretAccessKey };
   }
 
   async stop(): Promise<void> {

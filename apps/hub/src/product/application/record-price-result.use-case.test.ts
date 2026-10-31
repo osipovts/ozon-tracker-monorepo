@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
+import { noThumbnails } from './add-product-defaults.type.js';
 import { ListPriceHistoryUseCase } from './list-price-history.use-case.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import {
@@ -31,7 +32,7 @@ async function setup(): Promise<{
 
   return {
     productId: product.snapshot.id,
-    record: new RecordPriceResultUseCase(products, observations),
+    record: new RecordPriceResultUseCase(products, observations, noThumbnails),
     history: new ListPriceHistoryUseCase(products, observations),
     products,
   };
@@ -114,4 +115,42 @@ void test('paginates the history, the newest first', async (): Promise<void> => 
     second.items.map((item): string => item.observedAt.toISOString()),
     ['2026-10-22T12:00:00.000Z'],
   );
+});
+
+void test('hands the picture of the product over once the price is recorded, and none when there is none', async (): Promise<void> => {
+  const products = new InMemoryTrackedProductRepositoryAdapter();
+  const observations = new InMemoryPriceObservationRepositoryAdapter();
+  const { product } = await products.add({
+    marketplace: 'ozon',
+    externalId: '1',
+    url: 'https://www.ozon.ru/product/1/',
+  });
+  const order: string[] = [];
+  const record = new RecordPriceResultUseCase(
+    products,
+    {
+      saveIfAbsent: (observation): Promise<void> => {
+        order.push('price');
+
+        return observations.saveIfAbsent(observation);
+      },
+      findLatestByProducts: (ids): ReturnType<typeof observations.findLatestByProducts> =>
+        observations.findLatestByProducts(ids),
+      listByProduct: (id, pagination): ReturnType<typeof observations.listByProduct> =>
+        observations.listByProduct(id, pagination),
+    },
+    {
+      execute: (productId, imageUrl): Promise<void> => {
+        assert.equal(productId, product.snapshot.id);
+        order.push(`picture ${String(imageUrl)}`);
+
+        return Promise.resolve();
+      },
+    },
+  );
+
+  await record.execute(result(product.snapshot.id, { imageUrl: 'https://cdn.example/a.jpg' }));
+  await record.execute(result(product.snapshot.id, { jobId: 'another-job' }));
+
+  assert.deepEqual(order, ['price', 'picture https://cdn.example/a.jpg', 'price', 'picture null']);
 });

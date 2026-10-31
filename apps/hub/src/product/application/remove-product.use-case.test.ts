@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { OzonReferenceParser, ResolveProductReferenceUseCase } from 'product-reference';
 
+import { InMemoryObjectStorageAdapter } from '../../shared/infrastructure/in-memory-object-storage.adapter.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
@@ -37,7 +38,7 @@ function setup(): {
       new InMemoryRateLimiterAdapter(),
       unlimitedProducts,
     ),
-    remove: new RemoveProductUseCase(products),
+    remove: new RemoveProductUseCase(products, new InMemoryObjectStorageAdapter(false)),
     list: new ListProductsUseCase(products, observations),
     history: new ListPriceHistoryUseCase(products, observations),
     products,
@@ -78,4 +79,32 @@ void test('refuses a product the user does not track, and a second removal', asy
   await assert.rejects(remove.execute(sam, product.snapshot.id), ProductNotFoundError);
   await remove.execute(jane, product.snapshot.id);
   await assert.rejects(remove.execute(jane, product.snapshot.id), ProductNotFoundError);
+});
+
+void test('deletes the picture with the product, and keeps it while somebody else tracks the product', async (): Promise<void> => {
+  const storage = new InMemoryObjectStorageAdapter();
+  const products = new InMemoryTrackedProductRepositoryAdapter();
+  const { product } = await products.add({
+    marketplace: 'ozon',
+    externalId: '1',
+    url: 'https://www.ozon.ru/product/1/',
+  });
+  await products.subscribe('jane', product.snapshot.id);
+  await products.subscribe('sam', product.snapshot.id);
+  await products.setThumbnail(
+    product.snapshot.id,
+    'products/1/thumbnail',
+    'https://cdn.example/a.jpg',
+  );
+  await storage.put('products/1/thumbnail', {
+    body: new Uint8Array([1]),
+    contentType: 'image/jpeg',
+  });
+  const remove = new RemoveProductUseCase(products, storage);
+
+  await remove.execute('jane', product.snapshot.id);
+  assert.equal(storage.objects.size, 1);
+
+  await remove.execute('sam', product.snapshot.id);
+  assert.equal(storage.objects.size, 0);
 });

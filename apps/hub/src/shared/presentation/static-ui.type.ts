@@ -12,14 +12,20 @@ import {
 export const adminUiPath = '/panel';
 export const clientUiPath = '/app';
 
-/** The pages load nothing of other origins and are shown on no other page. */
-const uiHeaders: Record<string, string> = {
-  'Content-Security-Policy':
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'",
-  'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'no-referrer',
-  'X-Content-Type-Options': 'nosniff',
-};
+/**
+ * The pages load nothing of other origins, but the pictures from `imageOrigins` (where the storage hands them
+ * out, when that is not the host of the hub), and are shown on no other page.
+ */
+function uiHeaders(imageOrigins: string[]): Record<string, string> {
+  const images = ["'self'", ...imageOrigins].join(' ');
+
+  return {
+    'Content-Security-Policy': `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src ${images} data:; frame-ancestors 'none'`,
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+  };
+}
 
 /** What a page needs of an application: to mount handlers at a path. */
 export interface HandlerMountInterface {
@@ -27,9 +33,15 @@ export interface HandlerMountInterface {
 }
 
 /** Serves a built app from `directory` at `path`: its files, and its page for the routes the app draws itself. */
-export function serveStaticUi(app: HandlerMountInterface, path: string, directory: string): void {
+export function serveStaticUi(
+  app: HandlerMountInterface,
+  path: string,
+  directory: string,
+  imageOrigins: string[] = [],
+): void {
+  const headers = uiHeaders(imageOrigins);
   app.use(path, (_request: Request, response: Response, next: NextFunction): void => {
-    response.set(uiHeaders);
+    response.set(headers);
     next();
   });
   app.use(path, serveStatic(directory));
