@@ -26,6 +26,7 @@ import { ListMarketplaceSessionsUseCase } from '../browser-session/application/i
 import { ListSessionsUseCase } from '../browser-session/application/list-sessions.use-case.js';
 import { InMemoryBrowserSessionRepositoryAdapter } from '../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { SessionsController } from '../browser-session/presentation/sessions.controller.js';
+import { ListHandbookCitiesUseCase } from '../handbook/application/list-handbook-cities.use-case.js';
 import { RefreshHandbookUseCase } from '../handbook/application/refresh-handbook.use-case.js';
 import { SaveHandbookCitiesUseCase } from '../handbook/application/save-handbook-cities.use-case.js';
 import { SearchCitiesUseCase } from '../handbook/application/search-cities.use-case.js';
@@ -218,6 +219,7 @@ before(async (): Promise<void> => {
         ),
       },
       { provide: SearchCitiesUseCase, useValue: new SearchCitiesUseCase(handbooks) },
+      { provide: ListHandbookCitiesUseCase, useValue: new ListHandbookCitiesUseCase(handbooks) },
       {
         provide: RefreshHandbookUseCase,
         useValue: new RefreshHandbookUseCase(
@@ -493,6 +495,7 @@ void test('rejects bad links, unknown and malformed product ids', async (): Prom
 void test('documents the endpoints and their zod schemas in Swagger', (): void => {
   const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('Hub').build());
   assert.deepEqual(Object.keys(document.paths).toSorted(), [
+    '/handbooks/{handbook}',
     '/handbooks/{handbook}/refresh',
     '/jobs',
     '/jobs/{id}',
@@ -677,6 +680,7 @@ const operatorRoutes: Array<[string, string]> = [
   ['DELETE', '/proxies?server=socks5%3A%2F%2F203.0.113.50%3A1080'],
   ['POST', '/proxy-sources/github-free-proxy-list/refresh'],
   ['POST', '/handbooks/dns-cities/refresh'],
+  ['GET', '/handbooks/dns-cities'],
   ['GET', '/sessions'],
   ['POST', '/sessions'],
   ['DELETE', '/sessions/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
@@ -890,4 +894,24 @@ void test('the operator queues the read of a handbook through the proxies, and t
     'proxies' in request && Array.isArray(request.proxies) && request.proxies.at(-1) === null,
   );
   assert.equal((await call('/handbooks/unknown/refresh', post())).status, 400);
+});
+
+void test('the operator looks at the cities a handbook keeps, a page at a time, with the time they were read', async (): Promise<void> => {
+  await new SaveHandbookCitiesUseCase(handbooks).execute('dns-cities', [
+    { id: irkutskId, name: 'Иркутск', region: 'Иркутская область' },
+    { id: 'b', name: 'Москва', region: null },
+    { id: 'c', name: 'Ангарск', region: 'Иркутская область' },
+  ]);
+
+  const page = await call('/handbooks/dns-cities?pageSize=2&page=1&query=%D0%B8%D1%80%D0%BA');
+
+  assert.equal(page.status, 200);
+  assert.equal(page.body['total'], 2);
+  assert.equal(page.body['pageSize'], 2);
+  assert.equal(typeof page.body['fetchedAt'], 'string');
+  assert.deepEqual(page.body['items'], [
+    { id: irkutskId, name: 'Иркутск', region: 'Иркутская область' },
+    { id: 'c', name: 'Ангарск', region: 'Иркутская область' },
+  ]);
+  assert.equal((await call('/handbooks/unknown')).status, 400);
 });

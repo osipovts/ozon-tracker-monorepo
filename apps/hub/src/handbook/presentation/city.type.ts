@@ -1,6 +1,11 @@
 import { marketplaceSchema } from 'queue-contract';
 import { z } from 'zod';
 
+import {
+  pageResponseSchema,
+  paginationQuerySchema,
+} from '../../shared/presentation/pagination-query.type.js';
+
 export const cityMarketplaceParamSchema = marketplaceSchema;
 
 export const citySearchQuerySchema = z.object({
@@ -11,15 +16,27 @@ export const citySearchQuerySchema = z.object({
 
 export type CitySearchQueryType = z.infer<typeof citySearchQuerySchema>;
 
-export const cityListResponseSchema = z.object({
-  items: z.array(
-    z.object({
-      /** The id the marketplace gives the city: what `POST /products` takes as `cityId`. */
-      id: z.string(),
-      name: z.string(),
-      region: z.string().nullable(),
-    }),
-  ),
+export const citySchema = z.object({
+  /** The id the marketplace gives the city: what `POST /products` takes as `cityId`. */
+  id: z.string(),
+  name: z.string(),
+  region: z.string().nullable(),
 });
 
+export const cityListResponseSchema = z.object({ items: z.array(citySchema) });
+
 export type CityListResponseType = z.infer<typeof cityListResponseSchema>;
+
+export const handbookCitiesQuerySchema = paginationQuerySchema.extend({
+  /** A part of the name or of the region of the city, in any case. */
+  query: z.string().max(100).default(''),
+});
+
+export type HandbookCitiesQueryType = z.infer<typeof handbookCitiesQuerySchema>;
+
+export const handbookCitiesResponseSchema = pageResponseSchema(citySchema).extend({
+  /** When the cities were read; null if they never were. */
+  fetchedAt: z.iso.datetime().nullable(),
+});
+
+export type HandbookCitiesResponseType = z.infer<typeof handbookCitiesResponseSchema>;

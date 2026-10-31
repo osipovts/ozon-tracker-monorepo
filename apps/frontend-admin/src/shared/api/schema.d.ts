@@ -246,6 +246,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/handbooks/{handbook}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The cities a handbook keeps, a page of them
+     * @description With the time they were read; empty, and never read, until the first read is done.
+     */
+    get: operations['HandbooksController_list'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/handbooks/{handbook}/refresh': {
     parameters: {
       query?: never;
@@ -1320,6 +1340,42 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  HandbooksController_list: {
+    parameters: {
+      query?: {
+        page?: number;
+        pageSize?: number;
+        query?: string;
+      };
+      header?: never;
+      path: {
+        handbook: 'dns-cities';
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            items: {
+              id: string;
+              name: string;
+              region: string | null;
+            }[];
+            page: number;
+            pageSize: number;
+            total: number;
+            /** Format: date-time */
+            fetchedAt: string | null;
+          };
+        };
       };
     };
   };

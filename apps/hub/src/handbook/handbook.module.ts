@@ -13,6 +13,7 @@ import {
   HANDBOOK_REPOSITORY,
   type HandbookRepositoryPort,
 } from './application/handbook-repository.port.js';
+import { ListHandbookCitiesUseCase } from './application/list-handbook-cities.use-case.js';
 import { RefreshHandbookUseCase } from './application/refresh-handbook.use-case.js';
 import { SaveHandbookCitiesUseCase } from './application/save-handbook-cities.use-case.js';
 import { SearchCitiesUseCase } from './application/search-cities.use-case.js';
@@ -42,6 +43,12 @@ const handbookProxyCount = 10;
       provide: SaveHandbookCitiesUseCase,
       useFactory: (handbooks: HandbookRepositoryPort): SaveHandbookCitiesUseCase =>
         new SaveHandbookCitiesUseCase(handbooks),
+      inject: [HANDBOOK_REPOSITORY],
+    },
+    {
+      provide: ListHandbookCitiesUseCase,
+      useFactory: (handbooks: HandbookRepositoryPort): ListHandbookCitiesUseCase =>
+        new ListHandbookCitiesUseCase(handbooks),
       inject: [HANDBOOK_REPOSITORY],
     },
     {
