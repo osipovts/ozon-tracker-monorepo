@@ -6,6 +6,7 @@ import {
 import type {
   ProxyFilterInterface,
   ProxyRepositoryPort,
+  ProxyStatsInterface,
 } from '../application/proxy-repository.port.js';
 import type { ProxyEntity } from '../domain/proxy.entity.js';
 
@@ -45,6 +46,27 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     for (const proxy of proxies) this.proxies.set(proxy.snapshot.server, proxy);
 
     return Promise.resolve();
+  }
+
+  stats(): Promise<ProxyStatsInterface> {
+    const all = Array.from(this.proxies.values()).map(({ snapshot }) => snapshot);
+    const latencies = all
+      .filter((proxy): boolean => proxy.alive && proxy.latencyMs !== null)
+      .map((proxy): number => proxy.latencyMs ?? 0);
+
+    return Promise.resolve({
+      total: all.length,
+      alive: all.filter((proxy): boolean => proxy.alive).length,
+      disabled: all.filter((proxy): boolean => proxy.disabledAt !== null).length,
+      averageLatencyMs:
+        latencies.length === 0
+          ? null
+          : Math.round(latencies.reduce((sum, value): number => sum + value, 0) / latencies.length),
+      lastCheckedAt:
+        all.length === 0
+          ? null
+          : new Date(Math.max(...all.map((proxy): number => proxy.lastCheckedAt.getTime()))),
+    });
   }
 
   delete(server: string): Promise<boolean> {

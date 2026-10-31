@@ -17,7 +17,18 @@ export interface ProxyFilterInterface {
   excludedServers?: readonly string[];
 }
 
+export interface ProxyStatsInterface {
+  total: number;
+  alive: number;
+  /** Turned off by an administrator. */
+  disabled: number;
+  /** Of the alive ones; null if none is alive. */
+  averageLatencyMs: number | null;
+  lastCheckedAt: Date | null;
+}
+
 export interface ProxyRepositoryPort {
+  stats(): Promise<ProxyStatsInterface>;
   findByServers(servers: string[]): Promise<ProxyEntity[]>;
   saveMany(proxies: ProxyEntity[]): Promise<void>;
   /** Deletes the proxy; false if there was none. */

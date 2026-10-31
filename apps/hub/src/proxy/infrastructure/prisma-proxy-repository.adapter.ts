@@ -7,6 +7,7 @@ import {
 import type {
   ProxyFilterInterface,
   ProxyRepositoryPort,
+  ProxyStatsInterface,
 } from '../application/proxy-repository.port.js';
 import { ProxyEntity } from '../domain/proxy.entity.js';
 
@@ -47,6 +48,29 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
         });
       }),
     );
+  }
+
+  async stats(): Promise<ProxyStatsInterface> {
+    const [total, alive, disabled, aggregate] = await this.prisma.$transaction([
+      this.prisma.proxy.count(),
+      this.prisma.proxy.count({ where: { alive: true } }),
+      this.prisma.proxy.count({ where: { disabledAt: { not: null } } }),
+      this.prisma.proxy.aggregate({
+        where: { alive: true },
+        _avg: { latencyMs: true },
+        _max: { lastCheckedAt: true },
+      }),
+    ]);
+    const { _max: latest } = await this.prisma.proxy.aggregate({ _max: { lastCheckedAt: true } });
+    const average = aggregate._avg.latencyMs;
+
+    return {
+      total,
+      alive,
+      disabled,
+      averageLatencyMs: average === null ? null : Math.round(average),
+      lastCheckedAt: latest.lastCheckedAt,
+    };
   }
 
   async delete(server: string): Promise<boolean> {

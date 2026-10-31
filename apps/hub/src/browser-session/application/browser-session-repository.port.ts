@@ -6,7 +6,14 @@ import type { BrowserSessionEntity } from '../domain/browser-session.entity.js';
 
 export const BROWSER_SESSION_REPOSITORY = Symbol('BrowserSessionRepositoryPort');
 
+export interface BrowserSessionStatsInterface {
+  /** The sessions the marketplaces still let through. */
+  active: number;
+  stale: number;
+}
+
 export interface BrowserSessionRepositoryPort {
+  stats(): Promise<BrowserSessionStatsInterface>;
   /** Inserts or updates the session by its id. */
   save(session: BrowserSessionEntity): Promise<void>;
   findById(id: string): Promise<BrowserSessionEntity | null>;

@@ -14,6 +14,7 @@ export {
 } from './change-account-password.use-case.js';
 export { EmailTakenError } from './email-taken.error.js';
 export { GetAccountUseCase } from './get-account.use-case.js';
+export { GetUserStatsUseCase, type UserStatsInterface } from './get-user-stats.use-case.js';
 export { NotifyExistingAccountUseCase } from './notify-existing-account.use-case.js';
 export {
   type RegisterAccountInterface,

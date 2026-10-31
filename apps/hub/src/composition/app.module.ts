@@ -2,6 +2,7 @@ import { Module, StandardSchemaValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 
 import { AccountModule } from '../account/account.module.js';
+import { AdminModule } from '../admin/admin.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { AuthSessionModule } from '../auth-session/auth-session.module.js';
 import { BrowserSessionModule } from '../browser-session/browser-session.module.js';
@@ -16,6 +17,7 @@ import { CoreModule } from './core.module.js';
 @Module({
   imports: [
     CoreModule,
+    AdminModule,
     AccountModule,
     AuthSessionModule,
     AuthModule,

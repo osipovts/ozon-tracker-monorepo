@@ -3,7 +3,10 @@ import {
   pageOf,
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
-import type { BrowserSessionRepositoryPort } from '../application/browser-session-repository.port.js';
+import type {
+  BrowserSessionRepositoryPort,
+  BrowserSessionStatsInterface,
+} from '../application/browser-session-repository.port.js';
 import type { BrowserSessionEntity } from '../domain/browser-session.entity.js';
 
 export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRepositoryPort {
@@ -13,6 +16,15 @@ export class InMemoryBrowserSessionRepositoryAdapter implements BrowserSessionRe
     this.sessions.set(session.snapshot.id, session);
 
     return Promise.resolve();
+  }
+
+  stats(): Promise<BrowserSessionStatsInterface> {
+    const all = Array.from(this.sessions.values());
+
+    return Promise.resolve({
+      active: all.filter((session): boolean => session.active).length,
+      stale: all.filter((session): boolean => !session.active).length,
+    });
   }
 
   findById(id: string): Promise<BrowserSessionEntity | null> {

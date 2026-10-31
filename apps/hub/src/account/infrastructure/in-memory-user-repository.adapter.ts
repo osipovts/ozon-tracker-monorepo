@@ -20,6 +20,16 @@ export class InMemoryUserRepositoryAdapter implements UserRepositoryPort {
     return Promise.resolve();
   }
 
+  stats(joinedSince: Date): Promise<{ total: number; verified: number; joined: number }> {
+    const all = Array.from(this.users.values()).map(({ snapshot }) => snapshot);
+
+    return Promise.resolve({
+      total: all.length,
+      verified: all.filter((user): boolean => user.emailVerifiedAt !== null).length,
+      joined: all.filter((user): boolean => user.createdAt >= joinedSince).length,
+    });
+  }
+
   findById(id: string): Promise<UserEntity | null> {
     return Promise.resolve(this.users.get(id) ?? null);
   }

@@ -10,7 +10,10 @@ import {
   pageOffset,
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
-import type { BrowserSessionRepositoryPort } from '../application/browser-session-repository.port.js';
+import type {
+  BrowserSessionRepositoryPort,
+  BrowserSessionStatsInterface,
+} from '../application/browser-session-repository.port.js';
 import { BrowserSessionEntity, sessionStatuses } from '../domain/browser-session.entity.js';
 
 const statusSchema = z.enum(sessionStatuses);
@@ -61,6 +64,15 @@ export class PrismaBrowserSessionRepositoryAdapter implements BrowserSessionRepo
     });
 
     return row === null ? null : toEntity(row);
+  }
+
+  async stats(): Promise<BrowserSessionStatsInterface> {
+    const [active, stale] = await this.prisma.$transaction([
+      this.prisma.browserSession.count({ where: { status: 'active' } }),
+      this.prisma.browserSession.count({ where: { status: { not: 'active' } } }),
+    ]);
+
+    return { active, stale };
   }
 
   async listByMarketplace(marketplace: string): Promise<BrowserSessionEntity[]> {

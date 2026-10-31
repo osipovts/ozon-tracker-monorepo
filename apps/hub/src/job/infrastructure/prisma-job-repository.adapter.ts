@@ -6,7 +6,11 @@ import {
   pageOffset,
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
-import type { JobFilterInterface, JobRepositoryPort } from '../application/job-repository.port.js';
+import type {
+  JobCountsType,
+  JobFilterInterface,
+  JobRepositoryPort,
+} from '../application/job-repository.port.js';
 import { JobEntity, jobKinds, jobStatuses } from '../domain/job.entity.js';
 
 const kindSchema = z.enum(jobKinds);
@@ -39,6 +43,18 @@ export class PrismaJobRepositoryAdapter implements JobRepositoryPort {
       create: { id, ...data },
       update: data,
     });
+  }
+
+  async countByStatus(since: Date): Promise<JobCountsType> {
+    const groups = await this.prisma.jobRecord.groupBy({
+      by: ['status'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    const counts: JobCountsType = { queued: 0, running: 0, retrying: 0, completed: 0, failed: 0 };
+    for (const group of groups) counts[statusSchema.parse(group.status)] = group._count._all;
+
+    return counts;
   }
 
   async findById(id: string): Promise<JobEntity | null> {

@@ -3,7 +3,11 @@ import {
   pageOf,
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
-import type { JobFilterInterface, JobRepositoryPort } from '../application/job-repository.port.js';
+import type {
+  JobCountsType,
+  JobFilterInterface,
+  JobRepositoryPort,
+} from '../application/job-repository.port.js';
 import type { JobEntity } from '../domain/job.entity.js';
 
 export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
@@ -13,6 +17,15 @@ export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
     this.jobs.set(job.snapshot.id, job);
 
     return Promise.resolve();
+  }
+
+  countByStatus(since: Date): Promise<JobCountsType> {
+    const counts: JobCountsType = { queued: 0, running: 0, retrying: 0, completed: 0, failed: 0 };
+    for (const { snapshot } of this.jobs.values()) {
+      if (snapshot.createdAt >= since) counts[snapshot.status] += 1;
+    }
+
+    return Promise.resolve(counts);
   }
 
   findById(id: string): Promise<JobEntity | null> {

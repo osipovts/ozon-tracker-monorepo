@@ -19,6 +19,7 @@ import {
   type EmailVerificationRepositoryPort,
 } from './application/email-verification-repository.port.js';
 import { GetAccountUseCase } from './application/get-account.use-case.js';
+import { GetUserStatsUseCase } from './application/get-user-stats.use-case.js';
 import {
   LINKED_IDENTITY_REPOSITORY,
   type LinkedIdentityRepositoryPort,
@@ -139,6 +140,12 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
       inject: [MAILER],
     },
     {
+      provide: GetUserStatsUseCase,
+      useFactory: (users: UserRepositoryPort): GetUserStatsUseCase =>
+        new GetUserStatsUseCase(users),
+      inject: [USER_REPOSITORY],
+    },
+    {
       provide: GetAccountUseCase,
       useFactory: (users: UserRepositoryPort): GetAccountUseCase => new GetAccountUseCase(users),
       inject: [USER_REPOSITORY],
@@ -152,6 +159,7 @@ import { PrismaUserRepositoryAdapter } from './infrastructure/prisma-user-reposi
     SendEmailVerificationUseCase,
     VerifyEmailUseCase,
     NotifyExistingAccountUseCase,
+    GetUserStatsUseCase,
     GetAccountUseCase,
   ],
 })

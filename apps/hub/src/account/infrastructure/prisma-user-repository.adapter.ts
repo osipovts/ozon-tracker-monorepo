@@ -31,6 +31,16 @@ export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
     });
   }
 
+  async stats(joinedSince: Date): Promise<{ total: number; verified: number; joined: number }> {
+    const [total, verified, joined] = await this.prisma.$transaction([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
+      this.prisma.user.count({ where: { createdAt: { gte: joinedSince } } }),
+    ]);
+
+    return { total, verified, joined };
+  }
+
   async findById(id: string): Promise<UserEntity | null> {
     const row = await this.prisma.user.findUnique({ where: { id } });
 

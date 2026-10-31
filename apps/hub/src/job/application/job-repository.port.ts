@@ -11,7 +11,11 @@ export interface JobFilterInterface {
   status?: JobStatusType;
 }
 
+export type JobCountsType = Record<JobStatusType, number>;
+
 export interface JobRepositoryPort {
+  /** How many jobs started since the time are in each status. */
+  countByStatus(since: Date): Promise<JobCountsType>;
   save(job: JobEntity): Promise<void>;
   findById(id: string): Promise<JobEntity | null>;
   /** Newest first. */

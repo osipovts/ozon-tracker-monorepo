@@ -86,6 +86,10 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     return Promise.resolve();
   }
 
+  stats(): Promise<{ products: number; trackings: number }> {
+    return Promise.resolve({ products: this.products.size, trackings: this.subscriptions.length });
+  }
+
   findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
     return Promise.resolve(
       this.subscribed(userId, productId) ? (this.products.get(productId) ?? null) : null,

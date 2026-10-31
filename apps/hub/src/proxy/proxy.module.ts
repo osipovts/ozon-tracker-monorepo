@@ -8,6 +8,7 @@ import { JobModule } from '../job/job.module.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { DeleteProxyUseCase } from './application/delete-proxy.use-case.js';
+import { GetProxyStatsUseCase } from './application/get-proxy-stats.use-case.js';
 import { ListBestProxyServersUseCase } from './application/list-best-proxy-servers.use-case.js';
 import { ListProxiesUseCase } from './application/list-proxies.use-case.js';
 import { PROXY_REPOSITORY, type ProxyRepositoryPort } from './application/proxy-repository.port.js';
@@ -53,6 +54,12 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
       inject: [PROXY_REPOSITORY],
     },
     {
+      provide: GetProxyStatsUseCase,
+      useFactory: (proxies: ProxyRepositoryPort): GetProxyStatsUseCase =>
+        new GetProxyStatsUseCase(proxies),
+      inject: [PROXY_REPOSITORY],
+    },
+    {
       provide: DeleteProxyUseCase,
       useFactory: (proxies: ProxyRepositoryPort): DeleteProxyUseCase =>
         new DeleteProxyUseCase(proxies),
@@ -72,6 +79,6 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
     },
     ProxyResultsConsumer,
   ],
-  exports: [ListBestProxyServersUseCase],
+  exports: [ListBestProxyServersUseCase, GetProxyStatsUseCase],
 })
 export class ProxyModule {}

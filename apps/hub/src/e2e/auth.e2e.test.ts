@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 
+import { dashboardResponseSchema } from '../admin/presentation/dashboard.type.js';
 import { authResponseSchema, authSessionsResponseSchema } from '../auth/presentation/auth.type.js';
 import { DockerStackAdapter, freePort } from './support/docker-stack.adapter.js';
 import type { HttpClientAdapter } from './support/http-client.adapter.js';
@@ -220,8 +221,29 @@ void test('an administrator of the list gets the operator routes once the email 
   assert.equal((await boss.request('/proxies')).status, 200);
   assert.equal(authResponseSchema.parse((await boss.request('/auth/me')).body).user.isAdmin, true);
 
+  // The dashboard is the figures of every context, read from the real database.
+  const dashboard = dashboardResponseSchema.parse((await boss.request('/admin/dashboard')).body);
+  assert.ok(dashboard.users.total >= 2);
+  assert.equal(dashboard.users.verified >= 1, true);
+  assert.deepEqual(dashboard.proxies, {
+    total: 0,
+    alive: 0,
+    disabled: 0,
+    averageLatencyMs: null,
+    lastCheckedAt: null,
+  });
+  assert.deepEqual(dashboard.jobs.lastDay, {
+    queued: 0,
+    running: 0,
+    retrying: 0,
+    completed: 0,
+    failed: 0,
+  });
+
   const user = hub.browser();
   await signUpAndLogIn(user, 'plain@example.com');
   assert.equal((await user.request('/proxies')).status, 403);
+  assert.equal((await user.request('/admin/dashboard')).status, 403);
+  assert.equal((await hub.browser().request('/admin/dashboard')).status, 401);
   assert.equal(authResponseSchema.parse((await user.request('/auth/me')).body).user.isAdmin, false);
 });

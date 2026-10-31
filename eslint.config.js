@@ -22,6 +22,7 @@ const namingConvention = [
 
 const hubContexts = [
   'account',
+  'admin',
   'auth',
   'auth-session',
   'browser-session',

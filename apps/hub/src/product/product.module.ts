@@ -15,6 +15,7 @@ import { RATE_LIMITER, type RateLimiterPort } from '../shared/application/rate-l
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { AddProductUseCase } from './application/add-product.use-case.js';
 import { ChoosePriceRoutesUseCase } from './application/choose-price-routes.use-case.js';
+import { GetProductStatsUseCase } from './application/get-product-stats.use-case.js';
 import { ListPriceHistoryUseCase } from './application/list-price-history.use-case.js';
 import { ListProductsUseCase } from './application/list-products.use-case.js';
 import {
@@ -88,6 +89,12 @@ import { ProductsController } from './presentation/products.controller.js';
         APP_CONFIG,
         LOGGER,
       ],
+    },
+    {
+      provide: GetProductStatsUseCase,
+      useFactory: (products: TrackedProductRepositoryPort): GetProductStatsUseCase =>
+        new GetProductStatsUseCase(products),
+      inject: [TRACKED_PRODUCT_REPOSITORY],
     },
     {
       provide: RemoveProductUseCase,
@@ -202,5 +209,6 @@ import { ProductsController } from './presentation/products.controller.js';
     },
     PriceResultsConsumer,
   ],
+  exports: [GetProductStatsUseCase],
 })
 export class ProductModule {}

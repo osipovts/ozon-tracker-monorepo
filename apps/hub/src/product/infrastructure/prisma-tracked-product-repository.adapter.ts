@@ -121,6 +121,15 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     });
   }
 
+  async stats(): Promise<{ products: number; trackings: number }> {
+    const [products, trackings] = await this.prisma.$transaction([
+      this.prisma.trackedProduct.count(),
+      this.prisma.productSubscription.count(),
+    ]);
+
+    return { products, trackings };
+  }
+
   async findSubscribed(userId: string, productId: string): Promise<TrackedProductEntity | null> {
     const row = await this.prisma.trackedProduct.findFirst({
       where: { id: productId, subscriptions: { some: { userId } } },

@@ -5,6 +5,7 @@ import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-c
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
 import { PRISMA, PrismaModule } from '../shared/infrastructure/prisma.module.js';
 import { GetJobUseCase } from './application/get-job.use-case.js';
+import { GetJobStatsUseCase } from './application/get-job-stats.use-case.js';
 import { JOB_QUEUE, type JobQueuePort } from './application/job-queue.port.js';
 import { JOB_REPOSITORY, type JobRepositoryPort } from './application/job-repository.port.js';
 import { ListJobsUseCase } from './application/list-jobs.use-case.js';
@@ -50,6 +51,11 @@ import { JobsController } from './presentation/jobs.controller.js';
       inject: [JOB_QUEUE, JOB_REPOSITORY],
     },
     {
+      provide: GetJobStatsUseCase,
+      useFactory: (jobs: JobRepositoryPort): GetJobStatsUseCase => new GetJobStatsUseCase(jobs),
+      inject: [JOB_REPOSITORY],
+    },
+    {
       provide: GetJobUseCase,
       useFactory: (jobs: JobRepositoryPort): GetJobUseCase => new GetJobUseCase(jobs),
       inject: [JOB_REPOSITORY],
@@ -60,6 +66,6 @@ import { JobsController } from './presentation/jobs.controller.js';
       inject: [JOB_REPOSITORY],
     },
   ],
-  exports: [ScheduleJobUseCase, RecordJobMessageUseCase],
+  exports: [ScheduleJobUseCase, RecordJobMessageUseCase, GetJobStatsUseCase],
 })
 export class JobModule {}
