@@ -1,3 +1,5 @@
+import './waiting-glint.css';
+
 import {
   Badge,
   Button,
@@ -120,7 +122,13 @@ function ProductCards({
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
       {items.map((item): ReactElement => (
-        <Card key={item.id} withBorder padding="sm">
+        <Card
+          key={item.id}
+          withBorder
+          padding="sm"
+          // Still waiting for the first price: a glint runs over the card until it comes.
+          data-waiting={item.latest === null ? 'true' : undefined}
+        >
           <Group wrap="nowrap" align="flex-start" gap="sm">
             <ProductThumbnail url={item.thumbnailUrl} alt={titleOf(item)} size={88} />
             <Stack gap={6} flex={1} miw={0}>

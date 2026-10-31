@@ -13,12 +13,11 @@ import {
 import type { TFunction } from 'i18next';
 import { type ReactElement, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
 import { ApiError } from '../../shared/api/api-error.error.js';
 import { ErrorAlert } from '../../shared/api/error-alert.component.js';
-import { DeleteProduct } from './delete-product.component.js';
 import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
 import { PriceChart } from './price-chart.component.js';
@@ -65,7 +64,6 @@ function availabilityLabel(availability: ObservationType['availability'], t: TFu
 export function ProductPage(): ReactElement {
   const { t } = useTranslation();
   const locale = useLocale();
-  const navigate = useNavigate();
   const { id = '' } = useParams();
   const history = usePriceHistory(id);
   const [page, setPage] = useState(1);
@@ -118,11 +116,6 @@ export function ProductPage(): ReactElement {
             <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
               {t('product.openOn', { marketplace: data.product.marketplace })}
             </Anchor>
-            <DeleteProduct
-              productId={data.product.id}
-              title={productTitle}
-              onDeleted={(): void => void navigate('/')}
-            />
           </Group>
         </Stack>
       </Group>

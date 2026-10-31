@@ -263,9 +263,16 @@ void test('on a phone the list is cards and nothing is wider than the screen', a
   await phone.close();
 });
 
-void test('a product is deleted from its page after a confirmation, and goes for good with its last tracker', async (): Promise<void> => {
+void test('a product is deleted from its card in the list after a confirmation, and goes for good with its last tracker', async (): Promise<void> => {
   assert.equal(await database.trackedProduct.count(), 1);
 
+  // The page of the product has no cross: a product is removed from the list.
+  const product = await database.trackedProduct.findFirstOrThrow();
+  await page.goto(`${hub.baseUrl}/app/products/${product.id}`);
+  await page.getByRole('heading', { level: 3 }).first().waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Delete' }).count(), 0);
+
+  await page.goto(`${hub.baseUrl}/app/`);
   await page.getByRole('button', { name: 'Delete' }).click();
   // Asked first: nothing is gone before the confirmation.
   const dialog = page.getByRole('dialog');
@@ -276,11 +283,9 @@ void test('a product is deleted from its page after a confirmation, and goes for
   await page.getByRole('button', { name: 'Delete' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 
-  await page.waitForURL(/\/app\/?$/);
   await page.getByText('Nothing is tracked yet.').waitFor();
   assert.equal(await database.trackedProduct.count(), 0);
 });
-
 void test('the theme and the language are set on the page of the settings, and kept by the browser', async (): Promise<void> => {
   await openAccountMenu(page);
   await page.getByRole('menuitem', { name: 'Settings' }).click();

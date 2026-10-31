@@ -87,7 +87,7 @@ export const ru: DictionaryType = {
     signOutOthers: 'Выйти на других устройствах',
   },
   products: {
-    title: 'Товары',
+    title: 'Мои товары',
     linkLabel: 'Ссылка на товар',
     supported: 'Поддерживаемые маркетплейсы: ozon.ru',
     noPicture: 'Нет картинки',
