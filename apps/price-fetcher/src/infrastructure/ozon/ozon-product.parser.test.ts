@@ -20,6 +20,7 @@ const base: OzonPageInterface = {
   priceText: '',
   purchaseText: '',
   outOfStockText: '',
+  outOfStockImageUrl: '',
   structuredData: [],
   imageUrl: '',
 };
@@ -152,6 +153,7 @@ void test('reads a product that is out of stock from the search Ozon sends its a
     heading: '',
     purchaseText: soldOutWidget,
     outOfStockText: soldOutWidget,
+    outOfStockImageUrl: 'https://ir.ozone.ru/s3/multimedia-1-e/wc100/10327863470.jpg',
     imageUrl: 'https://ir.ozone.ru/s3/cms/logo/og_ozon_ru.png',
   });
 
@@ -162,7 +164,7 @@ void test('reads a product that is out of stock from the search Ozon sends its a
     snapshot.title,
     'ASUS UX3607OA-SQ050W Ноутбук 16", RAM 48 ГБ, SSD 1000 ГБ, Qualcomm Adreno, Windows Home, бежевый',
   );
-  assert.equal(snapshot.imageUrl, null);
+  assert.equal(snapshot.imageUrl, 'https://ir.ozone.ru/s3/multimedia-1-e/wc300/10327863470.jpg');
 });
 
 void test('does not take a search without the sold out widget, or another site, for the product', (): void => {

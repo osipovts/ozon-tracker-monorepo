@@ -113,8 +113,8 @@ export class OzonProductParser {
       observedAt: new Date().toISOString(),
       prices: this.readWidgetPrices(page.outOfStockText),
       availability: 'out_of_stock',
-      // The page names the picture of Ozon itself, not of the product.
-      imageUrl: null,
+      // The page names the picture of Ozon itself in `og:image`: the product has its own in the widget.
+      imageUrl: httpUrlOf(page.outOfStockImageUrl),
     };
   }
 
