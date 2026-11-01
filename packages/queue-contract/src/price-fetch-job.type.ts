@@ -1,11 +1,9 @@
 import { z } from 'zod';
 
-import { browserSessionSchema } from './browser-session.type.js';
 import { proxyServerSchema } from './proxy-server.type.js';
 
 export const priceFetchRouteSchema = z.object({
   server: proxyServerSchema.nullable(),
-  session: browserSessionSchema.optional(),
 });
 
 export const priceFetchJobSchema = z.object({
@@ -19,6 +17,8 @@ export const priceFetchJobSchema = z.object({
         url: z.url(),
         /** The city whose price is read, by the id of the marketplace; none where it has no cities. */
         cityId: z.string().min(1).optional(),
+        /** Set by the worker when a try read the product: the next try leaves it alone. */
+        read: z.boolean().optional(),
       }),
     )
     .min(1)

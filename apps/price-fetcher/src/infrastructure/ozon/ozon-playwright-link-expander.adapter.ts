@@ -1,18 +1,16 @@
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
-import type { Browser } from 'playwright';
+import type { Browser } from 'playwright-core';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { LinkExpanderPort } from '../../application/link/link-expander.port.js';
-import type { SessionStorePort } from '../../application/session/session-store.port.js';
-import type { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 
-/** Follows the redirect of a short link of Ozon in a browser: the site lets only a browser with a session through. */
+/** Follows the redirect of a short link of Ozon in a browser: the site lets only a browser that passes its check through. */
 export class OzonPlaywrightLinkExpanderAdapter implements LinkExpanderPort {
   constructor(
     private readonly browser: Pick<Browser, 'newContext'>,
-    private readonly options: ChromiumOptionsFactory,
+    private readonly options: CamoufoxOptionsFactory,
     private readonly timeoutMs: number,
-    private readonly sessions: SessionStorePort,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
@@ -22,12 +20,8 @@ export class OzonPlaywrightLinkExpanderAdapter implements LinkExpanderPort {
     signal: AbortSignal,
   ): Promise<string | null> {
     signal.throwIfAborted();
-    const session = this.sessions.find(proxy);
     const context = await this.browser.newContext({
       ...this.options.context(proxy),
-      ...(session === null
-        ? {}
-        : { userAgent: session.userAgent, storageState: session.storageState }),
       acceptDownloads: false,
     });
     const abort = (): void => {

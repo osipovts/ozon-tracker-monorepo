@@ -19,7 +19,6 @@ void test('puts the figures of every context on one page, as of now', async (): 
           lastCheckedAt: now,
         }),
     },
-    { execute: () => Promise.resolve({ active: 2, stale: 1 }) },
     {
       execute: () =>
         Promise.resolve({
@@ -35,7 +34,6 @@ void test('puts the figures of every context on one page, as of now', async (): 
     users: { total: 5, verified: 3, joinedLastDay: 1 },
     products: { products: 7, trackings: 9 },
     proxies: { total: 40, alive: 12, disabled: 2, averageLatencyMs: 310, lastCheckedAt: now },
-    sessions: { active: 2, stale: 1 },
     jobs: {
       lastDay: { queued: 0, running: 1, retrying: 0, completed: 20, failed: 2 },
       recentFailures: [],

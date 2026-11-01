@@ -3,7 +3,7 @@
   "paths": {
     "/admin/dashboard": {
       "get": {
-        "description": "Users, products, proxies, browser sessions and jobs. For administrators.",
+        "description": "Users, products, proxies and jobs. For administrators.",
         "operationId": "AdminController_dashboard",
         "parameters": [],
         "responses": {
@@ -38,7 +38,11 @@
                           "maximum": 9007199254740991
                         }
                       },
-                      "required": ["total", "verified", "joinedLastDay"],
+                      "required": [
+                        "total",
+                        "verified",
+                        "joinedLastDay"
+                      ],
                       "additionalProperties": false
                     },
                     "products": {
@@ -55,7 +59,10 @@
                           "maximum": 9007199254740991
                         }
                       },
-                      "required": ["products", "trackings"],
+                      "required": [
+                        "products",
+                        "trackings"
+                      ],
                       "additionalProperties": false
                     },
                     "proxies": {
@@ -98,23 +105,6 @@
                       ],
                       "additionalProperties": false
                     },
-                    "sessions": {
-                      "type": "object",
-                      "properties": {
-                        "active": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "stale": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        }
-                      },
-                      "required": ["active", "stale"],
-                      "additionalProperties": false
-                    },
                     "jobs": {
                       "type": "object",
                       "properties": {
@@ -147,7 +137,13 @@
                               "maximum": 9007199254740991
                             }
                           },
-                          "required": ["queued", "running", "retrying", "completed", "failed"],
+                          "required": [
+                            "queued",
+                            "running",
+                            "retrying",
+                            "completed",
+                            "failed"
+                          ],
                           "additionalProperties": false
                         },
                         "recentFailures": {
@@ -177,16 +173,31 @@
                                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                               }
                             },
-                            "required": ["id", "kind", "subject", "error", "finishedAt"],
+                            "required": [
+                              "id",
+                              "kind",
+                              "subject",
+                              "error",
+                              "finishedAt"
+                            ],
                             "additionalProperties": false
                           }
                         }
                       },
-                      "required": ["lastDay", "recentFailures"],
+                      "required": [
+                        "lastDay",
+                        "recentFailures"
+                      ],
                       "additionalProperties": false
                     }
                   },
-                  "required": ["generatedAt", "users", "products", "proxies", "sessions", "jobs"],
+                  "required": [
+                    "generatedAt",
+                    "users",
+                    "products",
+                    "proxies",
+                    "jobs"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -197,7 +208,9 @@
           }
         },
         "summary": "The figures of the hub on one page",
-        "tags": ["admin"]
+        "tags": [
+          "admin"
+        ]
       }
     },
     "/products": {
@@ -302,7 +315,11 @@
                               },
                               "availability": {
                                 "type": "string",
-                                "enum": ["in_stock", "out_of_stock", "unknown"]
+                                "enum": [
+                                  "in_stock",
+                                  "out_of_stock",
+                                  "unknown"
+                                ]
                               },
                               "prices": {
                                 "type": "array",
@@ -316,10 +333,15 @@
                                     },
                                     "currency": {
                                       "type": "string",
-                                      "enum": ["RUB"]
+                                      "enum": [
+                                        "RUB"
+                                      ]
                                     }
                                   },
-                                  "required": ["amountMinor", "currency"],
+                                  "required": [
+                                    "amountMinor",
+                                    "currency"
+                                  ],
                                   "additionalProperties": false
                                 }
                               },
@@ -371,7 +393,12 @@
                       "maximum": 9007199254740991
                     }
                   },
-                  "required": ["items", "page", "pageSize", "total"],
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -379,7 +406,9 @@
           }
         },
         "summary": "List tracked products with their newest price, the newest first",
-        "tags": ["products"]
+        "tags": [
+          "products"
+        ]
       },
       "post": {
         "description": "Any link to the product page works: it is canonicalized. The users share a product and its price history, each one tracks it for themselves. A product that has no price yet gets the read of its first price queued, which `jobId` names: follow it with `GET /jobs/{jobId}`. A user tracks a limited number of products and adds them at a limited rate.",
@@ -402,7 +431,9 @@
                     "maxLength": 100
                   }
                 },
-                "required": ["url"]
+                "required": [
+                  "url"
+                ]
               }
             }
           }
@@ -569,7 +600,9 @@
           }
         },
         "summary": "Track a product by its URL",
-        "tags": ["products"]
+        "tags": [
+          "products"
+        ]
       }
     },
     "/products/{id}/prices": {
@@ -637,7 +670,11 @@
                           },
                           "availability": {
                             "type": "string",
-                            "enum": ["in_stock", "out_of_stock", "unknown"]
+                            "enum": [
+                              "in_stock",
+                              "out_of_stock",
+                              "unknown"
+                            ]
                           },
                           "prices": {
                             "type": "array",
@@ -651,10 +688,15 @@
                                 },
                                 "currency": {
                                   "type": "string",
-                                  "enum": ["RUB"]
+                                  "enum": [
+                                    "RUB"
+                                  ]
                                 }
                               },
-                              "required": ["amountMinor", "currency"],
+                              "required": [
+                                "amountMinor",
+                                "currency"
+                              ],
                               "additionalProperties": false
                             }
                           },
@@ -751,7 +793,13 @@
                       "additionalProperties": false
                     }
                   },
-                  "required": ["items", "page", "pageSize", "total", "product"],
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "total",
+                    "product"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -762,7 +810,9 @@
           }
         },
         "summary": "Price history of a product, the newest first",
-        "tags": ["products"]
+        "tags": [
+          "products"
+        ]
       }
     },
     "/products/{id}": {
@@ -790,7 +840,9 @@
           }
         },
         "summary": "Stop tracking a product",
-        "tags": ["products"]
+        "tags": [
+          "products"
+        ]
       }
     },
     "/jobs": {
@@ -825,7 +877,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
+              "enum": [
+                "proxy_fetch",
+                "price_fetch",
+                "handbook_fetch"
+              ]
             }
           },
           {
@@ -834,7 +890,13 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["queued", "running", "retrying", "completed", "failed"]
+              "enum": [
+                "queued",
+                "running",
+                "retrying",
+                "completed",
+                "failed"
+              ]
             }
           }
         ],
@@ -858,14 +920,24 @@
                           },
                           "kind": {
                             "type": "string",
-                            "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
+                            "enum": [
+                              "proxy_fetch",
+                              "price_fetch",
+                              "handbook_fetch"
+                            ]
                           },
                           "subject": {
                             "type": "string"
                           },
                           "status": {
                             "type": "string",
-                            "enum": ["queued", "running", "retrying", "completed", "failed"]
+                            "enum": [
+                              "queued",
+                              "running",
+                              "retrying",
+                              "completed",
+                              "failed"
+                            ]
                           },
                           "percent": {
                             "type": "integer",
@@ -943,7 +1015,12 @@
                       "maximum": 9007199254740991
                     }
                   },
-                  "required": ["items", "page", "pageSize", "total"],
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -956,7 +1033,9 @@
           }
         ],
         "summary": "List jobs, the newest first",
-        "tags": ["jobs"]
+        "tags": [
+          "jobs"
+        ]
       }
     },
     "/jobs/{id}": {
@@ -990,14 +1069,24 @@
                     },
                     "kind": {
                       "type": "string",
-                      "enum": ["proxy_fetch", "price_fetch", "handbook_fetch"]
+                      "enum": [
+                        "proxy_fetch",
+                        "price_fetch",
+                        "handbook_fetch"
+                      ]
                     },
                     "subject": {
                       "type": "string"
                     },
                     "status": {
                       "type": "string",
-                      "enum": ["queued", "running", "retrying", "completed", "failed"]
+                      "enum": [
+                        "queued",
+                        "running",
+                        "retrying",
+                        "completed",
+                        "failed"
+                      ]
                     },
                     "percent": {
                       "type": "integer",
@@ -1066,390 +1155,13 @@
           }
         },
         "summary": "Status and progress of a job; poll it for a progress bar",
-        "tags": ["jobs"]
-      }
-    },
-    "/sessions": {
-      "post": {
-        "description": "Sent by `pnpm sessions:onboard` with a session captured in a browser window. It replaces the session of the same marketplace and proxy and is given to the workers together with that proxy.",
-        "operationId": "SessionsController_import",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "marketplace": {
-                    "type": "string",
-                    "enum": ["ozon", "dns"]
-                  },
-                  "proxy": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "uri"
-                  },
-                  "session": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "exitIp": {
-                        "type": "string",
-                        "format": "ipv4",
-                        "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
-                      },
-                      "userAgent": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "storageState": {
-                        "type": "object",
-                        "properties": {
-                          "cookies": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "name": {
-                                  "type": "string"
-                                },
-                                "value": {
-                                  "type": "string"
-                                },
-                                "domain": {
-                                  "type": "string"
-                                },
-                                "path": {
-                                  "type": "string"
-                                },
-                                "expires": {
-                                  "type": "number"
-                                },
-                                "httpOnly": {
-                                  "type": "boolean"
-                                },
-                                "secure": {
-                                  "type": "boolean"
-                                },
-                                "sameSite": {
-                                  "type": "string",
-                                  "enum": ["Strict", "Lax", "None"]
-                                }
-                              },
-                              "required": [
-                                "name",
-                                "value",
-                                "domain",
-                                "path",
-                                "expires",
-                                "httpOnly",
-                                "secure",
-                                "sameSite"
-                              ]
-                            }
-                          },
-                          "origins": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "origin": {
-                                  "type": "string"
-                                },
-                                "localStorage": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "name": {
-                                        "type": "string"
-                                      },
-                                      "value": {
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": ["name", "value"]
-                                  }
-                                }
-                              },
-                              "required": ["origin", "localStorage"]
-                            }
-                          }
-                        },
-                        "required": ["cookies", "origins"]
-                      }
-                    },
-                    "required": ["id", "exitIp", "userAgent", "storageState"]
-                  },
-                  "createdAt": {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  }
-                },
-                "required": ["marketplace", "proxy", "session", "createdAt"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "marketplace": {
-                      "type": "string"
-                    },
-                    "proxy": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "exitIp": {
-                      "type": "string"
-                    },
-                    "userAgent": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": ["active", "stale"]
-                    },
-                    "staleReason": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "cookies": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "lastUsedAt": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "marketplace",
-                    "proxy",
-                    "exitIp",
-                    "userAgent",
-                    "status",
-                    "staleReason",
-                    "cookies",
-                    "createdAt",
-                    "updatedAt",
-                    "lastUsedAt"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Import a browser session",
-        "tags": ["sessions"]
-      },
-      "get": {
-        "operationId": "SessionsController_list",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": 1,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 9007199254740991
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": 20,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          "marketplace": {
-                            "type": "string"
-                          },
-                          "proxy": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "exitIp": {
-                            "type": "string"
-                          },
-                          "userAgent": {
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": ["active", "stale"]
-                          },
-                          "staleReason": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "cookies": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "updatedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "lastUsedAt": {
-                            "nullable": true,
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "marketplace",
-                          "proxy",
-                          "exitIp",
-                          "userAgent",
-                          "status",
-                          "staleReason",
-                          "cookies",
-                          "createdAt",
-                          "updatedAt",
-                          "lastUsedAt"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "page": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "pageSize": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "total": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    }
-                  },
-                  "required": ["items", "page", "pageSize", "total"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List sessions without their cookies, the newest first",
-        "tags": ["sessions"]
-      }
-    },
-    "/sessions/{id}": {
-      "delete": {
-        "operationId": "SessionsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The session is deleted"
-          },
-          "404": {
-            "description": "The session does not exist"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a session",
-        "tags": ["sessions"]
+        "tags": [
+          "jobs"
+        ]
       }
     },
     "/proxies": {
       "get": {
-        "description": "A proxy is ready when it has an active browser session of the marketplace; `ready=false` lists the ones that still need it.",
         "operationId": "ProxiesController_list",
         "parameters": [
           {
@@ -1480,7 +1192,10 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["true", "false"]
+              "enum": [
+                "true",
+                "false"
+              ]
             }
           },
           {
@@ -1489,7 +1204,10 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["true", "false"]
+              "enum": [
+                "true",
+                "false"
+              ]
             }
           },
           {
@@ -1499,25 +1217,6 @@
             "schema": {
               "type": "string",
               "pattern": "^[A-Z]{2}$"
-            }
-          },
-          {
-            "name": "marketplace",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": "ozon",
-              "type": "string",
-              "enum": ["ozon", "dns"]
-            }
-          },
-          {
-            "name": "ready",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": ["true", "false"]
             }
           }
         ],
@@ -1570,37 +1269,8 @@
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                           },
-                          "ready": {
-                            "type": "boolean"
-                          },
                           "disabled": {
                             "type": "boolean"
-                          },
-                          "session": {
-                            "nullable": true,
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                              },
-                              "status": {
-                                "type": "string",
-                                "enum": ["active", "stale"]
-                              },
-                              "staleReason": {
-                                "nullable": true,
-                                "type": "string"
-                              },
-                              "updatedAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              }
-                            },
-                            "required": ["id", "status", "staleReason", "updatedAt"],
-                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -1613,9 +1283,7 @@
                           "successRate",
                           "checksTotal",
                           "lastCheckedAt",
-                          "ready",
-                          "disabled",
-                          "session"
+                          "disabled"
                         ],
                         "additionalProperties": false
                       }
@@ -1636,7 +1304,12 @@
                       "maximum": 9007199254740991
                     }
                   },
-                  "required": ["items", "page", "pageSize", "total"],
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -1649,7 +1322,9 @@
           }
         ],
         "summary": "List proxies, the best first",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       },
       "post": {
         "description": "The workers are given the manual proxies before the found ones, whatever their check and exit country. A proxy that is listed already becomes manual. The address may carry `user:password@` for an HTTP(S) proxy: the credentials are kept apart, given to the workers only and never listed.",
@@ -1667,7 +1342,9 @@
                     "format": "uri"
                   }
                 },
-                "required": ["server"]
+                "required": [
+                  "server"
+                ]
               }
             }
           }
@@ -1683,7 +1360,9 @@
           }
         ],
         "summary": "Add a proxy by hand",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       },
       "patch": {
         "description": "A proxy that is off stays in the list but is not given to the workers, and a check does not turn it on. The server goes in the query: it has slashes.",
@@ -1710,7 +1389,9 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["disabled"]
+                "required": [
+                  "disabled"
+                ]
               }
             }
           }
@@ -1729,7 +1410,9 @@
           }
         ],
         "summary": "Turn a proxy off or on",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       },
       "delete": {
         "description": "The next refresh of its source finds it again if it is still listed there: turn it off instead to keep it away.",
@@ -1759,7 +1442,9 @@
           }
         ],
         "summary": "Delete a proxy",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       }
     },
     "/proxies/all": {
@@ -1778,7 +1463,9 @@
           }
         ],
         "summary": "Delete all proxies",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       }
     },
     "/proxy-sources/{source}/refresh": {
@@ -1791,7 +1478,11 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["github-free-proxy-list", "proxifly", "proxyscrape"]
+              "enum": [
+                "github-free-proxy-list",
+                "proxifly",
+                "proxyscrape"
+              ]
             }
           }
         ],
@@ -1837,7 +1528,9 @@
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
                   },
-                  "required": ["jobId"],
+                  "required": [
+                    "jobId"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -1850,7 +1543,9 @@
           }
         ],
         "summary": "Queue a refresh of the proxies of one source",
-        "tags": ["proxies"]
+        "tags": [
+          "proxies"
+        ]
       }
     },
     "/marketplaces/{marketplace}/cities": {
@@ -1864,7 +1559,10 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["ozon", "dns"]
+              "enum": [
+                "ozon",
+                "dns"
+              ]
             }
           },
           {
@@ -1913,12 +1611,18 @@
                             "type": "string"
                           }
                         },
-                        "required": ["id", "name", "region"],
+                        "required": [
+                          "id",
+                          "name",
+                          "region"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["items"],
+                  "required": [
+                    "items"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -1934,7 +1638,9 @@
           }
         ],
         "summary": "Search the cities of a marketplace whose prices depend on the city",
-        "tags": ["marketplaces"]
+        "tags": [
+          "marketplaces"
+        ]
       }
     },
     "/handbooks/{handbook}": {
@@ -1948,7 +1654,9 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["dns-cities"]
+              "enum": [
+                "dns-cities"
+              ]
             }
           },
           {
@@ -2008,7 +1716,11 @@
                             "type": "string"
                           }
                         },
-                        "required": ["id", "name", "region"],
+                        "required": [
+                          "id",
+                          "name",
+                          "region"
+                        ],
                         "additionalProperties": false
                       }
                     },
@@ -2034,7 +1746,13 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
-                  "required": ["items", "page", "pageSize", "total", "fetchedAt"],
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "total",
+                    "fetchedAt"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2047,7 +1765,9 @@
           }
         ],
         "summary": "The cities a handbook keeps, a page of them",
-        "tags": ["handbooks"]
+        "tags": [
+          "handbooks"
+        ]
       }
     },
     "/handbooks/{handbook}/refresh": {
@@ -2061,7 +1781,9 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["dns-cities"]
+              "enum": [
+                "dns-cities"
+              ]
             }
           }
         ],
@@ -2079,7 +1801,9 @@
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
                   },
-                  "required": ["jobId"],
+                  "required": [
+                    "jobId"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2092,7 +1816,9 @@
           }
         ],
         "summary": "Queue a read of a handbook",
-        "tags": ["handbooks"]
+        "tags": [
+          "handbooks"
+        ]
       }
     },
     "/auth/account": {
@@ -2128,7 +1854,10 @@
                         "properties": {
                           "provider": {
                             "type": "string",
-                            "enum": ["google", "github"]
+                            "enum": [
+                              "google",
+                              "github"
+                            ]
                           },
                           "linkedAt": {
                             "type": "string",
@@ -2136,12 +1865,21 @@
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                           }
                         },
-                        "required": ["provider", "linkedAt"],
+                        "required": [
+                          "provider",
+                          "linkedAt"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["email", "emailVerified", "createdAt", "hasPassword", "identities"],
+                  "required": [
+                    "email",
+                    "emailVerified",
+                    "createdAt",
+                    "hasPassword",
+                    "identities"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2149,7 +1887,9 @@
           }
         },
         "summary": "The account of the user: the ways to log in",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       },
       "delete": {
         "description": "With the products the user tracks (those nobody else tracks go with their price history), the sessions and the ways to log in. The body names the email of the account, to confirm.",
@@ -2169,7 +1909,9 @@
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   }
                 },
-                "required": ["email"]
+                "required": [
+                  "email"
+                ]
               }
             }
           }
@@ -2180,7 +1922,9 @@
           }
         },
         "summary": "Delete the account for good",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/identities/{provider}": {
@@ -2194,7 +1938,10 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["google", "github"]
+              "enum": [
+                "google",
+                "github"
+              ]
             }
           }
         ],
@@ -2210,7 +1957,9 @@
           }
         },
         "summary": "Stop logging in through a provider",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/register": {
@@ -2237,7 +1986,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["email", "password"]
+                "required": [
+                  "email",
+                  "password"
+                ]
               }
             }
           }
@@ -2252,10 +2004,14 @@
                   "properties": {
                     "accepted": {
                       "type": "boolean",
-                      "enum": [true]
+                      "enum": [
+                        true
+                      ]
                     }
                   },
-                  "required": ["accepted"],
+                  "required": [
+                    "accepted"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2263,7 +2019,9 @@
           }
         },
         "summary": "Sign up by the email and the password",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/login": {
@@ -2290,7 +2048,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["email", "password"]
+                "required": [
+                  "email",
+                  "password"
+                ]
               }
             }
           }
@@ -2321,11 +2082,18 @@
                           "type": "boolean"
                         }
                       },
-                      "required": ["id", "email", "emailVerified", "isAdmin"],
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "isAdmin"
+                      ],
                       "additionalProperties": false
                     }
                   },
-                  "required": ["user"],
+                  "required": [
+                    "user"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2336,7 +2104,9 @@
           }
         },
         "summary": "Log in by the email and the password",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/logout": {
@@ -2350,7 +2120,9 @@
           }
         },
         "summary": "End the session of the cookie",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/me": {
@@ -2383,11 +2155,18 @@
                           "type": "boolean"
                         }
                       },
-                      "required": ["id", "email", "emailVerified", "isAdmin"],
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "isAdmin"
+                      ],
                       "additionalProperties": false
                     }
                   },
-                  "required": ["user"],
+                  "required": [
+                    "user"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2398,7 +2177,9 @@
           }
         },
         "summary": "The user of the session cookie",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/password": {
@@ -2424,7 +2205,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["currentPassword", "newPassword"]
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ]
               }
             }
           }
@@ -2441,7 +2225,9 @@
           }
         },
         "summary": "Change the password",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/sessions": {
@@ -2506,7 +2292,9 @@
                       }
                     }
                   },
-                  "required": ["sessions"],
+                  "required": [
+                    "sessions"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2517,7 +2305,9 @@
           }
         },
         "summary": "The sessions of the user, the most recently used first",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       },
       "delete": {
         "description": "Signs the user out everywhere else, e.g. after a device was lost.",
@@ -2537,7 +2327,9 @@
                       "maximum": 9007199254740991
                     }
                   },
-                  "required": ["revoked"],
+                  "required": [
+                    "revoked"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2545,7 +2337,9 @@
           }
         },
         "summary": "End every session but this one",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/sessions/{id}": {
@@ -2572,7 +2366,9 @@
           }
         },
         "summary": "End one session of the user",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/verify-email": {
@@ -2601,10 +2397,14 @@
                   "properties": {
                     "verified": {
                       "type": "boolean",
-                      "enum": [true]
+                      "enum": [
+                        true
+                      ]
                     }
                   },
-                  "required": ["verified"],
+                  "required": [
+                    "verified"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2615,7 +2415,9 @@
           }
         },
         "summary": "Confirm the email: the link mailed to it",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/verify-email/resend": {
@@ -2635,7 +2437,9 @@
           }
         },
         "summary": "Mail the link to confirm the email again",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/oauth/providers": {
@@ -2654,11 +2458,16 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "enum": ["google", "github"]
+                        "enum": [
+                          "google",
+                          "github"
+                        ]
                       }
                     }
                   },
-                  "required": ["providers"],
+                  "required": [
+                    "providers"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2666,7 +2475,9 @@
           }
         },
         "summary": "The providers a user can log in through",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/oauth/{provider}/start": {
@@ -2680,7 +2491,10 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["google", "github"]
+              "enum": [
+                "google",
+                "github"
+              ]
             }
           }
         ],
@@ -2690,7 +2504,9 @@
           }
         },
         "summary": "Log in through a provider: send the browser to it",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/oauth/{provider}/callback": {
@@ -2704,7 +2520,10 @@
             "in": "path",
             "schema": {
               "type": "string",
-              "enum": ["google", "github"]
+              "enum": [
+                "google",
+                "github"
+              ]
             }
           },
           {
@@ -2740,13 +2559,15 @@
           }
         },
         "summary": "Where the provider sends the user back to",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     }
   },
   "info": {
     "title": "Hub",
-    "description": "Proxies, browser sessions and price tracking of marketplace products",
+    "description": "Proxies and price tracking of marketplace products",
     "version": "1.0",
     "contact": {}
   },

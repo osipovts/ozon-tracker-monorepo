@@ -1,4 +1,3 @@
-export * from './browser-session.type.js';
 export * from './handbook.type.js';
 export * from './handbook-fetch-job.type.js';
 export * from './handbook-fetch-result.type.js';
@@ -14,5 +13,3 @@ export * from './proxy-server.type.js';
 export * from './proxy-source.type.js';
 export * from './queue-name.type.js';
 export * from './read-product-result.type.js';
-export * from './session-export-file.type.js';
-export * from './storage-state.type.js';

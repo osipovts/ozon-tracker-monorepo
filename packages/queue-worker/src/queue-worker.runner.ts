@@ -12,12 +12,14 @@ export interface QueueWorkerSettingsInterface {
 
 /**
  * Handles a raw job message; `willRetry` tells whether the queue delivers the job again after a failure.
+ * `retryWith` replaces the data the queue gives the job when it delivers it again.
  * What it returns is the return value of the job.
  */
 export type JobHandlerType = (
   data: unknown,
   signal: AbortSignal,
   willRetry: boolean,
+  retryWith: (data: unknown) => Promise<void>,
 ) => Promise<unknown>;
 
 /** Takes the jobs of one queue and publishes their results to another one. */
@@ -58,7 +60,12 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
         const willRetry = job.attemptsMade + 1 < (job.opts.attempts ?? 1);
         this.logger.debug(`Took job ${job.id ?? '?'} (attempt ${String(job.attemptsMade + 1)})`);
 
-        return handle(job.data, signal ?? new AbortController().signal, willRetry);
+        return handle(
+          job.data,
+          signal ?? new AbortController().signal,
+          willRetry,
+          (data): Promise<void> => job.updateData(data),
+        );
       },
       { connection: this.connection, concurrency: this.settings.concurrency },
     );

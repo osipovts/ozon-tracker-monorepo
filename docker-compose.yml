@@ -99,7 +99,7 @@ services:
       args:
         APP_NAME: handbook-fetcher
     environment: *app-env
-    # Chromium runs out of the default 64 MB of /dev/shm on heavy pages.
+    # Camoufox runs out of the default 64 MB of /dev/shm on heavy pages.
     shm_size: 1gb
     # Lets the read in progress finish: a read of a handbook goes through several routes.
     stop_grace_period: 70s
@@ -118,7 +118,7 @@ services:
       - path: apps/price-fetcher/.env
         required: false
     environment: *app-env
-    # Chromium runs out of the default 64 MB of /dev/shm on heavy pages.
+    # Camoufox runs out of the default 64 MB of /dev/shm on heavy pages.
     shm_size: 1gb
     # Lets the job in progress finish: a price fetch takes up to PRICE_TIMEOUT_MS of the hub.
     stop_grace_period: 70s

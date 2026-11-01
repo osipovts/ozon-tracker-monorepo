@@ -13,11 +13,6 @@ class ProbeController {
   login(@Body() body: unknown): { received: boolean } {
     return { received: typeof body === 'object' };
   }
-
-  @Post('sessions')
-  importSession(@Body() body: unknown): { received: boolean } {
-    return { received: typeof body === 'object' };
-  }
 }
 
 let app: NestExpressApplication;
@@ -45,13 +40,8 @@ async function post(path: string, bytes: number): Promise<number> {
   return response.status;
 }
 
-void test('reads a small body anywhere and refuses a large one before anything asks who sent it', async (): Promise<void> => {
+void test('reads a small body and refuses a large one before anything asks who sent it', async (): Promise<void> => {
   assert.equal(await post('/auth/login', 50 * 1024), 201);
   assert.equal(await post('/auth/login', 200 * 1024), 413);
   assert.equal(await post('/auth/login', 2 * 1024 * 1024), 413);
-});
-
-void test('lets the import of a browser session carry the cookies and the storage it has, up to 10 MB', async (): Promise<void> => {
-  assert.equal(await post('/sessions', 5 * 1024 * 1024), 201);
-  assert.equal(await post('/sessions', 11 * 1024 * 1024), 413);
 });

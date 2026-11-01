@@ -26,7 +26,6 @@ import {
   proxyPageSize,
   proxySources,
   type ProxySourceType,
-  sessionMarketplace,
   useAddProxy,
   useDeleteAllProxies,
   useDeleteProxy,
@@ -119,45 +118,11 @@ function RefreshSource(): ReactElement {
   );
 }
 
-function SessionBadge({
-  session,
-}: {
-  session: { status: 'active' | 'stale'; staleReason: string | null } | null;
-}): ReactElement {
-  const { t } = useTranslation();
-
-  if (session === null) {
-    return (
-      <Tooltip multiline w={260} label={t('proxies.sessionNoneHint')}>
-        <Badge color="gray">{t('proxies.sessionNone')}</Badge>
-      </Tooltip>
-    );
-  }
-  if (session.status === 'active') {
-    return (
-      <Tooltip multiline w={260} label={t('proxies.sessionActiveHint')}>
-        <Badge color="green">{t('proxies.sessionActive')}</Badge>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <Tooltip
-      multiline
-      w={260}
-      label={t('proxies.sessionStaleHint', { reason: session.staleReason ?? '-' })}
-    >
-      <Badge color="orange">{t('proxies.sessionStale')}</Badge>
-    </Tooltip>
-  );
-}
-
 export function ProxiesPage(): ReactElement {
   const { t } = useTranslation();
   const locale = useLocale();
   const [alive, setAlive] = useState<ChoiceType>('all');
   const [disabled, setDisabled] = useState<ChoiceType>('all');
-  const [ready, setReady] = useState<ChoiceType>('all');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -166,7 +131,6 @@ export function ProxiesPage(): ReactElement {
   const proxies = useProxies({
     alive: toFilter(alive),
     disabled: toFilter(disabled),
-    ready: toFilter(ready),
     page,
   });
   const setProxyDisabled = useSetProxyDisabled();
@@ -220,15 +184,6 @@ export function ProxiesPage(): ReactElement {
             setPage(1);
           }}
         />
-        <Choice
-          label={t('proxies.filterSession', { marketplace: sessionMarketplace })}
-          value={ready}
-          labels={[t('proxies.filterSessionYes'), t('proxies.filterSessionNo')]}
-          onChange={(next): void => {
-            setReady(next);
-            setPage(1);
-          }}
-        />
       </Group>
       {proxies.isError && <ErrorAlert error={proxies.error} />}
       {setProxyDisabled.error !== null && <ErrorAlert error={setProxyDisabled.error} />}
@@ -246,7 +201,6 @@ export function ProxiesPage(): ReactElement {
                 <Table.Th>{t('proxies.latency')}</Table.Th>
                 <Table.Th>{t('proxies.success')}</Table.Th>
                 <Table.Th>{t('proxies.checked')}</Table.Th>
-                <Table.Th>{t('proxies.session', { marketplace: sessionMarketplace })}</Table.Th>
                 <Table.Th>{t('proxies.enabled')}</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -280,9 +234,6 @@ export function ProxiesPage(): ReactElement {
                     })}
                   </Table.Td>
                   <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString(locale)}</Table.Td>
-                  <Table.Td>
-                    <SessionBadge session={proxy.session} />
-                  </Table.Td>
                   <Table.Td>
                     <Switch
                       aria-label={t('proxies.enabledOf', { server: proxy.server })}

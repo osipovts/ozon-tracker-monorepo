@@ -1,5 +1,5 @@
+import { Camoufox } from 'camoufox-js';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
-import { chromium } from 'playwright';
 import {
   DnsReferenceParser,
   OzonReferenceParser,
@@ -25,8 +25,7 @@ import {
 } from './infrastructure/ozon/ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './infrastructure/ozon/ozon-product.parser.js';
 import { MarketplaceProductReaderAdapter } from './infrastructure/product/marketplace-product-reader.adapter.js';
-import { InMemorySessionStoreAdapter } from './infrastructure/session/in-memory-session-store.adapter.js';
-import { ChromiumOptionsFactory } from './infrastructure/shared/chromium-options.factory.js';
+import { CamoufoxOptionsFactory } from './infrastructure/shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from './infrastructure/shared/geo-ip-page.parser.js';
 import { LinkExpandController } from './presentation/link/link-expand.controller.js';
 import { PriceFetchController } from './presentation/product/price-fetch.controller.js';
@@ -50,19 +49,18 @@ const logger = new ConsoleLoggerAdapter(
   'price-fetcher',
 );
 
-const options = new ChromiumOptionsFactory();
-logger.info(`Launching Chromium (${env.headed ? 'with a window' : 'headless'})`);
-const browser = await chromium.launch({
+const options = new CamoufoxOptionsFactory();
+logger.info(`Launching Camoufox (${env.headed ? 'with a window' : 'headless'})`);
+const browser = await Camoufox({
   ...options.launch({
     headed: env.headed,
-    timeoutMs: 30_000,
     ...(env.browserPath === undefined ? {} : { executablePath: env.browserPath }),
   }),
   // The runner closes the browser on a signal, after the job in progress.
   handleSIGINT: false,
   handleSIGTERM: false,
 });
-logger.info(`Chromium ${browser.version()} is running`);
+logger.info(`Firefox ${browser.version()} is running`);
 
 let stopping = false;
 browser.on('disconnected', (): void => {
@@ -100,15 +98,13 @@ const parsers: OzonReaderParsersInterface = {
 const controller = new PriceFetchController(
   new FetchPricesUseCase(
     new ResolveProductReferenceUseCase([references, dnsReferences]),
-    (routes) => new InMemorySessionStoreAdapter(routes),
-    (sessions, timeoutMs) =>
+    (timeoutMs) =>
       new MarketplaceProductReaderAdapter({
         ozon: new OzonPlaywrightProductReaderAdapter(
           browser,
           options,
           parsers,
           timeoutMs,
-          sessions,
           logger.child('ozon'),
         ),
         dns: new DnsPlaywrightProductReaderAdapter(
@@ -136,15 +132,8 @@ const expandController = new LinkExpandController(
   new ExpandLinkUseCase(
     new OzonShortLinkParser(),
     new ResolveProductReferenceUseCase([references]),
-    (routes) => new InMemorySessionStoreAdapter(routes),
-    (sessions, timeoutMs) =>
-      new OzonPlaywrightLinkExpanderAdapter(
-        browser,
-        options,
-        timeoutMs,
-        sessions,
-        logger.child('ozon'),
-      ),
+    (timeoutMs) =>
+      new OzonPlaywrightLinkExpanderAdapter(browser, options, timeoutMs, logger.child('ozon')),
     logger.child('links'),
   ),
   new QueueMessageParser(logger.child('links')),
@@ -152,8 +141,8 @@ const expandController = new LinkExpandController(
 );
 
 expandRunner.start((data, signal): Promise<unknown> => expandController.handle(data, signal));
-runner.start((data, signal, willRetry): Promise<void> =>
-  controller.handle(data, signal, willRetry),
+runner.start((data, signal, willRetry, retryWith): Promise<void> =>
+  controller.handle(data, signal, willRetry, retryWith),
 );
 runner.stopOnSignals(async (): Promise<void> => {
   stopping = true;

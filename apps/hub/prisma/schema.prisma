@@ -115,29 +115,6 @@ model JobRecord {
   @@map("jobs")
 }
 
-model BrowserSession {
-  /// The session id given by `session:onboard`.
-  id           String    @id @db.Uuid
-  marketplace  String
-  /// Proxy URL without credentials the session was created through; null for a direct connection.
-  proxyServer  String?
-  /// proxyServer or "direct": a marketplace has one session per route.
-  routeKey     String
-  exitIp       String
-  userAgent    String
-  /// Playwright storageState: cookies and localStorage.
-  storageState Json
-  /// active or stale.
-  status       String
-  staleReason  String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastUsedAt   DateTime?
-
-  @@unique([marketplace, routeKey], name: "marketplaceRouteKey")
-  @@map("browser_sessions")
-}
-
 model User {
   id                   String                @id @db.Uuid
   /// Trimmed and lowercase.

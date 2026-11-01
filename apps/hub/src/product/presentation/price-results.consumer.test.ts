@@ -5,9 +5,6 @@ import { UnrecoverableError } from 'bullmq';
 import { silentLogger } from 'logger';
 import { QueueMessageParser } from 'queue-worker';
 
-import { ImportSessionUseCase } from '../../browser-session/application/import-session.use-case.js';
-import { RecordSessionEventUseCase } from '../../browser-session/application/record-session-event.use-case.js';
-import { InMemoryBrowserSessionRepositoryAdapter } from '../../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
 import { RecordJobEventUseCase } from '../../job/application/record-job-event.use-case.js';
 import { RecordJobMessageUseCase } from '../../job/application/record-job-message.use-case.js';
 import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory-job-repository.adapter.js';
@@ -65,14 +62,12 @@ const config: AppConfigInterface = {
 };
 
 const jobId = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
-const sessionId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
 
 async function setup(): Promise<{
   consumer: PriceResultsConsumer;
   history: ListPriceHistoryUseCase;
-  sessions: InMemoryBrowserSessionRepositoryAdapter;
   productId: string;
 }> {
   const products = new InMemoryTrackedProductRepositoryAdapter();
@@ -86,34 +81,21 @@ async function setup(): Promise<{
   });
   await products.subscribe(userId, product.snapshot.id);
 
-  const sessions = new InMemoryBrowserSessionRepositoryAdapter();
-  await new ImportSessionUseCase(sessions).execute({
-    id: sessionId,
-    marketplace: 'ozon',
-    proxyServer: 'socks5://217.71.230.2:1080',
-    exitIp: '217.71.230.2',
-    userAgent: 'Mozilla/5.0',
-    storageState: { cookies: [], origins: [] },
-    createdAt: new Date(),
-  });
-
   return {
     consumer: new PriceResultsConsumer(
       new RecordPriceResultUseCase(products, observations, noThumbnails),
       new RecordJobMessageUseCase(new RecordJobEventUseCase(new InMemoryJobRepositoryAdapter())),
-      new RecordSessionEventUseCase(sessions),
       new QueueMessageParser(silentLogger),
       config,
       silentLogger,
     ),
     history: new ListPriceHistoryUseCase(products, observations),
-    sessions,
     productId: product.snapshot.id,
   };
 }
 
 void test('stores the snapshot of the attempt that read the product', async (): Promise<void> => {
-  const { consumer, history, sessions, productId } = await setup();
+  const { consumer, history, productId } = await setup();
 
   await consumer.handle({
     type: 'product_result',
@@ -124,7 +106,6 @@ void test('stores the snapshot of the attempt that read the product', async (): 
       { proxy: 'socks5://217.71.230.1:1080', result: { status: 'network_error' } },
       {
         proxy: 'socks5://217.71.230.2:1080',
-        sessionId,
         result: {
           status: 'partial',
           exitIp: '217.71.230.2',
@@ -143,66 +124,9 @@ void test('stores the snapshot of the attempt that read the product', async (): 
     .items;
   assert.equal(observation?.exitIp, '217.71.230.2');
   assert.equal(observation.prices[0]?.amountMinor, 18673000);
-  assert.notEqual((await sessions.findById(sessionId))?.snapshot.lastUsedAt, null);
 });
 
-void test('marks a session stale after a challenge or an exit address mismatch', async (): Promise<void> => {
-  const { consumer, sessions, productId } = await setup();
-
-  await consumer.handle({
-    type: 'product_result',
-    jobId,
-    trackedProductId: productId,
-    status: 'challenge_required',
-    attempts: [
-      {
-        proxy: 'socks5://217.71.230.2:1080',
-        sessionId,
-        result: { status: 'challenge_required' },
-      },
-    ],
-  });
-  assert.equal((await sessions.findById(sessionId))?.snapshot.staleReason, 'challenge_required');
-
-  await consumer.handle({
-    type: 'session_ip_mismatch',
-    jobId,
-    sessionId,
-    expectedIp: '217.71.230.2',
-    actualIp: '217.71.230.9',
-  });
-  assert.equal((await sessions.findById(sessionId))?.snapshot.staleReason, 'ip_mismatch');
-});
-
-void test('keeps the refreshed cookies of a session', async (): Promise<void> => {
-  const { consumer, sessions } = await setup();
-
-  await consumer.handle({
-    type: 'session_update',
-    jobId,
-    sessionId,
-    observedAt: '2026-10-24T12:00:00.000Z',
-    storageState: {
-      cookies: [
-        {
-          name: 'abt',
-          value: 'v2',
-          domain: '.ozon.ru',
-          path: '/',
-          expires: -1,
-          httpOnly: true,
-          secure: true,
-          sameSite: 'Lax',
-        },
-      ],
-      origins: [],
-    },
-  });
-
-  assert.equal((await sessions.findById(sessionId))?.snapshot.storageState.cookies[0]?.value, 'v2');
-});
-
-void test('ignores session messages and rejects malformed ones for good', async (): Promise<void> => {
+void test('ignores job messages and rejects malformed ones for good', async (): Promise<void> => {
   const { consumer } = await setup();
 
   await consumer.handle({ type: 'job_done', jobId });

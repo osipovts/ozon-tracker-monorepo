@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { Page } from 'playwright-core';
 import { z } from 'zod';
 
 const geoSchema = z.object({

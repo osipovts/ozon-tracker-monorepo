@@ -14,7 +14,7 @@ export class AdminController {
   @Get('dashboard')
   @ApiOperation({
     summary: 'The figures of the hub on one page',
-    description: 'Users, products, proxies, browser sessions and jobs. For administrators.',
+    description: 'Users, products, proxies and jobs. For administrators.',
   })
   @ApiOkResponse({ standardSchema: dashboardResponseSchema })
   @ApiForbiddenResponse({ description: 'The user is not an administrator' })

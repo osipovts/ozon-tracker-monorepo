@@ -20,12 +20,6 @@ import { SessionCookieParser } from '../auth/presentation/session-cookie.parser.
 import { ResolveAuthSessionUseCase } from '../auth-session/application/resolve-auth-session.use-case.js';
 import { StartAuthSessionUseCase } from '../auth-session/application/start-auth-session.use-case.js';
 import { InMemoryAuthSessionRepositoryAdapter } from '../auth-session/infrastructure/in-memory-auth-session-repository.adapter.js';
-import { DeleteSessionUseCase } from '../browser-session/application/delete-session.use-case.js';
-import { ImportSessionUseCase } from '../browser-session/application/import-session.use-case.js';
-import { ListMarketplaceSessionsUseCase } from '../browser-session/application/index.js';
-import { ListSessionsUseCase } from '../browser-session/application/list-sessions.use-case.js';
-import { InMemoryBrowserSessionRepositoryAdapter } from '../browser-session/infrastructure/in-memory-browser-session-repository.adapter.js';
-import { SessionsController } from '../browser-session/presentation/sessions.controller.js';
 import { ListHandbookCitiesUseCase } from '../handbook/application/list-handbook-cities.use-case.js';
 import { RefreshHandbookUseCase } from '../handbook/application/refresh-handbook.use-case.js';
 import { SaveHandbookCitiesUseCase } from '../handbook/application/save-handbook-cities.use-case.js';
@@ -72,7 +66,6 @@ const proxies = new InMemoryProxyRepositoryAdapter();
 const products = new InMemoryTrackedProductRepositoryAdapter();
 const observations = new InMemoryPriceObservationRepositoryAdapter();
 const jobs = new InMemoryJobRepositoryAdapter();
-const sessions = new InMemoryBrowserSessionRepositoryAdapter();
 
 const queued: unknown[] = [];
 const handbooks = new InMemoryHandbookRepositoryAdapter();
@@ -98,15 +91,10 @@ const queue: JobQueuePort = {
 const scheduleJob = new ScheduleJobUseCase(queue, jobs);
 const requestObservation = new RequestPriceObservationUseCase(
   products,
-  new ChoosePriceRoutesUseCase(
-    new ListBestProxyServersUseCase(proxies),
-    new ListMarketplaceSessionsUseCase(sessions),
-    3,
-  ),
+  new ChoosePriceRoutesUseCase(new ListBestProxyServersUseCase(proxies), 3),
   scheduleJob,
   30000,
 );
-const listMarketplaceSessions = new ListMarketplaceSessionsUseCase(sessions);
 
 const operatorApiKey = 'operator-key-of-at-least-16-chars';
 const userId = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
@@ -171,7 +159,6 @@ before(async (): Promise<void> => {
       ProxySourcesController,
       ProductsController,
       JobsController,
-      SessionsController,
       CitiesController,
       HandbooksController,
     ],
@@ -193,13 +180,10 @@ before(async (): Promise<void> => {
       SessionCookieParser,
       { provide: GetJobUseCase, useValue: new GetJobUseCase(jobs) },
       { provide: ListJobsUseCase, useValue: new ListJobsUseCase(jobs) },
-      { provide: ImportSessionUseCase, useValue: new ImportSessionUseCase(sessions) },
-      { provide: ListSessionsUseCase, useValue: new ListSessionsUseCase(sessions) },
-      { provide: DeleteSessionUseCase, useValue: new DeleteSessionUseCase(sessions) },
       { provide: RefreshProxySourceUseCase, useValue: new RefreshProxySourceUseCase(scheduleJob) },
       {
         provide: ListProxiesUseCase,
-        useValue: new ListProxiesUseCase(proxies, listMarketplaceSessions),
+        useValue: new ListProxiesUseCase(proxies),
       },
       {
         provide: AddProductUseCase,
@@ -386,9 +370,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
       successRate: 1,
       checksTotal: 1,
       lastCheckedAt: '2026-10-24T12:00:00.000Z',
-      ready: false,
       disabled: false,
-      session: null,
     },
   ]);
 
@@ -449,9 +431,9 @@ void test('queues the read of the first price when a product is added, and serve
   assert.deepEqual(queued.at(-1), {
     jobId,
     routes: [
-      { server: 'socks5://217.71.230.1:1080', session: null },
-      { server: null, session: null },
-      { server: 'socks5://217.71.230.2:1080', session: null },
+      { server: 'socks5://217.71.230.1:1080' },
+      { server: null },
+      { server: 'socks5://217.71.230.2:1080' },
     ],
     products: [{ trackedProductId: id, url }],
     timeoutMs: 30000,
@@ -506,11 +488,8 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     '/proxies',
     '/proxies/all',
     '/proxy-sources/{source}/refresh',
-    '/sessions',
-    '/sessions/{id}',
   ]);
 
-  assert.ok(document.paths['/sessions']?.post?.requestBody);
   assert.ok(document.paths['/jobs/{id}']?.get?.responses['200']);
 
   const prices = document.paths['/products/{id}/prices']?.get;
@@ -526,7 +505,7 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
     proxiesGet?.parameters
       ?.map((parameter) => ('name' in parameter ? parameter.name : '$ref'))
       .toSorted(),
-    ['alive', 'country', 'disabled', 'marketplace', 'page', 'pageSize', 'ready'],
+    ['alive', 'country', 'disabled', 'page', 'pageSize'],
   );
   assert.ok(proxiesGet.responses['200']);
 
@@ -543,64 +522,9 @@ void test('documents the endpoints and their zod schemas in Swagger', (): void =
   assert.equal(document.paths['/products/{id}/prices']?.post, undefined);
 });
 
-const sessionFile = {
-  marketplace: 'ozon',
-  proxy: 'socks5://217.71.230.9:1080',
-  session: {
-    id: '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22',
-    exitIp: '217.71.230.9',
-    userAgent: 'Mozilla/5.0',
-    storageState: {
-      cookies: [
-        {
-          name: 'abt',
-          value: 'secret',
-          domain: '.ozon.ru',
-          path: '/',
-          expires: -1,
-          httpOnly: true,
-          secure: true,
-          sameSite: 'Lax',
-        },
-      ],
-      origins: [],
-    },
-  },
-  createdAt: '2026-10-24T12:00:00.000Z',
-};
-
-void test('imports, lists and deletes a session without exposing its cookies', async (): Promise<void> => {
-  const imported = await call('/sessions', post(sessionFile));
-  assert.equal(imported.status, 201);
-  assert.equal(imported.body['status'], 'active');
-  assert.equal(imported.body['cookies'], 1);
-  assert.equal(JSON.stringify(imported.body).includes('secret'), false);
-
-  const list = await call('/sessions');
-  assert.equal(list.body['total'], 1);
-  assert.equal(JSON.stringify(list.body).includes('secret'), false);
-  assert.equal((await call('/sessions', post({ ...sessionFile, marketplace: 'x' }))).status, 400);
-
-  const id = sessionFile.session.id;
-  assert.equal(
-    (await fetch(`${baseUrl}/sessions/${id}`, { method: 'DELETE', headers: credentials })).status,
-    204,
-  );
-  assert.equal((await call(`/sessions/${id}`, { method: 'DELETE' })).status, 404);
-});
-
-void test('the queued session goes to the worker first, then the job reports its progress', async (): Promise<void> => {
-  await call('/sessions', post(sessionFile));
+void test('the job reports its progress', async (): Promise<void> => {
   const { id: productId, jobId } = await addProduct('https://www.ozon.ru/product/9100/');
   assert.ok(jobId !== null);
-
-  const request = queued.at(-1);
-  assert.ok(typeof request === 'object' && request !== null && 'routes' in request);
-  assert.ok(Array.isArray(request.routes));
-  assert.deepEqual(request.routes[0], {
-    server: sessionFile.proxy,
-    session: { ...sessionFile.session },
-  });
 
   const queuedJob = await call(`/jobs/${jobId}`);
   assert.equal(queuedJob.status, 200);
@@ -632,38 +556,6 @@ void test('the queued session goes to the worker first, then the job reports its
   assert.equal((await call('/jobs/9a2d0f3c-0a44-4b6a-b8c2-7e7e2f3b1d33')).status, 404);
 });
 
-void test('a proxy becomes ready once it has an active session', async (): Promise<void> => {
-  const server = 'socks5://217.71.230.1:1080';
-  const id = '1c7f2a90-34b1-4c4f-8f55-5a5f6f1e2e44';
-
-  const before = await call('/proxies?ready=false');
-  assert.ok(Array.isArray(before.body['items']));
-  assert.ok(JSON.stringify(before.body['items']).includes(server));
-
-  const imported = await call(
-    '/sessions',
-    post({
-      ...sessionFile,
-      proxy: server,
-      session: { ...sessionFile.session, id, exitIp: '217.71.230.1' },
-    }),
-  );
-  assert.equal(imported.status, 201);
-
-  const notReady = await call('/proxies?ready=false');
-  assert.equal(JSON.stringify(notReady.body['items']).includes(server), false);
-  const ready = await call('/proxies?ready=true');
-  assert.equal(ready.body['total'], 1);
-
-  const items: unknown = ready.body['items'];
-  assert.ok(Array.isArray(items));
-  const item: unknown = items[0];
-  assert.ok(typeof item === 'object' && item !== null);
-  assert.equal('ready' in item && item.ready, true);
-  assert.equal('session' in item && JSON.stringify(item.session).includes(id), true);
-  assert.equal((await call('/proxies?marketplace=unknown')).status, 400);
-});
-
 const userRoutes: Array<[string, string]> = [
   ['GET', '/products'],
   ['POST', '/products'],
@@ -681,9 +573,6 @@ const operatorRoutes: Array<[string, string]> = [
   ['POST', '/proxy-sources/github-free-proxy-list/refresh'],
   ['POST', '/handbooks/dns-cities/refresh'],
   ['GET', '/handbooks/dns-cities'],
-  ['GET', '/sessions'],
-  ['POST', '/sessions'],
-  ['DELETE', '/sessions/3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11'],
 ];
 
 async function statusOf(

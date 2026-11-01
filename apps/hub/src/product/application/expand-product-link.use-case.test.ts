@@ -12,7 +12,7 @@ import type {
 } from './product-link-expander.port.js';
 import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
 
-const routes: RouteInterface[] = [{ server: null, session: null }];
+const routes: RouteInterface[] = [{ server: null }];
 
 function useCaseOf(
   expander: ProductLinkExpanderPort,

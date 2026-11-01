@@ -24,6 +24,12 @@ const jobOptions: JobsOptions = {
   removeOnFail: { age: 86400 },
 };
 
+/** A price read that found nothing comes back after a minute, twice: a hung route or a check of the site often passes by then. */
+const priceFetchJobOptions: JobsOptions = {
+  ...jobOptions,
+  backoff: { type: 'fixed', delay: 60_000 },
+};
+
 export class BullmqJobQueueAdapter implements JobQueuePort {
   private readonly proxyFetchQueue: Queue;
   private readonly priceFetchQueue: Queue;
@@ -54,14 +60,14 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
   async enqueuePriceFetch(request: PriceFetchRequestInterface): Promise<void> {
     const job: PriceFetchJobType = priceFetchJobSchema.parse({
       jobId: request.jobId,
-      proxies: request.routes.map((route) => ({
-        server: route.server,
-        ...(route.session === null ? {} : { session: route.session }),
-      })),
+      proxies: request.routes,
       products: request.products,
       timeoutMs: request.timeoutMs,
     });
-    await this.priceFetchQueue.add('price-fetch', job, { ...jobOptions, jobId: job.jobId });
+    await this.priceFetchQueue.add('price-fetch', job, {
+      ...priceFetchJobOptions,
+      jobId: job.jobId,
+    });
     this.logger.debug(`Published price-fetch ${job.jobId} to ${queueNames.priceFetchJobs}`);
   }
 

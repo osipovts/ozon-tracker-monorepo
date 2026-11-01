@@ -19,10 +19,7 @@ export class LinkExpandController {
     const url = await this.expandLink.execute(
       {
         url: job.url,
-        routes: job.proxies.map((route) => ({
-          server: route.server,
-          session: route.session ?? null,
-        })),
+        routes: job.proxies,
         timeoutMs: job.timeoutMs,
       },
       signal,

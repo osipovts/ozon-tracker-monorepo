@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
+import { afterEach, beforeEach, test } from 'node:test';
 
+import { Camoufox } from 'camoufox-js';
 import {
   type Browser,
   type BrowserContext,
   type BrowserContextOptions,
-  chromium,
   type Route,
-} from 'playwright';
+} from 'playwright-core';
 import { DnsReferenceParser, ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { ChromiumOptionsFactory } from '../shared/chromium-options.factory.js';
+import { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import { DnsCityCookieParser } from './dns-city-cookie.parser.js';
 import { DnsPageParser } from './dns-page.parser.js';
@@ -22,11 +22,11 @@ import {
 import { DnsProductParser } from './dns-product.parser.js';
 
 let browser: Browser;
-before(async (): Promise<void> => {
-  browser = await chromium.launch({ headless: true });
+beforeEach(async (): Promise<void> => {
+  browser = await Camoufox({ headless: true });
 });
 
-after(async (): Promise<void> => {
+afterEach(async (): Promise<void> => {
   await browser.close();
 });
 
@@ -113,9 +113,9 @@ function createReader(site: SiteInterface): {
         return context;
       },
     },
-    new ChromiumOptionsFactory(),
+    new CamoufoxOptionsFactory(),
     parsers,
-    1000,
+    10_000,
   );
 
   return { reader, requests };

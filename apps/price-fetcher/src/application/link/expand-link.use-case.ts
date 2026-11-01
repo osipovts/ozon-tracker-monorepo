@@ -4,18 +4,12 @@ import { type LoggerPort, silentLogger } from 'logger';
 import type { OzonShortLinkParser, ResolveProductReferenceUseCase } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { BrowserSessionInterface } from '../../domain/session/browser-session.interface.js';
-import type {
-  JobSessionStorePort,
-  SessionRouteInterface,
-} from '../session/job-session-store.port.js';
-import type { SessionStorePort } from '../session/session-store.port.js';
 import type { LinkExpanderPort } from './link-expander.port.js';
 
 export interface ExpandLinkJobInterface {
   url: string;
   /** Routes in the order they are tried; a null server is a direct connection. */
-  routes: ReadonlyArray<{ server: string | null; session: BrowserSessionInterface | null }>;
+  routes: ReadonlyArray<{ server: string | null }>;
   timeoutMs: number;
 }
 
@@ -24,13 +18,7 @@ export class ExpandLinkUseCase {
   constructor(
     private readonly shortLinks: OzonShortLinkParser,
     private readonly resolveReference: ResolveProductReferenceUseCase,
-    private readonly createSessions: (
-      routes: readonly SessionRouteInterface[],
-    ) => JobSessionStorePort,
-    private readonly createExpander: (
-      sessions: SessionStorePort,
-      timeoutMs: number,
-    ) => LinkExpanderPort,
+    private readonly createExpander: (timeoutMs: number) => LinkExpanderPort,
     private readonly logger: LoggerPort = silentLogger,
   ) {}
 
@@ -39,7 +27,6 @@ export class ExpandLinkUseCase {
     if (!this.shortLinks.isShortLink(url)) throw new Error('Not a short link');
 
     const candidates: Array<ProxyEndpointEntity | null> = [];
-    const sessionRoutes: SessionRouteInterface[] = [];
     for (const route of job.routes) {
       let proxy: ProxyEndpointEntity | null = null;
       try {
@@ -50,10 +37,9 @@ export class ExpandLinkUseCase {
       }
 
       candidates.push(proxy);
-      if (route.session !== null) sessionRoutes.push({ proxy, session: route.session });
     }
 
-    const expander = this.createExpander(this.createSessions(sessionRoutes), job.timeoutMs);
+    const expander = this.createExpander(job.timeoutMs);
     let attempts = 0;
 
     for (const proxy of candidates) {

@@ -13,10 +13,6 @@ export interface ProxyFilterInterface {
   disabled?: boolean;
   /** Only the proxies added by hand (`true`), or only the found ones (`false`). */
   manual?: boolean;
-  /** Only these proxies. */
-  servers?: readonly string[];
-  /** All proxies except these. */
-  excludedServers?: readonly string[];
 }
 
 export interface ProxyStatsInterface {

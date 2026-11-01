@@ -34,6 +34,16 @@ RUN pnpm config set store-dir /pnpm-store
 # Dependencies
 ################################
 FROM base AS fetch
+# better-sqlite3 of camoufox-js has no binary for this Node.js and is compiled.
+# The headers come with the Node.js image: they are put where node-gyp looks for them, so that it
+# does not download them (the build machine may not reach nodejs.org).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ && \
+    rm -rf /var/lib/apt/lists/* && \
+    headers="/root/.cache/node-gyp/$(node -p 'process.versions.node')" && \
+    mkdir -p "$headers" && \
+    cp -r /usr/local/include "$headers/include" && \
+    echo 11 > "$headers/installVersion"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY .npmrc* ./
 # Downloads the packages of the whole lockfile into the store: the layer depends on the lockfile
@@ -54,6 +64,7 @@ COPY apps/${APP_NAME} ./apps/${APP_NAME}
 # Links the app and the workspace packages it depends on from the store, without the registry.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    --mount=type=cache,id=prisma-engines,target=/root/.cache/prisma \
     pnpm --trust-lockfile install --offline --frozen-lockfile --filter ${APP_NAME}...
 
 ################################
@@ -65,6 +76,7 @@ ARG APP_NAME
 RUN pnpm --filter ${APP_NAME}... build
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    --mount=type=cache,id=prisma-engines,target=/root/.cache/prisma \
     pnpm --trust-lockfile --offline --filter ${APP_NAME} deploy --prod /deploy
 
 ################################
@@ -107,6 +119,8 @@ COPY --from=build /deploy/dist ./dist
 COPY --from=build /deploy/prisma ./prisma
 COPY --from=build /deploy/prisma.config.js ./prisma.config.js
 COPY --from=build /deploy/package.json ./package.json
+# A failed download of the Prisma engine does not fail the install: without the engine `migrate` cannot run.
+RUN find node_modules/.pnpm -path '*@prisma/engines/schema-engine-*' | grep -q .
 USER node
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
@@ -123,23 +137,25 @@ USER node
 CMD ["node", "dist/index.js"]
 
 ################################
-# Chromium for the price fetcher
+# Camoufox for the price fetcher
 ################################
-FROM install AS playwright-version
+FROM install AS camoufox-version
 ARG APP_NAME
-# The browser stage below is cached until the installed Playwright version changes.
-RUN cd apps/${APP_NAME} && node -p "require('playwright/package.json').version" > /playwright-version
+# The browser stage below is cached until the installed camoufox-js version changes.
+RUN cd apps/${APP_NAME} && node -p "require('camoufox-js/package.json').version" > /camoufox-version
 
-FROM runtime AS chromium
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+FROM runtime AS camoufox
+# The browser is kept outside of the home of the user the app runs as.
+ENV XDG_CACHE_HOME=/opt/camoufox-cache \
     DISPLAY=:99
+# Libraries of Firefox, and the fonts a Russian site is drawn with.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends xvfb && \
+    apt-get install -y --no-install-recommends xvfb libgtk-3-0 libdbus-glib-1-2 libasound2 libx11-xcb1 libxt6 fonts-liberation && \
     rm -rf /var/lib/apt/lists/*
-COPY --from=playwright-version /playwright-version /tmp/playwright-version
+COPY --from=camoufox-version /camoufox-version /tmp/camoufox-version
 RUN --mount=type=cache,id=npm,target=/root/.npm \
-    npx -y "playwright@$(cat /tmp/playwright-version)" install --with-deps chromium && \
-    chmod -R a+rX /opt/playwright
+    npx -y "camoufox-js@$(cat /tmp/camoufox-version)" fetch && \
+    chmod -R a+rX /opt/camoufox-cache
 # Xvfb runs beside the app instead of xvfb-run wrapping it: the app gets SIGTERM itself
 # and finishes the job in progress while the display is still there. A restarted container
 # keeps the lock of the previous Xvfb.
@@ -148,12 +164,12 @@ ENTRYPOINT ["sh", "-c", "rm -f /tmp/.X99-lock /tmp/.X11-unix/X99; Xvfb :99 -scre
 ################################
 # Price fetcher
 ################################
-FROM chromium AS price-fetcher-dev
+FROM camoufox AS price-fetcher-dev
 ENV NODE_ENV=development \
     PATH="/opt/pnpm/bin:$PATH"
 COPY --from=pnpm /opt/pnpm /opt/pnpm
 
-FROM chromium AS price-fetcher-prod
+FROM camoufox AS price-fetcher-prod
 ENV NODE_ENV=production
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/dist ./dist
@@ -164,12 +180,12 @@ CMD ["node", "dist/worker.js"]
 ################################
 # Handbook fetcher: reads the sites in the browser, like the price fetcher
 ################################
-FROM chromium AS handbook-fetcher-dev
+FROM camoufox AS handbook-fetcher-dev
 ENV NODE_ENV=development \
     PATH="/opt/pnpm/bin:$PATH"
 COPY --from=pnpm /opt/pnpm /opt/pnpm
 
-FROM chromium AS handbook-fetcher-prod
+FROM camoufox AS handbook-fetcher-prod
 ENV NODE_ENV=production
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/dist ./dist

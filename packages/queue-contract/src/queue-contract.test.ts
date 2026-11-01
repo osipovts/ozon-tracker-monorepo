@@ -7,35 +7,13 @@ import { priceFetchJobSchema } from './price-fetch-job.type.js';
 import { priceFetchResultSchema } from './price-fetch-result.type.js';
 import { proxyFetchJobSchema } from './proxy-fetch-job.type.js';
 import { proxyFetchResultSchema } from './proxy-fetch-result.type.js';
-import { sessionExportFileSchema } from './session-export-file.type.js';
 
 const uuid = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
-const session = {
-  id: uuid,
-  exitIp: '203.0.113.10',
-  userAgent: 'Mozilla/5.0',
-  storageState: {
-    cookies: [
-      {
-        name: 'abt',
-        value: 'v',
-        domain: '.ozon.ru',
-        path: '/',
-        expires: -1,
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax',
-      },
-    ],
-    origins: [{ origin: 'https://www.ozon.ru', localStorage: [{ name: 'k', value: 'v' }] }],
-  },
-};
-
-void test('accepts a price fetch job with proxies, a direct route and a session', (): void => {
+void test('accepts a price fetch job with proxies, and a direct route', (): void => {
   const job = {
     jobId: uuid,
     proxies: [
-      { server: 'socks5://203.0.113.10:1080', session },
+      { server: 'socks5://203.0.113.10:1080' },
       { server: 'http://user:secret@203.0.113.11:8080' },
       { server: null },
     ],
@@ -43,6 +21,18 @@ void test('accepts a price fetch job with proxies, a direct route and a session'
     timeoutMs: 15000,
   };
   assert.equal(priceFetchJobSchema.safeParse(job).success, true);
+});
+
+void test('accepts a product marked as read by an earlier try', (): void => {
+  const job = {
+    jobId: uuid,
+    proxies: [{ server: null }],
+    products: [{ trackedProductId: uuid, url: 'https://www.ozon.ru/product/1/', read: true }],
+    timeoutMs: 15000,
+  };
+  const parsed = priceFetchJobSchema.parse(job);
+
+  assert.equal(parsed.products[0]?.read, true);
 });
 
 void test('rejects empty and malformed price fetch jobs', (): void => {
@@ -73,20 +63,9 @@ void test('discriminates price fetch results by type', (): void => {
       attempts: [
         {
           proxy: 'socks5://203.0.113.10:1080',
-          sessionId: uuid,
           result: { status: 'challenge_required' },
         },
       ],
-    }).success,
-    true,
-  );
-  assert.equal(
-    priceFetchResultSchema.safeParse({
-      type: 'session_update',
-      jobId: uuid,
-      sessionId: uuid,
-      storageState: session.storageState,
-      observedAt: '2026-10-24T12:00:00.000Z',
     }).success,
     true,
   );
@@ -163,26 +142,6 @@ void test('validates job progress messages of both workers', (): void => {
       jobId: uuid,
       source: 'x',
       checks: [],
-    }).success,
-    false,
-  );
-});
-
-void test('validates a session export file', (): void => {
-  assert.equal(
-    sessionExportFileSchema.safeParse({
-      marketplace: 'ozon',
-      proxy: 'socks5://203.0.113.10:1080',
-      session,
-      createdAt: '2026-10-24T12:00:00.000Z',
-    }).success,
-    true,
-  );
-  assert.equal(
-    sessionExportFileSchema.safeParse({
-      proxy: null,
-      session: { ...session, exitIp: 'x' },
-      createdAt: 'x',
     }).success,
     false,
   );
