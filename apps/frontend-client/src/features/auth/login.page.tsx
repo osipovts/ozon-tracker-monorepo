@@ -123,11 +123,11 @@ export function LoginPage(): ReactElement {
       <Card withBorder padding="xl">
         <form onSubmit={submit}>
           <Stack>
-            <Stack gap={0}>
+            <Stack gap={0} align="center">
               <Title order={2} ff={BRAND_FONT} fz={64} fw={400} lh={1.1}>
                 {t('login.title')}
               </Title>
-              <Text size="sm" c="dimmed">
+              <Text size="sm" c="dimmed" ta="center">
                 {t('brand.slogan')}
               </Text>
             </Stack>

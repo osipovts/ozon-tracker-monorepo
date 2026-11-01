@@ -279,8 +279,10 @@ export function ProductsPage(): ReactElement {
 
   return (
     <Stack>
-      <Title order={2}>{t('products.title')}</Title>
       <AddProduct />
+      <Title order={2} mt="md">
+        {t('products.title')}
+      </Title>
       {products.isError && <ErrorAlert error={products.error} />}
       {data === undefined ? (
         !products.isError && <Loader />

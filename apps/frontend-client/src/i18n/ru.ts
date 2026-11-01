@@ -16,7 +16,7 @@ export const ru: DictionaryType = {
     unreachable: 'Не удалось связаться с хабом.',
   },
   brand: {
-    slogan: 'трекер цен',
+    slogan: 'трекер цен: ozon, wb, dns, и др.',
   },
   legal: {
     privacy: 'Политика конфиденциальности',

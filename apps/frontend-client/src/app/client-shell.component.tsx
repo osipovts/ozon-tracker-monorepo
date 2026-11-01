@@ -44,20 +44,15 @@ export function ClientShell(): ReactElement {
   const navigate = useNavigate();
 
   return (
-    <AppShell header={{ height: 56 }} padding="md">
+    <AppShell header={{ height: 80 }} padding="md">
       <AppShell.Header px="md">
         <Container size="lg" h="100%">
           <Group h="100%" justify="space-between" wrap="nowrap">
-            <Group gap="xs" align="baseline" wrap="nowrap">
-              <Title order={4} ff={BRAND_FONT} fz={32} fw={400} lh={1}>
-                <Anchor component={Link} to="/" c="inherit" underline="never">
-                  {t('shell.title')}
-                </Anchor>
-              </Title>
-              <Text size="sm" c="dimmed" visibleFrom="sm">
-                {t('brand.slogan')}
-              </Text>
-            </Group>
+            <Title order={4} ff={BRAND_FONT} fz={64} fw={400} lh={1}>
+              <Anchor component={Link} to="/" c="inherit" underline="never">
+                {t('shell.title')}
+              </Anchor>
+            </Title>
             {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
             <Menu position="bottom-end" width={260} shadow="md">
               <Menu.Target>
