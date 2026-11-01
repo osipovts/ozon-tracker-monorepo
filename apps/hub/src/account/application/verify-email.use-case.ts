@@ -13,13 +13,18 @@ export class VerifyEmailUseCase {
   ) {}
 
   /**
-   * Proves the email of the user the link was mailed to. The link is not spent: a mail scanner that
-   * opens it first must not leave the user with a dead one, and opening it again proves nothing new.
+   * Proves the email of the user the link was mailed to, for that user signed in. The mailbox alone is
+   * not enough: whoever signed up with somebody else's email set the password, and the owner of the
+   * mailbox who opens the link without knowing it must not hand the account over. The link is not
+   * spent: a mail scanner that opens it first must not leave the user with a dead one, and opening it
+   * again proves nothing new.
    */
-  async execute(token: string): Promise<UserInterface> {
+  async execute(token: string, signedInUserId: string): Promise<UserInterface> {
     const at = this.clock.now();
     const verification = await this.verifications.findByTokenHash(hashSecretToken(token));
-    if (verification?.isValid(at) !== true) throw new InvalidVerificationTokenError();
+    if (verification?.isValid(at) !== true || verification.snapshot.userId !== signedInUserId) {
+      throw new InvalidVerificationTokenError();
+    }
 
     await this.users.markEmailVerified(verification.snapshot.userId, at);
     const user = await this.users.findById(verification.snapshot.userId);

@@ -534,18 +534,33 @@ void test('confirms the email through the link mailed at sign-up, and says so on
   const cookie = await signUp('vera@example.com');
   assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, false);
 
-  const confirmed = await call(linkTo('vera@example.com'));
+  const confirmed = await call(linkTo('vera@example.com'), { headers: { cookie } });
 
   assert.equal(confirmed.status, 200);
   assert.deepEqual(confirmed.body, { verified: true });
   assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, true);
   // A mail scanner may have opened the link first: opening it again is no error.
-  assert.equal((await call(linkTo('vera@example.com'))).status, 200);
+  assert.equal((await call(linkTo('vera@example.com'), { headers: { cookie } })).status, 200);
+});
+
+void test('does not confirm the email for whoever opens the link without the account: the mailbox is not the password', async (): Promise<void> => {
+  const cookie = await signUp('ursula@example.com');
+  const other = await signUp('victor@example.com');
+  const link = linkTo('ursula@example.com');
+
+  assert.equal((await call(link)).status, 401);
+  assert.equal((await call(link, { headers: { cookie: other } })).status, 400);
+  assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, false);
 });
 
 void test('refuses a link that is wrong', async (): Promise<void> => {
-  assert.equal((await call('/auth/verify-email?token=not-a-token')).status, 400);
-  assert.equal((await call('/auth/verify-email')).status, 400);
+  const cookie = await signUp('rhea@example.com');
+
+  assert.equal(
+    (await call('/auth/verify-email?token=not-a-token', { headers: { cookie } })).status,
+    400,
+  );
+  assert.equal((await call('/auth/verify-email', { headers: { cookie } })).status, 400);
 });
 
 void test('mails the link again to a signed-in user, the new link works and the old one does not', async (): Promise<void> => {
@@ -556,14 +571,14 @@ void test('mails the link again to a signed-in user, the new link works and the 
   const newLink = linkTo('wade@example.com');
 
   assert.notEqual(newLink, oldLink);
-  assert.equal((await call(oldLink)).status, 400);
-  assert.equal((await call(newLink)).status, 200);
+  assert.equal((await call(oldLink, { headers: { cookie } })).status, 400);
+  assert.equal((await call(newLink, { headers: { cookie } })).status, 200);
   assert.equal((await post('/auth/verify-email/resend', {})).status, 401);
 });
 
 void test('sends nothing more to an email that is confirmed, and does not let a user ask for mail without end', async (): Promise<void> => {
   const cookie = await signUp('xena@example.com');
-  await call(linkTo('xena@example.com'));
+  await call(linkTo('xena@example.com'), { headers: { cookie } });
   const before = mailbox.sent.length;
 
   assert.equal((await post('/auth/verify-email/resend', {}, cookie)).status, 204);
@@ -602,7 +617,7 @@ void test('says that a user is an administrator only once their listed email is 
 
   assert.equal(await isAdmin(cookie), false);
 
-  await call(linkTo('boss@example.com'));
+  await call(linkTo('boss@example.com'), { headers: { cookie } });
 
   assert.equal(await isAdmin(cookie), true);
   assert.equal(

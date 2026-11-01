@@ -13,7 +13,6 @@ import { z } from 'zod';
 
 import { VerifyEmailUseCase } from '../../account/application/index.js';
 import { requireIdentity } from '../../shared/presentation/request-identity.type.js';
-import { routeAccess } from '../../shared/presentation/route-access.type.js';
 import { ResendEmailVerificationUseCase } from '../application/resend-email-verification.use-case.js';
 import { verifiedResponseSchema, type VerifiedResponseType } from './auth.type.js';
 
@@ -31,18 +30,23 @@ export class EmailVerificationController {
   ) {}
 
   @Get()
-  @routeAccess('public')
   @ApiOperation({
     summary: 'Confirm the email: the link mailed to it',
     description:
-      'Open the link of the mail. It works until it expires, and opening it again is harmless.',
+      'Open the link of the mail in the browser the user is signed in with. It works until it expires, ' +
+      'and opening it again is harmless. Nobody else can confirm the email, even with the mailbox: ' +
+      'whoever signed up set the password.',
   })
   @ApiOkResponse({ standardSchema: verifiedResponseSchema })
-  @ApiBadRequestResponse({ description: 'The link is wrong or has expired' })
+  @ApiBadRequestResponse({
+    description: 'The link is wrong, has expired, or was mailed for another user',
+  })
+  @ApiUnauthorizedResponse({ description: 'No live session: sign in, then open the link again' })
   async verify(
     @Query({ schema: verifyQuerySchema }) query: VerifyQueryType,
+    @Req() request: Request,
   ): Promise<VerifiedResponseType> {
-    await this.verifyEmail.execute(query.token);
+    await this.verifyEmail.execute(query.token, requireIdentity(request).userId);
 
     return { verified: true };
   }
