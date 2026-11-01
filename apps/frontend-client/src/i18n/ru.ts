@@ -99,7 +99,7 @@ export const ru: DictionaryType = {
     track: 'Отслеживать',
     product: 'Товар',
     price: 'Цена',
-    checked: 'Проверка',
+    checked: 'Проверено',
     nextCheck: 'Следующая',
     soon: 'скоро',
     nextAt: 'в {{when}}',

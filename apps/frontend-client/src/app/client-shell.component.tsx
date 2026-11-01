@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Anchor,
   AppShell,
@@ -17,21 +18,22 @@ import { useLogout, useMe, useResendVerification } from '../features/auth/use-me
 import { LegalFooter } from '../features/legal/legal-footer.component.js';
 import { BRAND_FONT } from './ayu.theme.js';
 
-/** The arrow of a button that opens a menu. */
-function ChevronDown(): ReactElement {
+/** The person of the button that opens the menu of the account. */
+function UserIcon(): ReactElement {
   return (
     <svg
-      width="12"
-      height="12"
+      width="24"
+      height="24"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M6 9l6 6 6-6" />
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   );
 }
@@ -44,10 +46,10 @@ export function ClientShell(): ReactElement {
   const navigate = useNavigate();
 
   return (
-    <AppShell header={{ height: 64 }} padding="md" withBorder={false}>
-      <AppShell.Header px="md" pt={10}>
-        <Container size="lg" h="100%">
-          <Group h="100%" justify="space-between" wrap="nowrap">
+    <AppShell padding="md">
+      <AppShell.Main pt={10}>
+        <Container size="lg">
+          <Group mb="md" justify="space-between" wrap="nowrap">
             <Title order={4} ff={BRAND_FONT} fz={48} fw={400} lh={1}>
               <Anchor
                 component={Link}
@@ -63,9 +65,9 @@ export function ClientShell(): ReactElement {
             {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
             <Menu position="bottom-end" width={260} shadow="md">
               <Menu.Target>
-                <Button size="xs" variant="default" rightSection={<ChevronDown />}>
-                  {t('shell.account')}
-                </Button>
+                <ActionIcon size={48} variant="default" aria-label={t('shell.account')}>
+                  <UserIcon />
+                </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label mb="xs" style={{ overflowWrap: 'anywhere' }}>
@@ -87,10 +89,6 @@ export function ClientShell(): ReactElement {
               </Menu.Dropdown>
             </Menu>
           </Group>
-        </Container>
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size="lg">
           {me.data?.emailVerified === false && (
             <Alert color="blue" mb="md" title={t('shell.confirmTitle')}>
               <Group>
