@@ -232,8 +232,9 @@ void test('an administrator of the list gets the operator routes once the email 
     averageLatencyMs: null,
     lastCheckedAt: null,
   });
+  // Only the read of the handbook of cities is queued: the hub asks for it when it starts and has none.
   assert.deepEqual(dashboard.jobs.lastDay, {
-    queued: 0,
+    queued: 1,
     running: 0,
     retrying: 0,
     completed: 0,

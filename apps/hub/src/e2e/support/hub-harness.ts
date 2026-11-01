@@ -50,6 +50,7 @@ export async function startHub(options: HubOptionsInterface): Promise<RunningHub
     MAIL_FROM: 'Price Tracker <no-reply@hub.test>',
     // Off, unless a test asks for it: a refresh in the background would answer for what a test does.
     PRICE_REFRESH_INTERVAL_MS: '0',
+    PROXY_REFRESH_INTERVAL_MINUTES: '0',
     ...(options.smtpUrl === undefined ? {} : { SMTP_URL: options.smtpUrl }),
     ...(options.stack.s3 === undefined
       ? {}

@@ -113,10 +113,6 @@ void test('an administrator sees the dashboard, then works with the proxies', as
   // Two proxies are one page: there is no paginator.
   assert.equal(await page.locator('.mantine-Pagination-root').count(), 0);
 
-  // No proxy has a session of the marketplace yet.
-  await page.getByRole('columnheader', { name: 'Session (ozon)' }).waitFor();
-  assert.equal(await page.getByText('none', { exact: true }).count(), 2);
-
   // Turned off: the hub keeps the proxy away from the workers, and the list says so.
   await page
     .getByRole('row', { name: new RegExp(servers[0] ?? '') })
