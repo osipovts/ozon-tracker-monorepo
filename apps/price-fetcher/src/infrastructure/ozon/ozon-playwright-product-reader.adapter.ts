@@ -1,3 +1,4 @@
+import type { CamoufoxOptionsFactory } from 'camoufox-options';
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { Browser, BrowserContext, Page, Response } from 'playwright-core';
 import { marketplaceExitCountries, type ProductReferenceEntity } from 'product-reference';
@@ -5,8 +6,8 @@ import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import type { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
+import { ProxyExitChecker } from '../shared/proxy-exit.checker.js';
 import type { OzonChallengeParser } from './ozon-challenge.parser.js';
 import type { OzonPageParser } from './ozon-page.parser.js';
 import type { OzonProductParser } from './ozon-product.parser.js';
@@ -25,6 +26,7 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
     private readonly parsers: OzonReaderParsersInterface,
     private readonly timeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,
+    private readonly exits: ProxyExitChecker = new ProxyExitChecker(),
   ) {}
 
   async read(
@@ -71,15 +73,20 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
     let exitIp: string | null = null;
 
     if (proxy !== null) {
-      const exit = await this.parsers.geoIp.parse(page);
       const country = marketplaceExitCountries[reference.marketplace];
-      if (exit?.country !== country) {
+      const exit = await this.exits.check(proxy, country, () => this.parsers.geoIp.parse(page));
+      if (exit.status === 'unavailable') {
+        this.logger.warn(`GeoIP gave no answer through ${proxy.server}`);
+
+        return { status: 'network_error' };
+      }
+      if (exit.status === 'rejected') {
         this.logger.warn(`GeoIP did not confirm an exit in ${country} through ${proxy.server}`);
 
         return { status: 'proxy_rejected' };
       }
 
-      exitIp = exit.ip;
+      exitIp = exit.exitIp;
       this.logger.debug(`Exit IP through ${proxy.server} is ${exitIp} (${country})`);
     }
 

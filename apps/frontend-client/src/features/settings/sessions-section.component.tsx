@@ -1,44 +1,16 @@
 import { Badge, Button, Card, Group, Loader, Stack, Text, Title } from '@mantine/core';
+import { ErrorAlert, useLocale } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { formatMoment } from '../products/moment-format.type.js';
+import { describeDevice } from './device-name.type.js';
 import {
   type DeviceSessionType,
   useDeviceSessions,
   useRevokeOtherSessions,
   useRevokeSession,
 } from './use-account.hook.js';
-
-function readableName(name: string | undefined): string | null {
-  switch (name) {
-    case undefined:
-      return null;
-    case 'Edg':
-      return 'Edge';
-    case 'OPR':
-      return 'Opera';
-    case 'Mac OS X':
-      return 'macOS';
-    default:
-      return name;
-  }
-}
-
-/** The browser and the system out of a user agent, short: the whole string is a line of versions. */
-function describeDevice(userAgent: string | null): string | null {
-  if (userAgent === null) return null;
-
-  const browser = /(Edg|OPR|Firefox|Chrome|Safari)\//.exec(userAgent)?.[1];
-  const system = /(Windows|Android|iPhone|iPad|Mac OS X|Linux)/.exec(userAgent)?.[1];
-  const parts = [readableName(browser), readableName(system)].filter(
-    (part): part is string => part !== null,
-  );
-
-  return parts.length === 0 ? null : parts.join(', ');
-}
 
 function DeviceRow({ session }: { session: DeviceSessionType }): ReactElement {
   const { t } = useTranslation();

@@ -10,7 +10,6 @@ export const en = {
   },
   errors: {
     title: 'Something went wrong',
-    failed: 'The request failed.',
     tryAgain: 'Try again in {{seconds}} s.',
     unreachable: 'The hub could not be reached.',
   },

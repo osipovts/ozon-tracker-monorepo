@@ -9,30 +9,13 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import type { TFunction } from 'i18next';
+import { explainLoginRefusal } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
 import { LanguageControl } from '../../app/language.component.js';
-import { ApiError } from '../../shared/api/api-error.error.js';
 import { useLogin, useMe } from './use-me.hook.js';
-
-/** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
-function explain(error: Error, t: TFunction): string {
-  if (!(error instanceof ApiError)) return t('errors.unreachable');
-  if (error.status === 401) return t('login.wrongCredentials');
-  if (error.status === 429) {
-    const wait =
-      error.retryAfterSeconds === null
-        ? ''
-        : ` ${t('errors.tryAgain', { seconds: error.retryAfterSeconds })}`;
-
-    return `${t('login.tooManyAttempts')}${wait}`;
-  }
-
-  return error.message;
-}
 
 export function LoginPage(): ReactElement {
   const { t } = useTranslation();
@@ -79,7 +62,7 @@ export function LoginPage(): ReactElement {
             />
             {login.error !== null && (
               <Alert color="red" role="alert">
-                {explain(login.error, t)}
+                {explainLoginRefusal(login.error, t)}
               </Alert>
             )}
             <Button type="submit" loading={login.isPending}>

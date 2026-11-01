@@ -29,6 +29,11 @@ export interface ProxyRepositoryPort {
   stats(): Promise<ProxyStatsInterface>;
   findByServers(servers: string[]): Promise<ProxyEntity[]>;
   saveMany(proxies: ProxyEntity[]): Promise<void>;
+  /**
+   * Saves the proxies as the checks left them. What an administrator sets meanwhile, the time a proxy
+   * was turned off and its credentials, stays as it is in the store: a batch read before it must not undo it.
+   */
+  saveChecked(proxies: ProxyEntity[]): Promise<void>;
   /** Deletes the proxy; false if there was none. */
   delete(server: string): Promise<boolean>;
   /** Deletes every proxy; returns how many there were. */

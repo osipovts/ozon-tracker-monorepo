@@ -6,10 +6,12 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from '@tanstack/react-query';
+import { ensure } from 'frontend-shared';
 
-import { api, ensure } from '../../shared/api/api.client.js';
+import { api } from '../../shared/api/api.client.js';
 import type { operations } from '../../shared/api/schema.js';
-import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.js';
+import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.type.js';
+import { type JobStateInterface, summarizeJobs } from '../jobs/job-summary.type.js';
 
 export type ProxyPageType =
   operations['ProxiesController_list']['responses'][200]['content']['application/json'];
@@ -164,27 +166,22 @@ export function useRefreshSources(): {
   const jobs = useQueries({
     queries: jobIds.map((jobId): JobQueryType => jobQuery(jobId, refreshed)),
   });
-  const statuses = jobs.map((job): string | undefined => job.data?.status);
-  const unfinished = statuses.find((status): boolean => !isFinished(status));
+  const summary = summarizeJobs(
+    jobs.map((job): JobStateInterface => ({
+      status: job.data?.status,
+      percent: job.data?.percent,
+      error: job.error,
+    })),
+  );
 
   return {
     start: (sources): void => {
       start.mutate(sources);
     },
     jobIds,
-    percent:
-      jobs.length === 0
-        ? null
-        : Math.round(jobs.reduce((sum, job) => sum + (job.data?.percent ?? 0), 0) / jobs.length),
-    status:
-      jobs.length === 0
-        ? null
-        : unfinished !== undefined || statuses.includes(undefined)
-          ? (unfinished ?? 'queued')
-          : statuses.includes('failed')
-            ? 'failed'
-            : 'completed',
-    error: start.error ?? jobs.find((job) => job.error !== null)?.error ?? null,
+    percent: summary.percent,
+    status: summary.status,
+    error: start.error ?? summary.error,
     isStarting: start.isPending || running.isPending,
   };
 }

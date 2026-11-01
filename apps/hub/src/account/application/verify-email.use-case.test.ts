@@ -50,7 +50,7 @@ void test('proves the email of the user whose mailbox the link came to', async (
   const { verify, token, users, at } = await setup();
   at(5);
 
-  const user = await verify.execute(token);
+  const user = await verify.execute(token, jane.snapshot.id);
 
   assert.equal(user.id, jane.snapshot.id);
   assert.deepEqual(user.emailVerifiedAt, new Date(start.getTime() + 5 * minute));
@@ -60,10 +60,10 @@ void test('proves the email of the user whose mailbox the link came to', async (
 void test('opening the link again is harmless: a mail scanner that opened it first does not spoil it for the user', async (): Promise<void> => {
   const { verify, token, at } = await setup();
   at(1);
-  const first = await verify.execute(token);
+  const first = await verify.execute(token, jane.snapshot.id);
   at(30);
 
-  const again = await verify.execute(token);
+  const again = await verify.execute(token, jane.snapshot.id);
 
   assert.deepEqual(again.emailVerifiedAt, first.emailVerifiedAt);
 });
@@ -71,8 +71,21 @@ void test('opening the link again is harmless: a mail scanner that opened it fir
 void test('refuses a link that is unknown or has expired', async (): Promise<void> => {
   const { verify, token, at } = await setup();
 
-  await assert.rejects(verify.execute('not-a-token'), InvalidVerificationTokenError);
+  await assert.rejects(
+    verify.execute('not-a-token', jane.snapshot.id),
+    InvalidVerificationTokenError,
+  );
 
   at(61);
-  await assert.rejects(verify.execute(token), InvalidVerificationTokenError);
+  await assert.rejects(verify.execute(token, jane.snapshot.id), InvalidVerificationTokenError);
+});
+
+void test('refuses whoever is not the user the link was mailed for: the one who set the password has to open it', async (): Promise<void> => {
+  const { verify, token, users } = await setup();
+
+  await assert.rejects(
+    verify.execute(token, '9b2f6c1e-1d4a-4f3b-8a52-0c7d5e8f1a33'),
+    InvalidVerificationTokenError,
+  );
+  assert.equal((await users.findById(jane.snapshot.id))?.snapshot.emailVerifiedAt, null);
 });

@@ -17,6 +17,7 @@ import { ListHandbookCitiesUseCase } from './application/list-handbook-cities.us
 import { RefreshHandbookUseCase } from './application/refresh-handbook.use-case.js';
 import { SaveHandbookCitiesUseCase } from './application/save-handbook-cities.use-case.js';
 import { SearchCitiesUseCase } from './application/search-cities.use-case.js';
+import { CachedHandbookRepositoryAdapter } from './infrastructure/cached-handbook-repository.adapter.js';
 import { PeriodicHandbookRefreshAdapter } from './infrastructure/periodic-handbook-refresh.adapter.js';
 import { PrismaHandbookRepositoryAdapter } from './infrastructure/prisma-handbook-repository.adapter.js';
 import { CitiesController } from './presentation/cities.controller.js';
@@ -28,6 +29,8 @@ const day = 24 * 60 * 60_000;
 const handbookMaxAgeMs = 7 * day;
 /** How many of the best proxies a read of a handbook tries before the direct connection. */
 const handbookProxyCount = 10;
+/** How long the cities stay in memory: a key typed in the search of a city asks for them. */
+const handbookCacheMs = 60_000;
 
 @Module({
   imports: [PrismaModule, JobModule, ProxyModule],
@@ -36,14 +39,20 @@ const handbookProxyCount = 10;
     {
       provide: HANDBOOK_REPOSITORY,
       useFactory: (prisma: PrismaClient): HandbookRepositoryPort =>
-        new PrismaHandbookRepositoryAdapter(prisma),
+        new CachedHandbookRepositoryAdapter(
+          new PrismaHandbookRepositoryAdapter(prisma),
+          handbookCacheMs,
+        ),
       inject: [PRISMA],
     },
     {
       provide: SaveHandbookCitiesUseCase,
-      useFactory: (handbooks: HandbookRepositoryPort): SaveHandbookCitiesUseCase =>
-        new SaveHandbookCitiesUseCase(handbooks),
-      inject: [HANDBOOK_REPOSITORY],
+      useFactory: (
+        handbooks: HandbookRepositoryPort,
+        logger: LoggerPort,
+      ): SaveHandbookCitiesUseCase =>
+        new SaveHandbookCitiesUseCase(handbooks, undefined, logger.child('handbook')),
+      inject: [HANDBOOK_REPOSITORY, LOGGER],
     },
     {
       provide: ListHandbookCitiesUseCase,

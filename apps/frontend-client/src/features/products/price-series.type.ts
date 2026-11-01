@@ -44,6 +44,20 @@ function previousBucket(start: Date, granularity: GranularityType): Date {
   return previous;
 }
 
+/** What the prices observed in a bucket come to; all null when there are none. */
+function statsOf(
+  amounts: number[],
+): Pick<PriceBucketInterface, 'min' | 'max' | 'last' | 'average'> {
+  if (amounts.length === 0) return { min: null, max: null, last: null, average: null };
+
+  return {
+    min: Math.min(...amounts),
+    max: Math.max(...amounts),
+    last: amounts.at(-1) ?? null,
+    average: Math.round(amounts.reduce((sum, amount): number => sum + amount, 0) / amounts.length),
+  };
+}
+
 /**
  * The prices of the last `count` hours or days, a point for each: the average of the bucket. A bucket
  * with no price takes the last known one, and says that it was not observed.
@@ -81,21 +95,14 @@ export function buildPriceSeries(
       index += 1;
     }
 
-    const last = amounts.at(-1) ?? null;
-    const average =
-      amounts.length === 0
-        ? null
-        : Math.round(amounts.reduce((sum, amount): number => sum + amount, 0) / amounts.length);
+    const stats = statsOf(amounts);
     buckets.push({
       start,
-      value: average ?? carried,
-      observed: average !== null,
-      min: amounts.length === 0 ? null : Math.min(...amounts),
-      max: amounts.length === 0 ? null : Math.max(...amounts),
-      last,
-      average,
+      value: stats.average ?? carried,
+      observed: stats.average !== null,
+      ...stats,
     });
-    carried = last ?? carried;
+    carried = stats.last ?? carried;
     start = end;
   }
 

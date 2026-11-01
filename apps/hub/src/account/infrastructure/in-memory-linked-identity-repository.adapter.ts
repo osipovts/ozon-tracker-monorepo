@@ -1,4 +1,7 @@
-import type { LinkedIdentityRepositoryPort } from '../application/linked-identity-repository.port.js';
+import type {
+  LinkedIdentityRepositoryPort,
+  UnlinkOutcomeType,
+} from '../application/linked-identity-repository.port.js';
 import type { LinkedIdentityEntity } from '../domain/linked-identity.entity.js';
 import type { OauthProviderType } from '../domain/oauth-provider.type.js';
 
@@ -31,6 +34,23 @@ export class InMemoryLinkedIdentityRepositoryAdapter implements LinkedIdentityRe
     for (const [key] of found) this.identities.delete(key);
 
     return Promise.resolve(found.length > 0);
+  }
+
+  async unlink(
+    userId: string,
+    provider: OauthProviderType,
+    hasPassword: boolean,
+  ): Promise<UnlinkOutcomeType> {
+    const linked = await this.listByUser(userId);
+    if (!linked.some(({ snapshot }): boolean => snapshot.provider === provider))
+      return 'not_linked';
+    if (!hasPassword && linked.every(({ snapshot }): boolean => snapshot.provider === provider)) {
+      return 'last_login_method';
+    }
+
+    await this.remove(userId, provider);
+
+    return 'unlinked';
   }
 
   findByProviderSubject(

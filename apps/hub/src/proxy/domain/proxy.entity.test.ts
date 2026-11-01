@@ -56,3 +56,27 @@ void test('a check does not turn a proxy back on, dead or alive: only an adminis
   assert.deepEqual(ProxyEntity.fromCheck(dead, off).snapshot.disabledAt, disabledAt);
   assert.equal(ProxyEntity.fromCheck(alive).snapshot.disabledAt, null);
 });
+
+void test('a check that is not newer than the last one counts for nothing: the queue may deliver it twice', (): void => {
+  const known = proxy();
+  const check = {
+    server: known.snapshot.server,
+    source: 'github-free-proxy-list',
+    alive: false,
+    latencyMs: null,
+    country: null,
+    exitIp: null,
+    checkedAt,
+  };
+
+  assert.equal(ProxyEntity.fromCheck(check, known), known);
+  assert.equal(
+    ProxyEntity.fromCheck({ ...check, checkedAt: new Date(checkedAt.getTime() - 1000) }, known),
+    known,
+  );
+  assert.equal(
+    ProxyEntity.fromCheck({ ...check, checkedAt: new Date(checkedAt.getTime() + 1) }, known)
+      .snapshot.checksTotal,
+    5,
+  );
+});

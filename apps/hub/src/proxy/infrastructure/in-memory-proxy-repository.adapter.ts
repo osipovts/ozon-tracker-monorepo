@@ -8,7 +8,7 @@ import type {
   ProxyRepositoryPort,
   ProxyStatsInterface,
 } from '../application/proxy-repository.port.js';
-import type { ProxyEntity } from '../domain/proxy.entity.js';
+import { ProxyEntity } from '../domain/proxy.entity.js';
 
 function matches(proxy: ProxyEntity, filter: ProxyFilterInterface): boolean {
   const { snapshot } = proxy;
@@ -46,6 +46,24 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
 
   saveMany(proxies: ProxyEntity[]): Promise<void> {
     for (const proxy of proxies) this.proxies.set(proxy.snapshot.server, proxy);
+
+    return Promise.resolve();
+  }
+
+  saveChecked(proxies: ProxyEntity[]): Promise<void> {
+    for (const proxy of proxies) {
+      const stored = this.proxies.get(proxy.snapshot.server)?.snapshot;
+      this.proxies.set(
+        proxy.snapshot.server,
+        stored === undefined
+          ? proxy
+          : new ProxyEntity({
+              ...proxy.snapshot,
+              disabledAt: stored.disabledAt,
+              credentials: stored.credentials,
+            }),
+      );
+    }
 
     return Promise.resolve();
   }

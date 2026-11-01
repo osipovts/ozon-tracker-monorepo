@@ -33,7 +33,12 @@ export class PriceFetchController {
     willRetry = false,
     retryWith: (job: PriceFetchJobType) => Promise<void> = (): Promise<void> => Promise.resolve(),
   ): Promise<void> {
-    const job = this.messages.parse(priceFetchJobSchema, data, 'price fetch job');
+    const job = await this.lifecycle.parse(
+      this.messages,
+      priceFetchJobSchema,
+      data,
+      'price fetch job',
+    );
     this.logger.info(
       `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes, timeout ${String(job.timeoutMs)} ms`,
     );
@@ -51,7 +56,7 @@ export class PriceFetchController {
       );
 
       // The queue brings a failed job back after a pause; a job that read no price does not fail by itself.
-      const marked = job.products.map((product) =>
+      const marked = job.products.map((product): PriceFetchJobType['products'][number] =>
         product.read === true || isRead(statuses.get(product.trackedProductId))
           ? { ...product, read: true }
           : product,

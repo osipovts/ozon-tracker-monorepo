@@ -92,7 +92,15 @@ export class ProxyEntity {
     });
   }
 
+  /**
+   * The proxy after a check of it. A check that is not newer than the last one recorded is that one
+   * delivered again (the queue delivers a message more than once), or an older one: it counts for nothing.
+   */
   static fromCheck(check: ProxyCheckInterface, previous?: ProxyEntity): ProxyEntity {
+    if (previous !== undefined && check.checkedAt <= previous.snapshot.lastCheckedAt) {
+      return previous;
+    }
+
     const known = previous?.snapshot;
 
     return new ProxyEntity({

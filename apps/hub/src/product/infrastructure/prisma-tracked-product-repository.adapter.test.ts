@@ -189,3 +189,36 @@ void test(
     await prisma.trackedProduct.deleteMany({ where: { externalId } });
   },
 );
+
+void test(
+  'pages through products subscribed at the same moment without repeating or skipping one',
+  { skip },
+  async (): Promise<void> => {
+    const user = randomUUID();
+    await prisma.user.create({ data: { id: user, email: `${user}@example.com` } });
+    try {
+      const ids = [await newProduct(), await newProduct(), await newProduct(), await newProduct()];
+      const at = new Date('2026-11-01T10:00:00Z');
+      await prisma.productSubscription.createMany({
+        data: ids.map(
+          (trackedProductId): { userId: string; trackedProductId: string; createdAt: Date } => ({
+            userId: user,
+            trackedProductId,
+            createdAt: at,
+          }),
+        ),
+      });
+
+      const pages = await Promise.all(
+        [1, 2].map((page) => products.listSubscribed(user, { page, pageSize: 2 })),
+      );
+
+      const listed = pages.flatMap((page): string[] =>
+        page.items.map((product): string => product.snapshot.id),
+      );
+      assert.deepEqual(listed.toSorted(), ids.toSorted());
+    } finally {
+      await prisma.user.deleteMany({ where: { id: user } });
+    }
+  },
+);

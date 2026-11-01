@@ -9,6 +9,10 @@ import { OAUTH_PROVIDERS } from '../../auth/auth.module.js';
 import { AppModule } from '../../composition/app.module.js';
 import { configureApplication } from '../../composition/configure-application.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
+import {
+  IMAGE_DOWNLOADER,
+  type ImageDownloaderPort,
+} from '../../product/application/image-downloader.port.js';
 import { ProxyEntity } from '../../proxy/domain/proxy.entity.js';
 import { PrismaProxyRepositoryAdapter } from '../../proxy/infrastructure/prisma-proxy-repository.adapter.js';
 import { type DockerStackInterface, freePort } from './docker-stack.adapter.js';
@@ -22,6 +26,8 @@ export interface HubOptionsInterface {
   smtpUrl?: string;
   /** The providers of the login, as adapters of the hub pointed at a provider the test runs. */
   oauthProviders?: OauthProvidersType;
+  /** Downloads the pictures of products; the hub keeps to the open internet over HTTPS, which a marketplace run by a test is not. */
+  imageDownloader?: ImageDownloaderPort;
   /** Settings of the hub on top of the defaults of the test. */
   env?: Record<string, string>;
 }
@@ -50,6 +56,7 @@ export async function startHub(options: HubOptionsInterface): Promise<RunningHub
     MAIL_FROM: 'Price Tracker <no-reply@hub.test>',
     // Off, unless a test asks for it: a refresh in the background would answer for what a test does.
     PRICE_REFRESH_INTERVAL_MS: '0',
+    PROXY_REFRESH_INTERVAL_MINUTES: '0',
     ...(options.smtpUrl === undefined ? {} : { SMTP_URL: options.smtpUrl }),
     ...(options.stack.s3 === undefined
       ? {}
@@ -64,6 +71,9 @@ export async function startHub(options: HubOptionsInterface): Promise<RunningHub
   const builder = Test.createTestingModule({ imports: [AppModule] });
   if (options.oauthProviders !== undefined) {
     builder.overrideProvider(OAUTH_PROVIDERS).useValue(options.oauthProviders);
+  }
+  if (options.imageDownloader !== undefined) {
+    builder.overrideProvider(IMAGE_DOWNLOADER).useValue(options.imageDownloader);
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>({

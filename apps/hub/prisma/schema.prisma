@@ -185,6 +185,8 @@ model ProductSubscription {
 
   @@id([userId, trackedProductId])
   @@index([trackedProductId])
+  /// The list of a user: the newest subscription first.
+  @@index([userId, createdAt(sort: Desc)])
   @@map("product_subscriptions")
 }
 

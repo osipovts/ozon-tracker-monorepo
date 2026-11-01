@@ -88,3 +88,29 @@ void test(
     assert.deepEqual(await order(), before);
   },
 );
+
+void test(
+  'saves the result of checks without undoing what an administrator set after they were read',
+  { skip },
+  async (): Promise<void> => {
+    const off = new Date('2026-10-31T11:00:00Z');
+    await proxies.saveMany([proxy(20, off)]);
+    const checked = proxy(20, null);
+
+    await proxies.saveChecked([
+      new ProxyEntity({ ...checked.snapshot, checksTotal: 2, checksAlive: 2 }),
+    ]);
+
+    const [stored] = await proxies.findByServers(['socks5://198.51.100.20:1080']);
+    assert.deepEqual(stored?.snapshot.disabledAt, off);
+    assert.equal(stored.snapshot.checksTotal, 2);
+  },
+);
+
+void test('creates the proxy that a check found', { skip }, async (): Promise<void> => {
+  await proxies.saveChecked([proxy(21, null)]);
+
+  const [stored] = await proxies.findByServers(['socks5://198.51.100.21:1080']);
+  assert.equal(stored?.snapshot.alive, true);
+  assert.equal(stored.snapshot.disabledAt, null);
+});

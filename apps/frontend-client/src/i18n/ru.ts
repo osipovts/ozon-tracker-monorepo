@@ -12,7 +12,6 @@ export const ru: DictionaryType = {
   },
   errors: {
     title: 'Что-то пошло не так',
-    failed: 'Запрос не удался.',
     tryAgain: 'Повторите через {{seconds}} с.',
     unreachable: 'Не удалось связаться с хабом.',
   },
@@ -33,6 +32,7 @@ export const ru: DictionaryType = {
     wrongCredentials:
       'Неверный email или пароль. Если вы только что зарегистрировались с почтой, у которой уже есть аккаунт, войдите с паролем от того аккаунта.',
     tooManyAttempts: 'Слишком много попыток.',
+    confirmEmail: 'Войдите, чтобы подтвердить почту.',
     or: 'или',
     continueWith: 'Продолжить через {{provider}}',
     oauthFailed:

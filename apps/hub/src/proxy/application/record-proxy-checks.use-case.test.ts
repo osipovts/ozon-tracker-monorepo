@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { ProxyEntity } from '../domain/proxy.entity.js';
 import type { ProxyCheckInterface } from '../domain/proxy-check.interface.js';
 import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
 import { RecordProxyChecksUseCase } from './record-proxy-checks.use-case.js';
@@ -37,7 +38,15 @@ void test('keeps the last known location and latency when a proxy dies', async (
   const useCase = new RecordProxyChecksUseCase(repository);
 
   await useCase.execute([check({})]);
-  await useCase.execute([check({ alive: false, latencyMs: null, country: null, exitIp: null })]);
+  await useCase.execute([
+    check({
+      alive: false,
+      latencyMs: null,
+      country: null,
+      exitIp: null,
+      checkedAt: new Date('2026-10-24T12:05:00.000Z'),
+    }),
+  ]);
 
   const [proxy] = await repository.findByServers([server]);
   assert.equal(proxy?.snapshot.alive, false);
@@ -52,8 +61,8 @@ void test('applies several checks of one proxy in a batch in order', async (): P
 
   await new RecordProxyChecksUseCase(repository).execute([
     check({}),
-    check({ latencyMs: 100 }),
-    check({ alive: false, latencyMs: null }),
+    check({ latencyMs: 100, checkedAt: new Date('2026-10-24T12:01:00.000Z') }),
+    check({ alive: false, latencyMs: null, checkedAt: new Date('2026-10-24T12:02:00.000Z') }),
   ]);
 
   const [proxy] = await repository.findByServers([server]);
@@ -61,4 +70,40 @@ void test('applies several checks of one proxy in a batch in order', async (): P
   assert.equal(proxy.snapshot.checksAlive, 2);
   assert.equal(proxy.snapshot.alive, false);
   assert.equal(proxy.snapshot.latencyMs, 100);
+});
+
+void test('counts a batch once, however many times the queue delivers it', async (): Promise<void> => {
+  const repository = new InMemoryProxyRepositoryAdapter();
+  const useCase = new RecordProxyChecksUseCase(repository);
+  const batch = [
+    check({ checkedAt: new Date('2026-10-24T12:00:00.000Z') }),
+    check({ checkedAt: new Date('2026-10-24T12:05:00.000Z'), alive: false }),
+  ];
+
+  await useCase.execute(batch);
+  await useCase.execute(batch);
+
+  const [proxy] = await repository.findByServers([server]);
+  assert.equal(proxy?.snapshot.checksTotal, 2);
+  assert.equal(proxy.successRate, 0.5);
+});
+
+void test('does not undo a proxy turned off while the batch was being handled', async (): Promise<void> => {
+  const repository = new InMemoryProxyRepositoryAdapter();
+  await new RecordProxyChecksUseCase(repository).execute([
+    check({ checkedAt: new Date('2026-10-24T12:00:00.000Z') }),
+  ]);
+  const [read] = await repository.findByServers([server]);
+  assert.ok(read !== undefined);
+  // An administrator turns it off after the batch has read it and before it is saved.
+  await repository.saveMany([read.disabled(new Date('2026-10-24T12:30:00.000Z'))]);
+
+  await repository.saveChecked([
+    ProxyEntity.fromCheck(check({ checkedAt: new Date('2026-10-24T13:00:00.000Z') }), read),
+  ]);
+
+  const [after] = await repository.findByServers([server]);
+  assert.ok(after !== undefined);
+  assert.notEqual(after.snapshot.disabledAt, null);
+  assert.equal(after.snapshot.checksTotal, 2);
 });

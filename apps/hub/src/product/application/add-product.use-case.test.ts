@@ -187,6 +187,47 @@ void test('lets a user track so many products, and takes no more, nor creates a 
   assert.equal(counting.added, 3);
 });
 
+void test('does not refuse a product the user tracks already when their quota is full', async (): Promise<void> => {
+  const { add, reads } = setup({ maxProducts: 1, add: { limit: 100, windowMs: 60_000 } });
+  const first = await add.execute(jane, 'https://www.ozon.ru/product/1/');
+
+  const again = await add.execute(jane, 'https://ozon.ru/product/1/');
+
+  assert.equal(again.created, false);
+  assert.equal(again.jobId, null);
+  assert.equal(again.product.snapshot.id, first.product.snapshot.id);
+  assert.equal(reads.length, 1);
+  await assert.rejects(
+    add.execute(jane, 'https://www.ozon.ru/product/2/'),
+    ProductQuotaExceededError,
+  );
+});
+
+void test('does not queue the first read again for a second user who adds the product while it is on its way', async (): Promise<void> => {
+  const { add, products, reads } = setup();
+  const first = await add.execute(jane, 'https://www.ozon.ru/product/1/');
+  assert.equal(reads.length, 1);
+  // Nothing is read yet, but the read is queued and marked.
+  await products.markRequested([first.product.snapshot.id], new Date());
+
+  const second = await add.execute(sam, 'https://www.ozon.ru/product/1/');
+
+  assert.equal(second.created, true);
+  assert.equal(second.jobId, null);
+  assert.equal(reads.length, 1);
+});
+
+void test('queues the first read again when the one asked for long ago brought no price', async (): Promise<void> => {
+  const { add, products, reads } = setup();
+  const first = await add.execute(jane, 'https://www.ozon.ru/product/1/');
+  await products.markRequested([first.product.snapshot.id], new Date(Date.now() - 10 * 60_000));
+
+  const second = await add.execute(sam, 'https://www.ozon.ru/product/1/');
+
+  assert.notEqual(second.jobId, null);
+  assert.equal(reads.length, 2);
+});
+
 void test('lets a user add so fast, and stops one who adds faster, whatever the products', async (): Promise<void> => {
   const { add } = setup({ maxProducts: 100, add: { limit: 2, windowMs: 60_000 } });
 

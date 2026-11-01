@@ -1,9 +1,9 @@
 import { Button, Card, Group, Modal, Stack, Text, TextInput, Title } from '@mantine/core';
+import { ErrorAlert } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { useMe } from '../auth/use-me.hook.js';
 import { useDeleteAccount } from './use-account.hook.js';
 
@@ -18,6 +18,11 @@ export function DeleteAccountSection(): ReactElement {
   const accountEmail = me.data?.email ?? '';
   const confirmed =
     email.trim().toLowerCase() === accountEmail.toLowerCase() && accountEmail !== '';
+
+  const close = (): void => {
+    setAsking(false);
+    setEmail('');
+  };
 
   const submit = (event: SyntheticEvent): void => {
     event.preventDefault();
@@ -40,13 +45,7 @@ export function DeleteAccountSection(): ReactElement {
           {t('settings.deleteAccount')}
         </Button>
       </Stack>
-      <Modal
-        opened={asking}
-        title={t('settings.deleteConfirmTitle')}
-        onClose={(): void => {
-          setAsking(false);
-        }}
-      >
+      <Modal opened={asking} title={t('settings.deleteConfirmTitle')} onClose={close}>
         <form onSubmit={submit}>
           <Stack>
             <Text>{t('settings.deleteConfirmText', { email: accountEmail })}</Text>
@@ -60,12 +59,7 @@ export function DeleteAccountSection(): ReactElement {
             />
             {remove.error !== null && <ErrorAlert error={remove.error} />}
             <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={(): void => {
-                  setAsking(false);
-                }}
-              >
+              <Button variant="default" onClick={close}>
                 {t('product.cancel')}
               </Button>
               <Button type="submit" color="red" disabled={!confirmed} loading={remove.isPending}>

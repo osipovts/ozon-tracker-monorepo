@@ -1,9 +1,8 @@
 import { Badge, Card, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { ErrorAlert, useLocale } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { useDashboard } from './use-dashboard.hook.js';
 
 function Stat({

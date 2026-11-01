@@ -1,6 +1,7 @@
 import type { UseQueryOptions } from '@tanstack/react-query';
+import { ensure } from 'frontend-shared';
 
-import { api, ensure } from '../../shared/api/api.client.js';
+import { api } from '../../shared/api/api.client.js';
 
 export function isFinished(status: string | undefined): boolean {
   return status === 'completed' || status === 'failed';

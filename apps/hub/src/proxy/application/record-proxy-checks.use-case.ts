@@ -25,7 +25,7 @@ export class RecordProxyChecksUseCase {
         ProxyEntity.fromCheck(check, updated.get(check.server) ?? known.get(check.server)),
       );
 
-    await this.proxies.saveMany(Array.from(updated.values()));
+    await this.proxies.saveChecked(Array.from(updated.values()));
     this.logger.debug(
       `Recorded ${String(checks.length)} checks of ${String(updated.size)} proxies, ${String(checks.filter((check): boolean => check.alive).length)} alive`,
     );

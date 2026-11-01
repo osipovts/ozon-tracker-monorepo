@@ -1,4 +1,5 @@
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
 import {
   DnsReferenceParser,
@@ -25,7 +26,6 @@ import {
 } from './infrastructure/ozon/ozon-playwright-product-reader.adapter.js';
 import { OzonProductParser } from './infrastructure/ozon/ozon-product.parser.js';
 import { MarketplaceProductReaderAdapter } from './infrastructure/product/marketplace-product-reader.adapter.js';
-import { CamoufoxOptionsFactory } from './infrastructure/shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from './infrastructure/shared/geo-ip-page.parser.js';
 import { LinkExpandController } from './presentation/link/link-expand.controller.js';
 import { PriceFetchController } from './presentation/product/price-fetch.controller.js';
@@ -98,7 +98,7 @@ const parsers: OzonReaderParsersInterface = {
 const controller = new PriceFetchController(
   new FetchPricesUseCase(
     new ResolveProductReferenceUseCase([references, dnsReferences]),
-    (timeoutMs) =>
+    (timeoutMs): MarketplaceProductReaderAdapter =>
       new MarketplaceProductReaderAdapter({
         ozon: new OzonPlaywrightProductReaderAdapter(
           browser,
@@ -132,7 +132,7 @@ const expandController = new LinkExpandController(
   new ExpandLinkUseCase(
     new OzonShortLinkParser(),
     new ResolveProductReferenceUseCase([references]),
-    (timeoutMs) =>
+    (timeoutMs): OzonPlaywrightLinkExpanderAdapter =>
       new OzonPlaywrightLinkExpanderAdapter(browser, options, timeoutMs, logger.child('ozon')),
     logger.child('links'),
   ),

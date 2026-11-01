@@ -1,3 +1,4 @@
+import type { CamoufoxOptionsFactory } from 'camoufox-options';
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
@@ -8,7 +9,6 @@ import type {
   CitySourceSessionInterface,
 } from '../application/city-source.port.js';
 import type { CityInterface } from '../domain/city.interface.js';
-import type { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 
 const answerSchema = z.object({
   data: z.object({
@@ -72,14 +72,27 @@ export class DnsBrowserCitySourceAdapter implements CitySourcePort {
           `/v1/site/get-cities-by-letter?letter=${encodeURIComponent(letter)}`,
           this.apiUrl,
         ).href;
-        const answer = await page.evaluate(
-          async (target): Promise<{ status: number; body: string }> => {
-            const response = await fetch(target, { credentials: 'include' });
+        // A read that never gets its answer would hold the job: it ends with the time given, or with the job.
+        const closeContext = (): void => {
+          void context.close();
+        };
+        signal.addEventListener('abort', closeContext, { once: true });
+        let answer: { status: number; body: string };
+        try {
+          answer = await page.evaluate(
+            async ({ target, timeoutMs }): Promise<{ status: number; body: string }> => {
+              const response = await fetch(target, {
+                credentials: 'include',
+                signal: AbortSignal.timeout(timeoutMs),
+              });
 
-            return { status: response.status, body: await response.text() };
-          },
-          url,
-        );
+              return { status: response.status, body: await response.text() };
+            },
+            { target: url, timeoutMs: this.timeoutMs },
+          );
+        } finally {
+          signal.removeEventListener('abort', closeContext);
+        }
         if (answer.status !== 200) throw new Error(`The API answered ${String(answer.status)}`);
 
         return answerSchema

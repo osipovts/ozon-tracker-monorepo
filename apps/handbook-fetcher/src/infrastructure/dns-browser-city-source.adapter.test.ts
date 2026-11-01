@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import {
   type Browser,
   type BrowserContext,
@@ -10,7 +11,6 @@ import {
 } from 'playwright-core';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 import { DnsBrowserCitySourceAdapter } from './dns-browser-city-source.adapter.js';
 
 let browser: Browser;
@@ -27,6 +27,8 @@ interface SiteInterface {
   opens?: boolean;
   /** The answer of the API to a letter. */
   api?: (letter: string) => { status: number; body: unknown };
+  /** Whether the API takes the request and never answers. */
+  hangs?: boolean;
 }
 
 function createSource(
@@ -52,6 +54,7 @@ function createSource(
           } else if (url.origin === 'https://restapi.dns-shop.ru') {
             const letter = url.searchParams.get('letter') ?? '';
             asked.push(letter);
+            if (site.hangs === true) return;
             const answer = site.api?.(letter) ?? { status: 200, body: { data: { cities: [] } } };
             await route.fulfill({
               status: answer.status,
@@ -153,3 +156,41 @@ void test('does not open when the job is already aborted', async (): Promise<voi
 
   await assert.rejects(source.open(null, AbortSignal.abort()));
 });
+
+void test(
+  'gives up on an API that never answers, within the time it is given',
+  {
+    timeout: 10_000,
+  },
+  async (): Promise<void> => {
+    const { source } = createSource({ hangs: true });
+    const session = await source.open(null, signal);
+    const started = Date.now();
+
+    await assert.rejects(session.read('А', signal));
+    await session.close();
+
+    assert.ok(Date.now() - started < 5000);
+  },
+);
+
+void test(
+  'stops waiting for the API when asked to stop',
+  {
+    timeout: 10_000,
+  },
+  async (): Promise<void> => {
+    const { source } = createSource({ hangs: true });
+    const session = await source.open(null, signal);
+    const stop = new AbortController();
+    setTimeout((): void => {
+      stop.abort();
+    }, 200);
+    const started = Date.now();
+
+    await assert.rejects(session.read('А', stop.signal));
+    await session.close().catch((): void => undefined);
+
+    assert.ok(Date.now() - started < 1200);
+  },
+);

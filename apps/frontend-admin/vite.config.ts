@@ -13,11 +13,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: Object.fromEntries(
-      ['/auth', '/admin', '/proxies', '/proxy-sources', '/jobs'].map((path): [string, object] => [
-        path,
-        // The hub checks where a write comes from: the panel in development says it is the hub itself.
-        { target: hub, headers: { origin: hubOrigin } },
-      ]),
+      ['/auth', '/admin', '/proxies', '/proxy-sources', '/jobs', '/handbooks'].map(
+        (path): [string, object] => [
+          path,
+          // The hub checks where a write comes from: the panel in development says it is the hub itself.
+          { target: hub, headers: { origin: hubOrigin } },
+        ],
+      ),
     ),
   },
   test: {

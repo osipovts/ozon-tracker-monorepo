@@ -11,32 +11,15 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import type { TFunction } from 'i18next';
+import { explainLoginRefusal } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
-import { ApiError } from '../../shared/api/api-error.error.js';
 import { LegalFooter } from '../legal/legal-footer.component.js';
 import { ProviderIcon } from './provider-icon.component.js';
 import { providerName } from './provider-name.type.js';
-import { useLogin, useMe, useOauthProviders, useRegister } from './use-me.hook.js';
-
-/** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
-function explain(error: Error, t: TFunction): string {
-  if (!(error instanceof ApiError)) return t('errors.unreachable');
-  if (error.status === 401) return t('login.wrongCredentials');
-  if (error.status === 429) {
-    const wait =
-      error.retryAfterSeconds === null
-        ? ''
-        : ` ${t('errors.tryAgain', { seconds: error.retryAfterSeconds })}`;
-
-    return `${t('login.tooManyAttempts')}${wait}`;
-  }
-
-  return error.message;
-}
+import { useLogin, useMe, useOauthProviders, useRegister, useVerifyEmail } from './use-me.hook.js';
 
 /** Buttons that take the browser to the login of a provider, which brings it back logged in. */
 function ProviderButtons(): ReactElement | null {
@@ -63,11 +46,45 @@ function ProviderButtons(): ReactElement | null {
   );
 }
 
+/** What the page has to say besides the form: why the user is here, and why the last try did not work. */
+function Notices({
+  verifying,
+  oauthFailed,
+  failure,
+}: {
+  verifying: boolean;
+  oauthFailed: boolean;
+  failure: Error | null;
+}): ReactElement {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {verifying && (
+        <Alert color="blue" role="status">
+          {t('login.confirmEmail')}
+        </Alert>
+      )}
+      {oauthFailed && failure === null && (
+        <Alert color="red" role="alert">
+          {t('login.oauthFailed')}
+        </Alert>
+      )}
+      {failure !== null && (
+        <Alert color="red" role="alert">
+          {explainLoginRefusal(failure, t)}
+        </Alert>
+      )}
+    </>
+  );
+}
+
 export function LoginPage(): ReactElement {
   const { t } = useTranslation();
   const me = useMe();
   const login = useLogin();
   const register = useRegister();
+  const verifyEmail = useVerifyEmail();
   const navigate = useNavigate();
   const [mode, setMode] = useState<string | null>('login');
   const [email, setEmail] = useState('');
@@ -75,6 +92,8 @@ export function LoginPage(): ReactElement {
   const signingUp = mode === 'register';
   const [params] = useSearchParams();
   const oauthFailed = params.get('error') === 'oauth';
+  // The link of the mail, opened where nobody is signed in: the hub sends the user here with its token.
+  const verifyToken = params.get('verify');
   const failure = signingUp ? (register.error ?? login.error) : login.error;
 
   if (me.data !== null && me.data !== undefined) return <Navigate to="/" replace />;
@@ -82,7 +101,16 @@ export function LoginPage(): ReactElement {
   const submit = (event: SyntheticEvent): void => {
     event.preventDefault();
     const enter = (): void => {
-      login.mutate({ email, password }, { onSuccess: (): void => void navigate('/') });
+      login.mutate(
+        { email, password },
+        {
+          onSuccess: (): void => {
+            // Whether the link still works or not, the user is in: the page of the app says what is left to do.
+            if (verifyToken === null) void navigate('/');
+            else verifyEmail.mutate(verifyToken, { onSettled: (): void => void navigate('/') });
+          },
+        },
+      );
     };
     // Signing up starts no session: the person is logged in right after.
     if (signingUp) register.mutate({ email, password }, { onSuccess: enter });
@@ -125,16 +153,7 @@ export function LoginPage(): ReactElement {
                 setPassword(event.currentTarget.value);
               }}
             />
-            {oauthFailed && failure === null && (
-              <Alert color="red" role="alert">
-                {t('login.oauthFailed')}
-              </Alert>
-            )}
-            {failure !== null && (
-              <Alert color="red" role="alert">
-                {explain(failure, t)}
-              </Alert>
-            )}
+            <Notices verifying={verifyToken !== null} oauthFailed={oauthFailed} failure={failure} />
             <Button type="submit" loading={login.isPending || register.isPending}>
               {signingUp ? t('login.signUp') : t('login.logIn')}
             </Button>

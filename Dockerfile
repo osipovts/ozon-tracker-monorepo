@@ -89,6 +89,7 @@ ENV NODE_ENV=development
 # Admin panel (static files the hub serves)
 ################################
 FROM fetch AS admin-ui-build
+COPY packages/frontend-shared ./packages/frontend-shared
 COPY apps/frontend-admin ./apps/frontend-admin
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
@@ -99,6 +100,7 @@ RUN pnpm --filter frontend-admin build
 # Client app (static files the hub serves)
 ################################
 FROM fetch AS client-ui-build
+COPY packages/frontend-shared ./packages/frontend-shared
 COPY apps/frontend-client ./apps/frontend-client
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \

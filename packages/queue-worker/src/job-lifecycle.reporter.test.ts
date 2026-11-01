@@ -53,3 +53,60 @@ void test('rejects a malformed message for good', (): void => {
   assert.deepEqual(parser.parse(schema, { jobId }, 'job'), { jobId });
   assert.throws((): unknown => parser.parse(schema, { jobId: 'nope' }, 'job'), UnrecoverableError);
 });
+
+void test('parses a job it is given, and publishes nothing for it', async (): Promise<void> => {
+  const published: JobLifecycleType[] = [];
+
+  const job = await createReporter(published).parse(
+    new QueueMessageParser(silentLogger),
+    z.object({ jobId: z.uuid(), count: z.number() }),
+    { jobId, count: 2 },
+    'test job',
+  );
+
+  assert.deepEqual(job, { jobId, count: 2 });
+  assert.deepEqual(published, []);
+});
+
+void test('reports a malformed job that says whose it is as failed for good, and rejects it', async (): Promise<void> => {
+  const published: JobLifecycleType[] = [];
+
+  await assert.rejects(
+    createReporter(published).parse(
+      new QueueMessageParser(silentLogger),
+      z.object({ jobId: z.uuid(), count: z.number() }),
+      { jobId, count: 'two' },
+      'test job',
+    ),
+    UnrecoverableError,
+  );
+
+  assert.deepEqual(published, [
+    { type: 'job_failed', jobId, reason: 'Malformed test job', willRetry: false },
+  ]);
+});
+
+void test('has nobody to tell about a malformed job that does not say whose it is', async (): Promise<void> => {
+  const published: JobLifecycleType[] = [];
+
+  await assert.rejects(
+    createReporter(published).parse(
+      new QueueMessageParser(silentLogger),
+      z.object({ jobId: z.uuid() }),
+      { jobId: 'not-a-uuid' },
+      'test job',
+    ),
+    UnrecoverableError,
+  );
+  await assert.rejects(
+    createReporter(published).parse(
+      new QueueMessageParser(silentLogger),
+      z.object({ jobId: z.uuid() }),
+      'garbage',
+      'test job',
+    ),
+    UnrecoverableError,
+  );
+
+  assert.deepEqual(published, []);
+});

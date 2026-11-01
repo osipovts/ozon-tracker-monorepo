@@ -1,8 +1,8 @@
 import { Button, CloseButton, Group, Modal, Stack, Text } from '@mantine/core';
+import { ErrorAlert } from 'frontend-shared';
 import { type ReactElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { useDeleteProduct } from './use-products.hook.js';
 
 /** A button that asks to confirm, and stops tracking the product for the user. */

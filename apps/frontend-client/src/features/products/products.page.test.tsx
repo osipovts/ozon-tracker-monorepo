@@ -2,6 +2,7 @@ import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -247,4 +248,63 @@ test('shows the city of a product on its card', async (): Promise<void> => {
 
   expect(await screen.findByText('City: Иркутск')).toBeInTheDocument();
   expect(screen.getAllByText(/^City: /)).toHaveLength(1);
+});
+
+test('says the hub could not be reached when the request does not get there', async (): Promise<void> => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((): Promise<Response> => Promise.reject(new TypeError('Failed to fetch'))),
+  );
+
+  render(
+    <MantineProvider>
+      <MemoryRouter>
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <ProductsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </MantineProvider>,
+  );
+
+  expect(await screen.findByText('The hub could not be reached.')).toBeInTheDocument();
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});
+
+test('sends the link whose add was cut short once, even when the page is mounted twice', async (): Promise<void> => {
+  const sent: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (request: Request | string | URL): Promise<Response> => {
+      if (typeof request === 'string' || request instanceof URL || request.method === 'GET')
+        return Response.json({ items: [], page: 1, pageSize: 20, total: 0 });
+
+      sent.push(JSON.stringify(await request.json()));
+
+      return new Promise<Response>(() => undefined);
+    }),
+  );
+  rememberPendingAdd({ url: 'https://ozon.ru/t/AbC', cityId: null });
+
+  render(
+    <StrictMode>
+      <MantineProvider>
+        <MemoryRouter>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <ProductsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </MantineProvider>
+    </StrictMode>,
+  );
+
+  await waitFor((): void => {
+    expect(sent).not.toHaveLength(0);
+  });
+  await act(() => Promise.resolve());
+
+  expect(sent).toHaveLength(1);
 });
