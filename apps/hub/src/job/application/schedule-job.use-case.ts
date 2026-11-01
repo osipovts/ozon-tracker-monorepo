@@ -80,6 +80,7 @@ export class ScheduleJobUseCase {
           routes: request.routes,
           products: request.products,
           timeoutMs: request.timeoutMs,
+          ...(request.delayMs === undefined ? {} : { delayMs: request.delayMs }),
         });
     }
   }

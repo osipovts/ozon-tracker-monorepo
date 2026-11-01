@@ -19,6 +19,8 @@ export interface PriceFetchRequestInterface {
   routes: RouteInterface[];
   products: Array<{ trackedProductId: string; url: string; cityId?: string }>;
   timeoutMs: number;
+  /** How long the job waits in the queue before a worker may take it; none when not said. */
+  delayMs?: number;
 }
 
 export interface HandbookFetchRequestInterface {

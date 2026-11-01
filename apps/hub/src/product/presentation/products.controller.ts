@@ -40,7 +40,6 @@ import { GetProductThumbnailUrlUseCase } from '../application/get-product-thumbn
 import { ListPriceHistoryUseCase } from '../application/list-price-history.use-case.js';
 import { ListProductsUseCase } from '../application/list-products.use-case.js';
 import { nextPriceCheckAt } from '../application/next-price-check.type.js';
-import { priceRefreshScheduleOf } from '../application/price-refresh-schedule.type.js';
 import { RemoveProductUseCase } from '../application/remove-product.use-case.js';
 import type { PriceObservationInterface } from '../domain/price-observation.interface.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
@@ -83,17 +82,7 @@ export class ProductsController {
   ) {}
 
   private async toProduct({ snapshot }: TrackedProductEntity): Promise<ProductType> {
-    const next = nextPriceCheckAt(
-      snapshot,
-      {
-        schedule: priceRefreshScheduleOf({
-          intervalMs: this.config.priceRefreshIntervalMs,
-          minute: this.config.priceRefreshMinute,
-        }),
-        maxAgeMs: this.config.priceRefreshMaxAgeMs,
-      },
-      new Date(),
-    );
+    const next = nextPriceCheckAt(snapshot, this.config.priceRefreshAfterMs, new Date());
 
     return {
       id: snapshot.id,

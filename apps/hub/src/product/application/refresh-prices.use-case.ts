@@ -5,17 +5,18 @@ import type { ScheduleJobUseCase } from '../../job/application/index.js';
 import { type ClockPort, systemClock } from '../../shared/application/clock.port.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
 import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
-import { dueAgeMs } from './price-refresh-schedule.type.js';
+import type {
+  PriceJobSlotInterface,
+  SpreadPriceJobsUseCase,
+} from './spread-price-jobs.use-case.js';
 import type { TrackedProductRepositoryPort } from './tracked-product-repository.port.js';
 
 /** What a job of the price worker takes: the contract of the queue allows 50 products to a job. */
 const productsPerJob = 50;
 
 export interface PriceRefreshSettingsInterface {
-  /** A price must not be older than this. */
-  maxAgeMs: number;
-  /** Time between two runs: a price is read at the last run before it outlives the maximum age. */
-  periodMs: number;
+  /** A price is read again once it is this old. */
+  refreshAfterMs: number;
   /** How many products one run queues at most: the rest wait for the next run. */
   batchSize: number;
   timeoutMs: number;
@@ -29,13 +30,15 @@ export interface PriceRefreshResultInterface {
 /**
  * Queues the read of the tracked products whose price is stale, for the schedule: the products nobody
  * tracks are left alone. A product stays due until a job for it is queued, so a run that finds no route,
- * or a queue that is down, is made up for by the next one.
+ * or a queue that is down, is made up for by the next one. The jobs of a marketplace are spread over its
+ * proxies and over time, so that no proxy gets many of them at once.
  */
 export class RefreshPricesUseCase {
   constructor(
     private readonly products: TrackedProductRepositoryPort,
     private readonly chooseRoutes: Pick<ChoosePriceRoutesUseCase, 'execute'>,
     private readonly scheduleJob: ScheduleJobUseCase,
+    private readonly spread: Pick<SpreadPriceJobsUseCase, 'execute'>,
     private readonly settings: PriceRefreshSettingsInterface,
     private readonly clock: ClockPort = systemClock,
     private readonly logger: LoggerPort = silentLogger,
@@ -44,7 +47,7 @@ export class RefreshPricesUseCase {
   async execute(): Promise<PriceRefreshResultInterface> {
     const now = this.clock.now();
     const due = await this.products.listDueForRefresh(
-      new Date(now.getTime() - dueAgeMs(this.settings.maxAgeMs, this.settings.periodMs)),
+      new Date(now.getTime() - this.settings.refreshAfterMs),
       this.settings.batchSize,
     );
 
@@ -60,7 +63,7 @@ export class RefreshPricesUseCase {
         const queued = await this.queue(
           marketplace,
           group.slice(from, from + productsPerJob),
-          routes,
+          this.spread.execute(marketplace, routes, now),
           now,
         );
         result.products += queued;
@@ -86,7 +89,7 @@ export class RefreshPricesUseCase {
   private async queue(
     marketplace: MarketplaceType,
     chunk: TrackedProductEntity[],
-    routes: Awaited<ReturnType<ChoosePriceRoutesUseCase['execute']>>,
+    slot: PriceJobSlotInterface,
     now: Date,
   ): Promise<number> {
     try {
@@ -94,7 +97,8 @@ export class RefreshPricesUseCase {
         kind: 'price_fetch',
         requestedBy: null,
         subject: marketplace,
-        routes,
+        routes: slot.routes,
+        delayMs: slot.delayMs,
         products: chunk.map(({ readRequest }) => readRequest),
         timeoutMs: this.settings.timeoutMs,
       });

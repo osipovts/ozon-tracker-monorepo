@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaClient } from '../generated/prisma/client.js';
-import { ScheduleJobUseCase } from '../job/application/index.js';
+import { GetJobActivityUseCase, ScheduleJobUseCase } from '../job/application/index.js';
 import { JobModule } from '../job/job.module.js';
 import { APP_CONFIG, type AppConfigInterface } from '../shared/application/app-config.interface.js';
 import { LOGGER, type LoggerPort } from '../shared/application/logger.port.js';
@@ -46,21 +46,24 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
       provide: PeriodicProxyRefreshAdapter,
       useFactory: (
         refresh: RefreshProxySourceUseCase,
+        activity: GetJobActivityUseCase,
         limiter: RateLimiterPort,
         config: AppConfigInterface,
         logger: LoggerPort,
       ): PeriodicProxyRefreshAdapter =>
         new PeriodicProxyRefreshAdapter(
           refresh,
+          activity,
           limiter,
           {
-            intervalMs: config.proxyRefreshIntervalMinutes * 60_000,
+            pauseMs: config.proxyRefreshPauseMinutes * 60_000,
+            pollMs: 60_000,
             maxCandidates: config.proxyRefreshMaxCandidates,
             probeTimeoutMs: config.proxyRefreshProbeTimeoutMs,
           },
           logger.child('proxy-refresh'),
         ),
-      inject: [RefreshProxySourceUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
+      inject: [RefreshProxySourceUseCase, GetJobActivityUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
     },
     {
       provide: ListProxiesUseCase,

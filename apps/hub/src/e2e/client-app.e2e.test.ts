@@ -58,8 +58,8 @@ before(
         allows: (): boolean => true,
       }),
       env: {
-        // The default schedule, every hour at the 55th minute, which the page shows (the harness turns it off).
-        PRICE_REFRESH_INTERVAL_MS: '',
+        // The default schedule, 50 minutes after the last read, which the page shows (the harness turns it off).
+        PRICE_REFRESH_AFTER_MS: '3000000',
         CLIENT_UI_DIR: resolve(import.meta.dirname, '../../../frontend-client/dist'),
       },
     });

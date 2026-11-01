@@ -66,6 +66,7 @@ export class BullmqJobQueueAdapter implements JobQueuePort {
     });
     await this.priceFetchQueue.add('price-fetch', job, {
       ...priceFetchJobOptions,
+      ...(request.delayMs === undefined || request.delayMs <= 0 ? {} : { delay: request.delayMs }),
       jobId: job.jobId,
     });
     this.logger.debug(`Published price-fetch ${job.jobId} to ${queueNames.priceFetchJobs}`);

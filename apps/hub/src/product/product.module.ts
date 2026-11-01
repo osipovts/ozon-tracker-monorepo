@@ -35,10 +35,6 @@ import {
   type PriceObservationRepositoryPort,
 } from './application/price-observation-repository.port.js';
 import {
-  priceRefreshScheduleOf,
-  schedulePeriodMs,
-} from './application/price-refresh-schedule.type.js';
-import {
   PRODUCT_LINK_EXPANDER,
   type ProductLinkExpanderPort,
 } from './application/product-link-expander.port.js';
@@ -47,6 +43,7 @@ import { RefreshPricesUseCase } from './application/refresh-prices.use-case.js';
 import { RemoveProductUseCase } from './application/remove-product.use-case.js';
 import { RemoveUserProductsUseCase } from './application/remove-user-products.use-case.js';
 import { RequestPriceObservationUseCase } from './application/request-price-observation.use-case.js';
+import { SpreadPriceJobsUseCase } from './application/spread-price-jobs.use-case.js';
 import { StoreProductThumbnailUseCase } from './application/store-product-thumbnail.use-case.js';
 import {
   TRACKED_PRODUCT_REPOSITORY,
@@ -59,13 +56,6 @@ import { PrismaPriceObservationRepositoryAdapter } from './infrastructure/prisma
 import { PrismaTrackedProductRepositoryAdapter } from './infrastructure/prisma-tracked-product-repository.adapter.js';
 import { PriceResultsConsumer } from './presentation/price-results.consumer.js';
 import { ProductsController } from './presentation/products.controller.js';
-
-function refreshScheduleSettings(config: AppConfigInterface): {
-  intervalMs: number | null;
-  minute: number;
-} {
-  return { intervalMs: config.priceRefreshIntervalMs, minute: config.priceRefreshMinute };
-}
 
 @Module({
   imports: [PrismaModule, JobModule, ProxyModule, HandbookModule],
@@ -240,11 +230,18 @@ function refreshScheduleSettings(config: AppConfigInterface): {
       ],
     },
     {
+      provide: SpreadPriceJobsUseCase,
+      useFactory: (config: AppConfigInterface): SpreadPriceJobsUseCase =>
+        new SpreadPriceJobsUseCase(config.priceProxyLagMs),
+      inject: [APP_CONFIG],
+    },
+    {
       provide: RefreshPricesUseCase,
       useFactory: (
         products: TrackedProductRepositoryPort,
         chooseRoutes: ChoosePriceRoutesUseCase,
         scheduleJob: ScheduleJobUseCase,
+        spread: SpreadPriceJobsUseCase,
         config: AppConfigInterface,
         logger: LoggerPort,
       ): RefreshPricesUseCase =>
@@ -252,9 +249,9 @@ function refreshScheduleSettings(config: AppConfigInterface): {
           products,
           chooseRoutes,
           scheduleJob,
+          spread,
           {
-            maxAgeMs: config.priceRefreshMaxAgeMs,
-            periodMs: schedulePeriodMs(priceRefreshScheduleOf(refreshScheduleSettings(config))),
+            refreshAfterMs: config.priceRefreshAfterMs,
             batchSize: config.priceRefreshBatchSize,
             timeoutMs: config.priceTimeoutMs,
           },
@@ -265,6 +262,7 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         TRACKED_PRODUCT_REPOSITORY,
         ChoosePriceRoutesUseCase,
         ScheduleJobUseCase,
+        SpreadPriceJobsUseCase,
         APP_CONFIG,
         LOGGER,
       ],
@@ -280,7 +278,10 @@ function refreshScheduleSettings(config: AppConfigInterface): {
         new PeriodicPriceRefreshAdapter(
           refresh,
           limiter,
-          priceRefreshScheduleOf(refreshScheduleSettings(config)),
+          {
+            pollMs: config.priceRefreshPollMs,
+            refreshAfterMs: config.priceRefreshAfterMs,
+          },
           logger.child('price-refresh'),
         ),
       inject: [RefreshPricesUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
