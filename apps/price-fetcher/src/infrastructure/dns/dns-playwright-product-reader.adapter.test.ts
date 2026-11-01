@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import {
   type Browser,
   type BrowserContext,
@@ -11,7 +12,6 @@ import {
 import { DnsReferenceParser, ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import { DnsCityCookieParser } from './dns-city-cookie.parser.js';
 import { DnsPageParser } from './dns-page.parser.js';
@@ -61,6 +61,8 @@ interface SiteInterface {
   cityId?: string;
   /** What the site answers to the request to change the city. */
   setCity?: { status: number; body: string } | 'hangs';
+  /** The status the GeoIP service answers with; it gives the address when not said. */
+  geoIpStatus?: number;
   /** The time the reader is given for a step; ten seconds when not said. */
   timeoutMs?: number;
 }
@@ -89,7 +91,9 @@ function createReader(site: SiteInterface): {
         await context.route('**/*', async (route: Route): Promise<void> => {
           const url = route.request().url();
           if (url.startsWith('https://ipinfo.io/')) {
-            await route.fulfill({ json: { ip: '217.71.230.103', country: 'RU' } });
+            await (site.geoIpStatus === undefined
+              ? route.fulfill({ json: { ip: '217.71.230.103', country: 'RU' } })
+              : route.fulfill({ status: site.geoIpStatus, body: 'Too Many Requests' }));
           } else if (url === reference.url) {
             const html = site.pages[Math.min(served, site.pages.length - 1)] ?? '';
             served += 1;
@@ -242,3 +246,16 @@ void test(
     assert.equal(browser.contexts().length, 0);
   },
 );
+
+void test('does not take a GeoIP service that is out of reach for a proxy that exits in the wrong country', async (): Promise<void> => {
+  const { reader, requests } = createReader({
+    pages: [inStock('153 999 ₽')],
+    cityId: moscow,
+    geoIpStatus: 429,
+  });
+
+  const result = await reader.read(reference, proxy, new AbortController().signal);
+
+  assert.equal(result.status, 'network_error');
+  assert.deepEqual(requests, []);
+});

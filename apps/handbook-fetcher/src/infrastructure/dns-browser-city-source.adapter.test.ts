@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import {
   type Browser,
   type BrowserContext,
@@ -10,7 +11,6 @@ import {
 } from 'playwright-core';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 import { DnsBrowserCitySourceAdapter } from './dns-browser-city-source.adapter.js';
 
 let browser: Browser;

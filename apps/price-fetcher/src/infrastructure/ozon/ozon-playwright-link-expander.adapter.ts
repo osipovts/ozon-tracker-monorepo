@@ -1,9 +1,9 @@
+import type { CamoufoxOptionsFactory } from 'camoufox-options';
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { Browser } from 'playwright-core';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { LinkExpanderPort } from '../../application/link/link-expander.port.js';
-import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 
 /** Follows the redirect of a short link of Ozon in a browser: the site lets only a browser that passes its check through. */
 export class OzonPlaywrightLinkExpanderAdapter implements LinkExpanderPort {

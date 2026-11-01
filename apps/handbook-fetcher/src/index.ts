@@ -1,11 +1,11 @@
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import { ConsoleLoggerAdapter, parseLogLevel } from 'logger';
 import { type HandbookFetchResultType, queueNames } from 'queue-contract';
 import { JobLifecycleReporter, QueueMessageParser, QueueWorkerRunner } from 'queue-worker';
 import { z } from 'zod';
 
 import { FetchCitiesUseCase } from './application/fetch-cities.use-case.js';
-import { CamoufoxOptionsFactory } from './infrastructure/camoufox-options.factory.js';
 import { DnsBrowserCitySourceAdapter } from './infrastructure/dns-browser-city-source.adapter.js';
 import { HandbookFetchController } from './presentation/handbook-fetch.controller.js';
 

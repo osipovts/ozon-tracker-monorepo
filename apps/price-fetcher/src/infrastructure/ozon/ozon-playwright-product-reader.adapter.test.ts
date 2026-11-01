@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 
 import { Camoufox } from 'camoufox-js';
+import { CamoufoxOptionsFactory } from 'camoufox-options';
 import {
   type Browser,
   type BrowserContext,
@@ -11,7 +12,6 @@ import {
 import { OzonReferenceParser, ProductReferenceEntity } from 'product-reference';
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
 import { OzonChallengeParser } from './ozon-challenge.parser.js';
 import { OzonPageParser } from './ozon-page.parser.js';

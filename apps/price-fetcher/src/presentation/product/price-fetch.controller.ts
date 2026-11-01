@@ -56,7 +56,7 @@ export class PriceFetchController {
       );
 
       // The queue brings a failed job back after a pause; a job that read no price does not fail by itself.
-      const marked = job.products.map((product) =>
+      const marked = job.products.map((product): PriceFetchJobType['products'][number] =>
         product.read === true || isRead(statuses.get(product.trackedProductId))
           ? { ...product, read: true }
           : product,

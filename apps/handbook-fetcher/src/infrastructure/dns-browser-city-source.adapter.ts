@@ -1,3 +1,4 @@
+import type { CamoufoxOptionsFactory } from 'camoufox-options';
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
@@ -8,7 +9,6 @@ import type {
   CitySourceSessionInterface,
 } from '../application/city-source.port.js';
 import type { CityInterface } from '../domain/city.interface.js';
-import type { CamoufoxOptionsFactory } from './camoufox-options.factory.js';
 
 const answerSchema = z.object({
   data: z.object({

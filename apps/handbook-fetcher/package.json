@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "camoufox-js": "^0.13.0",
+    "camoufox-options": "workspace:*",
     "logger": "workspace:*",
     "playwright-core": "~1.62.1",
     "proxy-endpoint": "workspace:*",

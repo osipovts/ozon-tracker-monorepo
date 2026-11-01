@@ -88,3 +88,44 @@ void test('stops probing when the signal is aborted', async (): Promise<void> =>
     ),
   );
 });
+
+void test('stops the other workers when one fails, so that none goes on after the job has failed', async (): Promise<void> => {
+  let probed = 0;
+  const slowProbe: ProxyProbePort = {
+    probe: async (proxy, _timeoutMs, signal): Promise<ProxyCheckInterface> => {
+      probed += 1;
+      await new Promise((resolve): void => {
+        setTimeout(resolve, 20);
+      });
+      signal.throwIfAborted();
+
+      return {
+        server: proxy.server,
+        alive: true,
+        latencyMs: 100,
+        country: 'RU',
+        exitIp: '217.71.230.1',
+        checkedAt: '2026-10-24T12:00:00.000Z',
+      };
+    },
+  };
+
+  await assert.rejects(
+    new RefreshProxySourceUseCase(source, slowProbe, 2, 3).execute(
+      { maxCandidates: 7, probeTimeoutMs: 1000 },
+      new AbortController().signal,
+      {
+        onCandidates: (): Promise<void> => Promise.resolve(),
+        onProgress: (): Promise<void> => Promise.resolve(),
+        onChecks: (): Promise<void> => Promise.reject(new Error('redis is down')),
+      },
+    ),
+    /redis is down/,
+  );
+  const probedAtFailure = probed;
+  await new Promise((resolve): void => {
+    setTimeout(resolve, 150);
+  });
+
+  assert.equal(probed, probedAtFailure);
+});

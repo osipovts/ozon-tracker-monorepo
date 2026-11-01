@@ -1,3 +1,4 @@
+import type { CamoufoxOptionsFactory } from 'camoufox-options';
 import { errorMessage, type LoggerPort, silentLogger } from 'logger';
 import type { BrowserContext, Page, Response } from 'playwright-core';
 import type { Browser } from 'playwright-core';
@@ -6,8 +7,8 @@ import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ProductReaderPort } from '../../application/product/product-reader.port.js';
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
-import type { CamoufoxOptionsFactory } from '../shared/camoufox-options.factory.js';
 import type { GeoIpPageParser } from '../shared/geo-ip-page.parser.js';
+import { ProxyExitChecker } from '../shared/proxy-exit.checker.js';
 import type { DnsCityCookieParser } from './dns-city-cookie.parser.js';
 import type { DnsPageInterface } from './dns-page.interface.js';
 import type { DnsPageParser } from './dns-page.parser.js';
@@ -27,6 +28,7 @@ export class DnsPlaywrightProductReaderAdapter implements ProductReaderPort {
     private readonly parsers: DnsReaderParsersInterface,
     private readonly timeoutMs: number,
     private readonly logger: LoggerPort = silentLogger,
+    private readonly exits: ProxyExitChecker = new ProxyExitChecker(),
   ) {}
 
   async read(
@@ -73,15 +75,20 @@ export class DnsPlaywrightProductReaderAdapter implements ProductReaderPort {
     let exitIp: string | null = null;
 
     if (proxy !== null) {
-      const exit = await this.parsers.geoIp.parse(page);
       const country = marketplaceExitCountries[reference.marketplace];
-      if (exit?.country !== country) {
+      const exit = await this.exits.check(proxy, country, () => this.parsers.geoIp.parse(page));
+      if (exit.status === 'unavailable') {
+        this.logger.warn(`GeoIP gave no answer through ${proxy.server}`);
+
+        return { status: 'network_error' };
+      }
+      if (exit.status === 'rejected') {
         this.logger.warn(`GeoIP did not confirm an exit in ${country} through ${proxy.server}`);
 
         return { status: 'proxy_rejected' };
       }
 
-      exitIp = exit.ip;
+      exitIp = exit.exitIp;
     }
 
     const lastResponse = this.watch(page);
