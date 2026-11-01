@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { ProxyCheckInterface } from '../domain/proxy-check.interface.js';
+import type { ProxyProbeResultInterface } from '../domain/proxy-probe-result.interface.js';
 import type { ProxyProbePort } from './proxy-probe.port.js';
 import type { ProxySourcePort } from './proxy-source.port.js';
 import { RefreshProxySourceUseCase } from './refresh-proxy-source.use-case.js';
@@ -18,7 +18,7 @@ const source: ProxySourcePort = {
   fetchCandidates: (): Promise<ProxyEndpointEntity[]> => Promise.resolve(candidates),
 };
 const probe: ProxyProbePort = {
-  probe: (proxy): Promise<ProxyCheckInterface> =>
+  probe: (proxy): Promise<ProxyProbeResultInterface> =>
     Promise.resolve({
       server: proxy.server,
       alive: !proxy.server.endsWith('.11:1080'),
@@ -36,7 +36,7 @@ void test('limits candidates, counts alive proxies and reports checks in batches
   let alive = 0;
 
   await new RefreshProxySourceUseCase(source, probe, 3, 2).execute(
-    { maxCandidates: 5, probeTimeoutMs: 1000 },
+    { maxCandidates: 5, recheck: [], probeTimeoutMs: 1000 },
     new AbortController().signal,
     {
       onCandidates: (count): Promise<void> => {
@@ -74,7 +74,7 @@ void test('stops probing when the signal is aborted', async (): Promise<void> =>
   const controller = new AbortController();
   await assert.rejects(
     new RefreshProxySourceUseCase(source, probe, 1, 1).execute(
-      { maxCandidates: 7, probeTimeoutMs: 1000 },
+      { maxCandidates: 7, recheck: [], probeTimeoutMs: 1000 },
       controller.signal,
       {
         onCandidates: (): Promise<void> => Promise.resolve(),
@@ -92,7 +92,7 @@ void test('stops probing when the signal is aborted', async (): Promise<void> =>
 void test('stops the other workers when one fails, so that none goes on after the job has failed', async (): Promise<void> => {
   let probed = 0;
   const slowProbe: ProxyProbePort = {
-    probe: async (proxy, _timeoutMs, signal): Promise<ProxyCheckInterface> => {
+    probe: async (proxy, _timeoutMs, signal): Promise<ProxyProbeResultInterface> => {
       probed += 1;
       await new Promise((resolve): void => {
         setTimeout(resolve, 20);
@@ -112,7 +112,7 @@ void test('stops the other workers when one fails, so that none goes on after th
 
   await assert.rejects(
     new RefreshProxySourceUseCase(source, slowProbe, 2, 3).execute(
-      { maxCandidates: 7, probeTimeoutMs: 1000 },
+      { maxCandidates: 7, recheck: [], probeTimeoutMs: 1000 },
       new AbortController().signal,
       {
         onCandidates: (): Promise<void> => Promise.resolve(),
@@ -128,4 +128,37 @@ void test('stops the other workers when one fails, so that none goes on after th
   });
 
   assert.equal(probed, probedAtFailure);
+});
+
+void test('checks the proxies the hub asks to recheck as well, and tells them from the ones a list names', async (): Promise<void> => {
+  const checks: Array<[string, boolean]> = [];
+  const listed = candidates[0]?.server ?? '';
+
+  await new RefreshProxySourceUseCase(source, probe, 3, 10).execute(
+    {
+      maxCandidates: 2,
+      // One is in the list too (checked once, as seen), the other is only rechecked.
+      recheck: [listed, 'socks5://217.71.230.99:1080'],
+      probeTimeoutMs: 1000,
+    },
+    new AbortController().signal,
+    {
+      onCandidates: (): Promise<void> => Promise.resolve(),
+      onProgress: (): Promise<void> => Promise.resolve(),
+      onChecks: (batch): Promise<void> => {
+        for (const check of batch) checks.push([check.server, check.seen]);
+
+        return Promise.resolve();
+      },
+    },
+  );
+
+  assert.deepEqual(
+    checks.toSorted(([a], [b]): number => a.localeCompare(b)),
+    [
+      ['socks5://217.71.230.10:1080', true],
+      ['socks5://217.71.230.11:1080', true],
+      ['socks5://217.71.230.99:1080', false],
+    ],
+  );
 });

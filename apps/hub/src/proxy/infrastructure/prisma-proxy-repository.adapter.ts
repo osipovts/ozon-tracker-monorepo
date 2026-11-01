@@ -22,6 +22,7 @@ function toEntity(row: ProxyRow): ProxyEntity {
     checksTotal: row.checksTotal,
     checksAlive: row.checksAlive,
     lastCheckedAt: row.lastCheckedAt,
+    lastSeenAt: row.lastSeenAt,
     disabledAt: row.disabledAt,
     credentials:
       row.username === null || row.password === null
@@ -102,6 +103,22 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
       averageLatencyMs: average === null ? null : Math.round(average),
       lastCheckedAt: latest.lastCheckedAt,
     };
+  }
+
+  async listUnseen(since: Date, limit: number): Promise<ProxyEntity[]> {
+    const rows = await this.prisma.proxy.findMany({
+      where: { source: { not: manualProxySource }, lastSeenAt: { lt: since } },
+      orderBy: [{ lastCheckedAt: 'asc' }, { server: 'asc' }],
+      take: limit,
+    });
+
+    return rows.map(toEntity);
+  }
+
+  async deleteMany(servers: string[]): Promise<number> {
+    const { count } = await this.prisma.proxy.deleteMany({ where: { server: { in: servers } } });
+
+    return count;
   }
 
   async delete(server: string): Promise<boolean> {

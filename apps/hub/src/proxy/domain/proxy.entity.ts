@@ -3,6 +3,12 @@ import type { ProxyCheckInterface } from './proxy-check.interface.js';
 /** The source of the proxies an administrator added by hand: they go before the found ones. */
 export const manualProxySource = 'manual';
 
+/** A found proxy that no list has named for this long, and is dead, is not found any more. */
+export const proxyUnseenLimitMs = 6 * 60 * 60 * 1000;
+
+/** The failed checks a dead proxy needs before it may be dropped. */
+export const proxyFailureLimit = 20;
+
 export interface ProxyCredentialsInterface {
   username: string;
   password: string;
@@ -20,6 +26,8 @@ export interface ProxyInterface {
   checksTotal: number;
   checksAlive: number;
   lastCheckedAt: Date;
+  /** When a list of a source last named the proxy. */
+  lastSeenAt: Date;
   /** When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on. */
   disabledAt: Date | null;
   /** Kept apart from the server, which is listed and keys the sessions; null for a proxy without them. */
@@ -46,6 +54,18 @@ export class ProxyEntity {
 
   get isManual(): boolean {
     return this.snapshot.source === manualProxySource;
+  }
+
+  /** A found proxy that is dead, failed enough checks, and has been out of the lists for long. */
+  isExpired(now: Date): boolean {
+    const { alive, checksTotal, checksAlive, lastSeenAt } = this.snapshot;
+
+    return (
+      !this.isManual &&
+      !alive &&
+      checksTotal - checksAlive >= proxyFailureLimit &&
+      now.getTime() - lastSeenAt.getTime() > proxyUnseenLimitMs
+    );
   }
 
   /** The address the workers connect to: the server with the credentials, if it has them. */
@@ -85,6 +105,7 @@ export class ProxyEntity {
       checksTotal: 0,
       checksAlive: 0,
       lastCheckedAt: at,
+      lastSeenAt: at,
       disabledAt: null,
       ...previous?.snapshot,
       credentials,
@@ -105,8 +126,8 @@ export class ProxyEntity {
 
     return new ProxyEntity({
       server: check.server,
-      // A found proxy that was added by hand stays manual.
-      source: known?.source === manualProxySource ? manualProxySource : check.source,
+      // The source that found the proxy first keeps it, and a proxy added by hand stays manual.
+      source: known?.source ?? check.source,
       country: latest(check.alive, check.country, known?.country),
       exitIp: latest(check.alive, check.exitIp, known?.exitIp),
       alive: check.alive,
@@ -114,6 +135,7 @@ export class ProxyEntity {
       checksTotal: (known?.checksTotal ?? 0) + 1,
       checksAlive: (known?.checksAlive ?? 0) + (check.alive ? 1 : 0),
       lastCheckedAt: check.checkedAt,
+      lastSeenAt: check.seen ? check.checkedAt : (known?.lastSeenAt ?? check.checkedAt),
       disabledAt: known?.disabledAt ?? null,
       credentials: known?.credentials ?? null,
     });

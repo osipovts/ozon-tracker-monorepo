@@ -25,6 +25,8 @@ model Proxy {
   /// checksAlive / checksTotal, kept in the row to sort by it.
   successRate   Float     @default(0)
   lastCheckedAt DateTime
+  /// When a list of a source last named the proxy.
+  lastSeenAt    DateTime  @default(now())
   /// When an administrator turned the proxy off: the workers are not given it, and a check does not turn it on.
   disabledAt    DateTime?
   /// Credentials of an HTTP(S) proxy that asks for them; given to the workers only, never listed.

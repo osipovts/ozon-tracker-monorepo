@@ -1,4 +1,5 @@
 import { type LoggerPort, silentLogger } from 'logger';
+import { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ProxyCheckInterface } from '../domain/proxy-check.interface.js';
 import type { ProxyProbePort } from './proxy-probe.port.js';
@@ -6,6 +7,8 @@ import type { ProxySourcePort } from './proxy-source.port.js';
 
 export interface RefreshProxySourceParamsInterface {
   maxCandidates: number;
+  /** Proxies to check as well, though the source does not name them (the ones the hub holds). */
+  recheck: readonly string[];
   probeTimeoutMs: number;
 }
 
@@ -33,7 +36,12 @@ export class RefreshProxySourceUseCase {
     listener: RefreshProxySourceListenerInterface,
   ): Promise<void> {
     const fetched = await this.source.fetchCandidates(signal);
-    const candidates = fetched.slice(0, params.maxCandidates);
+    const listed = fetched.slice(0, params.maxCandidates);
+    const seen = new Set(listed.map((proxy): string => proxy.server));
+    const rechecked = params.recheck
+      .filter((server): boolean => !seen.has(server))
+      .map((server): ProxyEndpointEntity => new ProxyEndpointEntity(server));
+    const candidates = [...listed, ...rechecked];
     const total = candidates.length;
     this.logger.debug(
       `Source ${this.source.name} returned ${String(fetched.length)} candidates, checking ${String(total)}`,
@@ -62,7 +70,8 @@ export class RefreshProxySourceUseCase {
     const work = async (): Promise<void> => {
       for (let proxy = candidates.shift(); proxy !== undefined; proxy = candidates.shift()) {
         stop.throwIfAborted();
-        const check = await this.probe.probe(proxy, params.probeTimeoutMs, stop);
+        const result = await this.probe.probe(proxy, params.probeTimeoutMs, stop);
+        const check: ProxyCheckInterface = { ...result, seen: seen.has(proxy.server) };
         checked += 1;
         if (check.alive) alive += 1;
         buffer.push(check);

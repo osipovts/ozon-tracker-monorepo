@@ -89,6 +89,19 @@ export class InMemoryProxyRepositoryAdapter implements ProxyRepositoryPort {
     });
   }
 
+  listUnseen(since: Date, limit: number): Promise<ProxyEntity[]> {
+    return Promise.resolve(
+      Array.from(this.proxies.values())
+        .filter((proxy): boolean => !proxy.isManual && proxy.snapshot.lastSeenAt < since)
+        .toSorted((a, b): number => a.snapshot.lastCheckedAt.getTime() - b.snapshot.lastCheckedAt.getTime())
+        .slice(0, limit),
+    );
+  }
+
+  deleteMany(servers: string[]): Promise<number> {
+    return Promise.resolve(servers.filter((server): boolean => this.proxies.delete(server)).length);
+  }
+
   delete(server: string): Promise<boolean> {
     return Promise.resolve(this.proxies.delete(server));
   }

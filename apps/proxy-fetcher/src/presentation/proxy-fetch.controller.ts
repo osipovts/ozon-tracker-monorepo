@@ -75,7 +75,11 @@ export class ProxyFetchController {
     };
 
     await this.useCases[job.source].execute(
-      { maxCandidates: job.maxCandidates, probeTimeoutMs: job.probeTimeoutMs },
+      {
+        maxCandidates: job.maxCandidates,
+        recheck: job.recheck,
+        probeTimeoutMs: job.probeTimeoutMs,
+      },
       signal,
       listener,
     );

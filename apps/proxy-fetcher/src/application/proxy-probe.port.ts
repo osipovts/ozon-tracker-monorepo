@@ -1,6 +1,6 @@
 import type { ProxyEndpointEntity } from 'proxy-endpoint';
 
-import type { ProxyCheckInterface } from '../domain/proxy-check.interface.js';
+import type { ProxyProbeResultInterface } from '../domain/proxy-probe-result.interface.js';
 
 export interface ProxyProbePort {
   /** Never rejects because of an unhealthy proxy: it reports `alive: false` instead. */
@@ -8,5 +8,5 @@ export interface ProxyProbePort {
     proxy: ProxyEndpointEntity,
     timeoutMs: number,
     signal: AbortSignal,
-  ): Promise<ProxyCheckInterface>;
+  ): Promise<ProxyProbeResultInterface>;
 }

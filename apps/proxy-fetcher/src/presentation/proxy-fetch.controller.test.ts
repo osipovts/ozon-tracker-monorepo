@@ -52,6 +52,7 @@ void test('reports the progress of a job from start to finish', async (): Promis
         country: 'RU',
         exitIp: '203.0.113.10',
         checkedAt: '2026-10-24T12:00:00.000Z',
+        seen: true,
       },
     ]);
   }, published);

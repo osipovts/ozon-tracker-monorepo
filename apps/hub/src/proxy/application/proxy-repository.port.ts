@@ -34,6 +34,10 @@ export interface ProxyRepositoryPort {
    * was turned off and its credentials, stays as it is in the store: a batch read before it must not undo it.
    */
   saveChecked(proxies: ProxyEntity[]): Promise<void>;
+  /** The found proxies no list has named since the time, the longest unchecked first. */
+  listUnseen(since: Date, limit: number): Promise<ProxyEntity[]>;
+  /** Deletes the proxies; returns how many there were. */
+  deleteMany(servers: string[]): Promise<number>;
   /** Deletes the proxy; false if there was none. */
   delete(server: string): Promise<boolean>;
   /** Deletes every proxy; returns how many there were. */

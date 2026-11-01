@@ -8,7 +8,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { z } from 'zod';
 
 import type { ProxyProbePort } from '../application/proxy-probe.port.js';
-import type { ProxyCheckInterface } from '../domain/proxy-check.interface.js';
+import type { ProxyProbeResultInterface } from '../domain/proxy-probe-result.interface.js';
 
 const geoSchema = z.object({
   ip: z.ipv4(),
@@ -30,7 +30,7 @@ export class GeoIpProxyProbeAdapter implements ProxyProbePort {
     proxy: ProxyEndpointEntity,
     timeoutMs: number,
     signal: AbortSignal,
-  ): Promise<ProxyCheckInterface> {
+  ): Promise<ProxyProbeResultInterface> {
     const checkedAt = new Date().toISOString();
     const startedAt = performance.now();
     const agent = this.createAgent(proxy);

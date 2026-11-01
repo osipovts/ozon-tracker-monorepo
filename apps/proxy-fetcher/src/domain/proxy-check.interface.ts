@@ -1,10 +1,6 @@
-export interface ProxyCheckInterface {
-  /** Proxy URL without credentials. */
-  server: string;
-  alive: boolean;
-  /** Duration of the successful check; null when the proxy is not alive. */
-  latencyMs: number | null;
-  country: string | null;
-  exitIp: string | null;
-  checkedAt: string;
+import type { ProxyProbeResultInterface } from './proxy-probe-result.interface.js';
+
+export interface ProxyCheckInterface extends ProxyProbeResultInterface {
+  /** Whether a list of the source named the proxy; false for one the hub only asked to check again. */
+  seen: boolean;
 }

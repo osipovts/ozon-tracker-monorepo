@@ -28,6 +28,8 @@ export const proxyFetchResultSchema = z.discriminatedUnion('type', [
           .nullable(),
         exitIp: z.ipv4().nullable(),
         checkedAt: z.iso.datetime(),
+        /** Whether a list of the source named the proxy; false for one only rechecked. */
+        seen: z.boolean().default(true),
       }),
     ),
   }),
