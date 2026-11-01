@@ -52,6 +52,7 @@ const ayu: MantineColorsTuple = [
 
 export const ayuTheme: MantineThemeOverride = createTheme({
   colors: { gray, dark, ayu },
+  fontFamily: 'Roboto, sans-serif',
   primaryColor: 'ayu',
   primaryShade: { light: 6, dark: 5 },
   autoContrast: true,
