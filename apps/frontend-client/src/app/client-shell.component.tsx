@@ -49,7 +49,14 @@ export function ClientShell(): ReactElement {
         <Container size="lg" h="100%">
           <Group h="100%" justify="space-between" wrap="nowrap">
             <Title order={4} ff={BRAND_FONT} fz={64} fw={400} lh={1}>
-              <Anchor component={Link} to="/" c="inherit" underline="never">
+              <Anchor
+                component={Link}
+                to="/"
+                c="inherit"
+                fz="inherit"
+                lh="inherit"
+                underline="never"
+              >
                 {t('shell.title')}
               </Anchor>
             </Title>
