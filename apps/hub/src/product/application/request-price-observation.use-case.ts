@@ -1,8 +1,8 @@
 import { type LoggerPort, silentLogger } from 'logger';
 
 import type { ScheduleJobUseCase } from '../../job/application/index.js';
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import type { TrackedProductRepositoryPort } from './tracked-product-repository.port.js';
 
@@ -38,7 +38,7 @@ export class RequestPriceObservationUseCase {
 
     this.logger.info(
       `Queued price observation ${jobId} of ${product.marketplace} ${product.externalId} (product ${product.id}) via ${String(routes.length)} routes: ${routes
-        .map((route): string => route.server ?? 'direct')
+        .map((route): string => route.server)
         .join(', ')}`,
     );
 

@@ -1,5 +1,5 @@
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import type { ExpandProductLinkUseCase } from './expand-product-link.use-case.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';
 import type { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
 import type { StoreProductThumbnailUseCase } from './store-product-thumbnail.use-case.js';

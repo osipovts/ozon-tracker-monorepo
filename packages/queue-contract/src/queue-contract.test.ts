@@ -9,24 +9,27 @@ import { proxyFetchJobSchema } from './proxy-fetch-job.type.js';
 import { proxyFetchResultSchema } from './proxy-fetch-result.type.js';
 
 const uuid = '3f0c9a52-7a53-4a64-9d0d-2f2f6c1f0a11';
-void test('accepts a price fetch job with proxies, and a direct route', (): void => {
+void test('accepts a price fetch job with proxies, and rejects a direct route', (): void => {
   const job = {
     jobId: uuid,
     proxies: [
       { server: 'socks5://203.0.113.10:1080' },
       { server: 'http://user:secret@203.0.113.11:8080' },
-      { server: null },
     ],
     products: [{ trackedProductId: uuid, url: 'https://www.ozon.ru/product/1/' }],
     timeoutMs: 15000,
   };
   assert.equal(priceFetchJobSchema.safeParse(job).success, true);
+  assert.equal(
+    priceFetchJobSchema.safeParse({ ...job, proxies: [...job.proxies, { server: null }] }).success,
+    false,
+  );
 });
 
 void test('accepts a product marked as read by an earlier try', (): void => {
   const job = {
     jobId: uuid,
-    proxies: [{ server: null }],
+    proxies: [{ server: 'socks5://203.0.113.10:1080' }],
     products: [{ trackedProductId: uuid, url: 'https://www.ozon.ru/product/1/', read: true }],
     timeoutMs: 15000,
   };
@@ -38,7 +41,7 @@ void test('accepts a product marked as read by an earlier try', (): void => {
 void test('rejects empty and malformed price fetch jobs', (): void => {
   const valid = {
     jobId: uuid,
-    proxies: [{ server: null }],
+    proxies: [{ server: 'socks5://203.0.113.10:1080' }],
     products: [{ trackedProductId: uuid, url: 'https://www.ozon.ru/product/1/' }],
     timeoutMs: 15000,
   };
@@ -150,7 +153,7 @@ void test('validates job progress messages of both workers', (): void => {
 void test('accepts the city of a product in a price fetch job, and no city', (): void => {
   const job = (product: Record<string, unknown>): unknown => ({
     jobId: uuid,
-    proxies: [{ server: null }],
+    proxies: [{ server: 'socks5://203.0.113.10:1080' }],
     products: [
       {
         trackedProductId: uuid,
@@ -170,10 +173,11 @@ void test('validates handbook fetch jobs: the handbook and the routes it is read
   const job = {
     jobId: uuid,
     handbook: 'dns-cities',
-    proxies: ['socks5://203.0.113.10:1080', null],
+    proxies: ['socks5://203.0.113.10:1080'],
   };
 
   assert.equal(handbookFetchJobSchema.safeParse(job).success, true);
+  assert.equal(handbookFetchJobSchema.safeParse({ ...job, proxies: [null] }).success, false);
   assert.equal(handbookFetchJobSchema.safeParse({ ...job, proxies: [] }).success, false);
   assert.equal(handbookFetchJobSchema.safeParse({ ...job, handbook: 'unknown' }).success, false);
 });

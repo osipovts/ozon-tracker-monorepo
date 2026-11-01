@@ -146,7 +146,7 @@ void test('reads the price of a product that is in stock, through a proxy, in th
 void test('reads the price of a product that is out of stock', async (): Promise<void> => {
   const { reader } = createReader({ pages: [outOfStock('204 999 ₽')] });
 
-  const result = await reader.read(reference, null, new AbortController().signal);
+  const result = await reader.read(reference, proxy, new AbortController().signal);
 
   assert.ok('snapshot' in result);
   assert.equal(result.snapshot.availability, 'out_of_stock');
@@ -159,7 +159,7 @@ void test('leaves the city alone when the site has chosen the one that is asked 
     cityId: irkutsk,
   });
 
-  await reader.read(reference.inCity(irkutsk), null, new AbortController().signal);
+  await reader.read(reference.inCity(irkutsk), proxy, new AbortController().signal);
 
   assert.deepEqual(requests, ['card']);
 });
@@ -171,7 +171,7 @@ void test('changes the city of the site and reads the card again, so that the pr
     setCity: { status: 200, body: JSON.stringify(irkutsk) },
   });
 
-  const result = await reader.read(reference.inCity(irkutsk), null, new AbortController().signal);
+  const result = await reader.read(reference.inCity(irkutsk), proxy, new AbortController().signal);
 
   assert.ok('snapshot' in result);
   assert.deepEqual(result.snapshot.prices, [{ amountMinor: 15299900, currency: 'RUB' }]);
@@ -186,7 +186,7 @@ void test('does not report the price of another city when the city cannot be cha
   });
 
   assert.deepEqual(
-    await reader.read(reference.inCity(irkutsk), null, new AbortController().signal),
+    await reader.read(reference.inCity(irkutsk), proxy, new AbortController().signal),
     {
       status: 'parse_error',
     },
@@ -195,13 +195,13 @@ void test('does not report the price of another city when the city cannot be cha
 
 void test('reports an HTTP error and a page that is no card', async (): Promise<void> => {
   const forbidden = createReader({ pages: ['<h1>Forbidden</h1>'], status: 403 });
-  assert.deepEqual(await forbidden.reader.read(reference, null, new AbortController().signal), {
+  assert.deepEqual(await forbidden.reader.read(reference, proxy, new AbortController().signal), {
     status: 'http_error',
     httpStatus: 403,
   });
 
   const empty = createReader({ pages: ['<p>nothing</p>'] });
-  assert.deepEqual(await empty.reader.read(reference, null, new AbortController().signal), {
+  assert.deepEqual(await empty.reader.read(reference, proxy, new AbortController().signal), {
     status: 'parse_error',
   });
 });
@@ -218,7 +218,7 @@ void test('waits for the price that the card draws after an empty block of it is
     ],
   });
 
-  const result = await reader.read(reference, null, new AbortController().signal);
+  const result = await reader.read(reference, proxy, new AbortController().signal);
 
   assert.ok('snapshot' in result);
   assert.deepEqual(result.snapshot.prices, [{ amountMinor: 15299900, currency: 'RUB' }]);
@@ -239,7 +239,11 @@ void test(
     });
     const started = Date.now();
 
-    const result = await reader.read(reference.inCity(irkutsk), null, new AbortController().signal);
+    const result = await reader.read(
+      reference.inCity(irkutsk),
+      proxy,
+      new AbortController().signal,
+    );
 
     assert.equal(result.status, 'network_error');
     assert.ok(Date.now() - started < 8000);

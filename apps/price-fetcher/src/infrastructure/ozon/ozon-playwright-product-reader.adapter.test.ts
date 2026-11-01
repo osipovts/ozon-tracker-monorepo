@@ -116,7 +116,9 @@ void test('reader accepts the final document after a JavaScript challenge redire
         const context = await browser.newContext(options);
 
         await context.route('**/*', async (route: Route): Promise<void> => {
-          if (route.request().url() === reference.url) {
+          if (route.request().url().startsWith('https://ipinfo.io/')) {
+            await route.fulfill({ json: { ip: '217.71.230.103', country: 'RU' } });
+          } else if (route.request().url() === reference.url) {
             await route.fulfill({
               status: 403,
               contentType: 'text/html',
@@ -138,7 +140,7 @@ void test('reader accepts the final document after a JavaScript challenge redire
     10_000,
   );
 
-  const result = await reader.read(reference, null, new AbortController().signal);
+  const result = await reader.read(reference, proxy, new AbortController().signal);
 
   assert.equal(result.status, 'success');
   assert.ok('snapshot' in result);
@@ -164,25 +166,6 @@ void test('headless reader keeps an unavailable product distinct from a parsing 
   assert.ok('snapshot' in result);
   assert.equal(result.snapshot.availability, 'out_of_stock');
   assert.deepEqual(result.snapshot.prices, []);
-});
-
-void test('direct reader omits proxy configuration and skips GeoIP even for a non-Russian connection', async (): Promise<void> => {
-  const reader = createReader(
-    '<h1>Notebook</h1><div data-widget="webPrice">100 000 ₽</div>',
-    'US',
-    200,
-    (options): void => {
-      assert.equal(options?.proxy, undefined);
-    },
-  );
-
-  const result = await reader.read(reference, null, new AbortController().signal);
-
-  assert.equal(result.status, 'success');
-  assert.ok('snapshot' in result);
-  assert.equal(result.exitIp, null);
-  assert.equal(result.snapshot.prices[0]?.amountMinor, 10000000);
-  assert.equal(browser.contexts().length, 0);
 });
 
 void test('reader reports a challenge', async (): Promise<void> => {

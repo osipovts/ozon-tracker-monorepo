@@ -1,8 +1,8 @@
 import { type LoggerPort, silentLogger } from 'logger';
 import type { OzonShortLinkParser } from 'product-reference';
 
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import type { ProductLinkExpanderPort } from './product-link-expander.port.js';
 import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
 

@@ -21,7 +21,7 @@ const product = { trackedProductId, url: 'https://www.ozon.ru/product/1/' };
 const proxy = 'socks5://217.71.230.103:1080';
 
 async function fetchOne(
-  servers: Array<string | null>,
+  servers: string[],
   reader: ProductReaderPort,
 ): Promise<ProductFetchResultInterface | undefined> {
   const results: ProductFetchResultInterface[] = [];
@@ -65,16 +65,16 @@ void test('stops at a challenge instead of rotating proxies or claiming out-of-s
   assert.equal(result?.status, 'challenge_required');
 });
 
-void test('a null route makes a direct attempt', async (): Promise<void> => {
-  const result = await fetchOne([null], {
+void test('reads the product through the proxy of its route', async (): Promise<void> => {
+  const result = await fetchOne([proxy], {
     read: (_reference, endpoint): Promise<ReadProductResultType> => {
-      assert.equal(endpoint, null);
+      assert.equal(endpoint.server, proxy);
 
       return Promise.resolve({ status: 'network_error' });
     },
   });
 
-  assert.deepEqual(result?.attempts, [{ proxy: null, result: { status: 'network_error' } }]);
+  assert.deepEqual(result?.attempts, [{ proxy, result: { status: 'network_error' } }]);
 });
 
 void test('reports no proxies without routes', async (): Promise<void> => {
@@ -104,7 +104,7 @@ void test('gives the reader the city the product is asked for in', async (): Pro
       (): ProductReaderPort => reader,
     ).execute(
       {
-        routes: [{ server: null }],
+        routes: [{ server: proxy }],
         products: [
           {
             trackedProductId,

@@ -79,6 +79,7 @@ function createSource(
   return { source, asked };
 }
 
+const proxy = new ProxyEndpointEntity('socks5://217.71.230.1:1080');
 const signal = new AbortController().signal;
 
 void test('opens the site once, and asks its API from the page for every letter, mapping the cities', async (): Promise<void> => {
@@ -103,7 +104,7 @@ void test('opens the site once, and asks its API from the page for every letter,
     }),
   });
 
-  const session = await source.open(null, signal);
+  const session = await source.open(proxy, signal);
   const first = await session.read('А', signal);
   const second = await session.read('Б', signal);
   await session.close();
@@ -131,7 +132,7 @@ void test('connects through the proxy it is given', async (): Promise<void> => {
 void test('does not open when the site keeps showing a check, and leaves no browser context behind', async (): Promise<void> => {
   const { source } = createSource({ opens: false });
 
-  await assert.rejects(source.open(null, signal));
+  await assert.rejects(source.open(proxy, signal));
   assert.equal(browser.contexts().length, 0);
 });
 
@@ -144,7 +145,7 @@ void test('rejects an answer that is not the list of cities, or not a success', 
 
   for (const answer of answers) {
     const { source } = createSource({ api: () => answer });
-    const session = await source.open(null, signal);
+    const session = await source.open(proxy, signal);
 
     await assert.rejects(session.read('А', signal));
     await session.close();
@@ -154,7 +155,7 @@ void test('rejects an answer that is not the list of cities, or not a success', 
 void test('does not open when the job is already aborted', async (): Promise<void> => {
   const { source } = createSource({});
 
-  await assert.rejects(source.open(null, AbortSignal.abort()));
+  await assert.rejects(source.open(proxy, AbortSignal.abort()));
 });
 
 void test(
@@ -164,7 +165,7 @@ void test(
   },
   async (): Promise<void> => {
     const { source } = createSource({ hangs: true });
-    const session = await source.open(null, signal);
+    const session = await source.open(proxy, signal);
     const started = Date.now();
 
     await assert.rejects(session.read('А', signal));
@@ -181,7 +182,7 @@ void test(
   },
   async (): Promise<void> => {
     const { source } = createSource({ hangs: true });
-    const session = await source.open(null, signal);
+    const session = await source.open(proxy, signal);
     const stop = new AbortController();
     setTimeout((): void => {
       stop.abort();

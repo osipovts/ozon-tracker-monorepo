@@ -1,7 +1,7 @@
 import {
   ApplicationError,
   type ApplicationErrorKindType,
-} from '../../shared/application/application.error.js';
+} from './application.error.js';
 
 export class NoProxiesAvailableError extends ApplicationError {
   readonly kind: ApplicationErrorKindType = 'conflict';
