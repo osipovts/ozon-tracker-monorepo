@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { ProductReferenceEntity } from 'product-reference';
+import { ProxyEndpointEntity } from 'proxy-endpoint';
 
 import type { ReadProductResultType } from '../../domain/product/product-snapshot.interface.js';
 import { MarketplaceProductReaderAdapter } from './marketplace-product-reader.adapter.js';
@@ -18,7 +19,7 @@ void test('delegates reading to the reader of the reference marketplace', async 
 
   const result = await reader.read(
     new ProductReferenceEntity('ozon', '1', 'https://www.ozon.ru/product/1/'),
-    null,
+    new ProxyEndpointEntity('socks5://217.71.230.1:1080'),
     new AbortController().signal,
   );
 

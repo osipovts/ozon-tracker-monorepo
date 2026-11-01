@@ -91,42 +91,40 @@ void test('sends mail through the SMTP service it is given, and writes it to the
   assert.equal(parser.parse(env()).emailVerificationTtlMs, 86_400_000);
 });
 
-void test('refreshes the prices every hour at the 55th minute, of a maximum age of an hour', (): void => {
+void test('reads a price again 50 minutes after its last read, looking every minute, and 0 turns it off', (): void => {
   const config = parser.parse(env());
 
-  assert.equal(config.priceRefreshIntervalMs, null);
-  assert.equal(config.priceRefreshMinute, 55);
-  assert.equal(config.priceRefreshMaxAgeMs, 60 * 60_000);
+  assert.equal(config.priceRefreshAfterMs, 50 * 60_000);
+  assert.equal(config.priceRefreshPollMs, 60_000);
   assert.equal(config.priceRefreshBatchSize, 200);
-  assert.equal(parser.parse(env(['PRICE_REFRESH_MINUTE', '10'])).priceRefreshMinute, 10);
-  assert.throws(() => parser.parse(env(['PRICE_REFRESH_MINUTE', '60'])));
-  assert.throws(() => parser.parse(env(['PRICE_REFRESH_MAX_AGE_MS', '10'])));
-});
-
-void test('an interval of the refresh takes the place of the hourly schedule, and 0 turns it off', (): void => {
   assert.equal(
-    parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '900000'])).priceRefreshIntervalMs,
+    parser.parse(env(['PRICE_REFRESH_AFTER_MS', '900000'])).priceRefreshAfterMs,
     900_000,
   );
-  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', '0'])).priceRefreshIntervalMs, 0);
-  assert.equal(parser.parse(env(['PRICE_REFRESH_INTERVAL_MS', ''])).priceRefreshIntervalMs, null);
+  assert.equal(parser.parse(env(['PRICE_REFRESH_AFTER_MS', '0'])).priceRefreshAfterMs, 0);
+  assert.equal(parser.parse(env(['PRICE_REFRESH_POLL_MS', '5000'])).priceRefreshPollMs, 5000);
+  assert.throws(() => parser.parse(env(['PRICE_REFRESH_AFTER_MS', '-1'])));
+  assert.throws(() => parser.parse(env(['PRICE_REFRESH_POLL_MS', '10'])));
 });
 
-void test('refreshes the proxies every hour, of 200 candidates a source, and 0 turns it off', (): void => {
+void test('starts the jobs of one proxy 30 seconds apart, which can be changed', (): void => {
+  assert.equal(parser.parse(env()).priceProxyLagMs, 30_000);
+  assert.equal(parser.parse(env(['PRICE_PROXY_LAG_MS', '5000'])).priceProxyLagMs, 5000);
+  assert.throws(() => parser.parse(env(['PRICE_PROXY_LAG_MS', '-1'])));
+});
+
+void test('refreshes the proxies 10 minutes after the last refresh ended, of 200 candidates a source, and 0 turns it off', (): void => {
   const config = parser.parse(env());
 
-  assert.equal(config.proxyRefreshIntervalMinutes, 60);
+  assert.equal(config.proxyRefreshPauseMinutes, 10);
   assert.equal(config.proxyRefreshMaxCandidates, 200);
   assert.equal(config.proxyRefreshProbeTimeoutMs, 10000);
   assert.equal(
-    parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '15'])).proxyRefreshIntervalMinutes,
+    parser.parse(env(['PROXY_REFRESH_PAUSE_MINUTES', '15'])).proxyRefreshPauseMinutes,
     15,
   );
-  assert.equal(
-    parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '0'])).proxyRefreshIntervalMinutes,
-    0,
-  );
-  assert.throws(() => parser.parse(env(['PROXY_REFRESH_INTERVAL_MINUTES', '-1'])));
+  assert.equal(parser.parse(env(['PROXY_REFRESH_PAUSE_MINUTES', '0'])).proxyRefreshPauseMinutes, 0);
+  assert.throws(() => parser.parse(env(['PROXY_REFRESH_PAUSE_MINUTES', '-1'])));
 });
 
 void test('takes the administrators of the hub from a list of emails, normalized', (): void => {

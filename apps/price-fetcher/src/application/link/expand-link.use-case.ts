@@ -8,8 +8,8 @@ import type { LinkExpanderPort } from './link-expander.port.js';
 
 export interface ExpandLinkJobInterface {
   url: string;
-  /** Routes in the order they are tried; a null server is a direct connection. */
-  routes: ReadonlyArray<{ server: string | null }>;
+  /** Routes in the order they are tried: a link is never followed without a proxy. */
+  routes: ReadonlyArray<{ server: string }>;
   timeoutMs: number;
 }
 
@@ -26,17 +26,13 @@ export class ExpandLinkUseCase {
     const url = new URL(job.url);
     if (!this.shortLinks.isShortLink(url)) throw new Error('Not a short link');
 
-    const candidates: Array<ProxyEndpointEntity | null> = [];
+    const candidates: ProxyEndpointEntity[] = [];
     for (const route of job.routes) {
-      let proxy: ProxyEndpointEntity | null = null;
       try {
-        if (route.server !== null) proxy = new ProxyEndpointEntity(route.server);
+        candidates.push(new ProxyEndpointEntity(route.server));
       } catch {
         this.logger.warn('Skipping a route with an unsafe or unsupported proxy address');
-        continue;
       }
-
-      candidates.push(proxy);
     }
 
     const expander = this.createExpander(job.timeoutMs);
@@ -50,7 +46,7 @@ export class ExpandLinkUseCase {
       const target = await expander.expand(url, proxy, signal);
       const product = target === null ? null : this.productUrlOf(target);
       this.logger.verbose(
-        `Attempt ${String(attempts)} via ${proxy?.server ?? 'direct connection'}: ${product ?? 'no product'}`,
+        `Attempt ${String(attempts)} via ${proxy.server}: ${product ?? 'no product'}`,
       );
       if (product !== null) return product;
     }

@@ -31,11 +31,11 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
 
   async read(
     reference: ProductReferenceEntity,
-    proxy: ProxyEndpointEntity | null,
+    proxy: ProxyEndpointEntity,
     signal: AbortSignal,
   ): Promise<ReadProductResultType> {
     signal.throwIfAborted();
-    const route = proxy?.server ?? 'direct connection';
+    const route = proxy.server;
     this.logger.debug(`Opening a browser context via ${route}`);
 
     const context = await this.browser.newContext({
@@ -66,35 +66,31 @@ export class OzonPlaywrightProductReaderAdapter implements ProductReaderPort {
 
   private async readPage(
     reference: ProductReferenceEntity,
-    proxy: ProxyEndpointEntity | null,
+    proxy: ProxyEndpointEntity,
     context: BrowserContext,
   ): Promise<ReadProductResultType> {
     const page = await context.newPage();
-    let exitIp: string | null = null;
+    const country = marketplaceExitCountries[reference.marketplace];
+    const exit = await this.exits.check(proxy, country, () => this.parsers.geoIp.parse(page));
+    if (exit.status === 'unavailable') {
+      this.logger.warn(`GeoIP gave no answer through ${proxy.server}`);
 
-    if (proxy !== null) {
-      const country = marketplaceExitCountries[reference.marketplace];
-      const exit = await this.exits.check(proxy, country, () => this.parsers.geoIp.parse(page));
-      if (exit.status === 'unavailable') {
-        this.logger.warn(`GeoIP gave no answer through ${proxy.server}`);
-
-        return { status: 'network_error' };
-      }
-      if (exit.status === 'rejected') {
-        this.logger.warn(`GeoIP did not confirm an exit in ${country} through ${proxy.server}`);
-
-        return { status: 'proxy_rejected' };
-      }
-
-      exitIp = exit.exitIp;
-      this.logger.debug(`Exit IP through ${proxy.server} is ${exitIp} (${country})`);
+      return { status: 'network_error' };
     }
+    if (exit.status === 'rejected') {
+      this.logger.warn(`GeoIP did not confirm an exit in ${country} through ${proxy.server}`);
+
+      return { status: 'proxy_rejected' };
+    }
+
+    const exitIp = exit.exitIp;
+    this.logger.debug(`Exit IP through ${proxy.server} is ${exitIp} (${country})`);
 
     const lastResponse = await this.open(page, reference);
     const document = await this.parsers.pages.parse(page);
     const response = lastResponse();
     if (this.parsers.challenges.isChallenge(document.title, document.body)) {
-      this.logger.warn(`The site check appeared via ${proxy?.server ?? 'direct connection'}`);
+      this.logger.warn(`The site check appeared via ${proxy.server}`);
 
       return { status: 'challenge_required' };
     }

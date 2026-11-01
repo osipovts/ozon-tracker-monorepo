@@ -127,11 +127,11 @@ void test('records a queued handbook job of the operator and publishes it with i
     kind: 'handbook_fetch',
     requestedBy: null,
     handbook: 'dns-cities',
-    proxies: ['socks5://217.71.230.1:1080', null],
+    proxies: ['socks5://217.71.230.1:1080'],
   });
 
   assert.deepEqual(handbookRequests, [
-    { jobId, handbook: 'dns-cities', proxies: ['socks5://217.71.230.1:1080', null] },
+    { jobId, handbook: 'dns-cities', proxies: ['socks5://217.71.230.1:1080'] },
   ]);
   const job = await jobs.findById(jobId);
   assert.ok(job);

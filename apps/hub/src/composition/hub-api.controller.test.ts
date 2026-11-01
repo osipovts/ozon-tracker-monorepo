@@ -107,11 +107,11 @@ const config: AppConfigInterface = {
   priceProxyCount: 5,
   priceTimeoutMs: 60000,
   linkExpandTimeoutMs: 15000,
-  priceRefreshIntervalMs: 0,
-  priceRefreshMinute: 55,
-  priceRefreshMaxAgeMs: 21_600_000,
+  priceRefreshAfterMs: 0,
+  priceRefreshPollMs: 60_000,
+  priceProxyLagMs: 30_000,
   priceRefreshBatchSize: 200,
-  proxyRefreshIntervalMinutes: 60,
+  proxyRefreshPauseMinutes: 10,
   proxyRefreshMaxCandidates: 200,
   proxyRefreshProbeTimeoutMs: 10000,
   authSessionIdleTtlMs: 60_000,
@@ -430,11 +430,7 @@ void test('queues the read of the first price when a product is added, and serve
   assert.ok(jobId !== null);
   assert.deepEqual(queued.at(-1), {
     jobId,
-    routes: [
-      { server: 'socks5://217.71.230.1:1080' },
-      { server: null },
-      { server: 'socks5://217.71.230.2:1080' },
-    ],
+    routes: [{ server: 'socks5://217.71.230.1:1080' }, { server: 'socks5://217.71.230.2:1080' }],
     products: [{ trackedProductId: id, url }],
     timeoutMs: 30000,
   });
@@ -780,7 +776,9 @@ void test('the operator queues the read of a handbook through the proxies, and t
   assert.ok(typeof request === 'object' && request !== null && 'handbook' in request);
   assert.equal(request.handbook, 'dns-cities');
   assert.ok(
-    'proxies' in request && Array.isArray(request.proxies) && request.proxies.at(-1) === null,
+    'proxies' in request &&
+      Array.isArray(request.proxies) &&
+      request.proxies.every((proxy) => typeof proxy === 'string'),
   );
   assert.equal((await call('/handbooks/unknown/refresh', post())).status, 400);
 });

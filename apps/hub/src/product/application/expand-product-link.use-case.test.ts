@@ -4,15 +4,15 @@ import { test } from 'node:test';
 import { OzonShortLinkParser } from 'product-reference';
 
 import type { RouteInterface } from '../../job/application/index.js';
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import { ExpandProductLinkUseCase } from './expand-product-link.use-case.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import type {
   ProductLinkExpanderPort,
   ProductLinkExpansionInterface,
 } from './product-link-expander.port.js';
 import { UnsupportedProductUrlError } from './unsupported-product-url.error.js';
 
-const routes: RouteInterface[] = [{ server: null }];
+const routes: RouteInterface[] = [{ server: 'socks5://217.71.230.1:1080' }];
 
 function useCaseOf(
   expander: ProductLinkExpanderPort,

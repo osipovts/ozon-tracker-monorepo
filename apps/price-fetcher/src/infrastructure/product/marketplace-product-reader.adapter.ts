@@ -11,7 +11,7 @@ export class MarketplaceProductReaderAdapter implements ProductReaderPort {
 
   read(
     reference: ProductReferenceEntity,
-    proxy: ProxyEndpointEntity | null,
+    proxy: ProxyEndpointEntity,
     signal: AbortSignal,
   ): Promise<ReadProductResultType> {
     return this.readers[reference.marketplace].read(reference, proxy, signal);

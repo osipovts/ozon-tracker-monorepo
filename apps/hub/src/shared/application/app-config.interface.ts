@@ -46,17 +46,16 @@ export interface AppConfigInterface {
   emailVerificationTtlMs: number;
   /** Mails of the link to confirm an email, that a user may ask for per window. */
   authVerificationResendMaxAttempts: number;
-  /** How often the hub looks for stale prices to queue; 0 leaves the refresh off. */
-  /** Reads the stale prices at this interval; 0 turns it off; null runs it every hour at `priceRefreshMinute`. */
-  priceRefreshIntervalMs: number | null;
-  /** The minute of the hour (UTC) the prices are refreshed at, when no interval is given. */
-  priceRefreshMinute: number;
-  /** A product is read again once its last read or request is older than this. */
-  priceRefreshMaxAgeMs: number;
+  /** A product is read again once its last read or request is this old; 0 turns the refresh off. */
+  priceRefreshAfterMs: number;
+  /** How often the hub looks for the products that are due. */
+  priceRefreshPollMs: number;
+  /** The jobs that read one marketplace through one proxy start at least this far apart. */
+  priceProxyLagMs: number;
   /** How many products one run of the refresh queues at most. */
   priceRefreshBatchSize: number;
-  /** How often, in minutes, the proxies of every source are refreshed; 0 turns it off. */
-  proxyRefreshIntervalMinutes: number;
+  /** The pause, in minutes, between the end of a refresh of the proxies and the start of the next; 0 turns it off. */
+  proxyRefreshPauseMinutes: number;
   /** Upper bound of the candidates a refresh takes from a source. */
   proxyRefreshMaxCandidates: number;
   /** Timeout of a single proxy check of a refresh, in milliseconds. */

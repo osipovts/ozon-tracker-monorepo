@@ -9,25 +9,26 @@ import { FetchCitiesUseCase } from './fetch-cities.use-case.js';
 
 const first = new ProxyEndpointEntity('socks5://217.71.230.1:1080');
 const second = new ProxyEndpointEntity('socks5://217.71.230.2:1080');
+const third = new ProxyEndpointEntity('socks5://217.71.230.3:1080');
 const city = (id: string, name: string): CityInterface => ({ id, name, region: null });
 const never = new AbortController().signal;
 
 interface SourceScriptInterface {
   /** What a route says of a letter: the cities, or an error for a route that stops working. */
-  answer: (route: string | undefined, letter: string) => CityInterface[] | Error;
+  answer: (route: string, letter: string) => CityInterface[] | Error;
   /** The routes that do not open. */
-  closed?: ReadonlyArray<string | undefined>;
+  closed?: readonly string[];
 }
 
 function source(script: SourceScriptInterface): {
   source: CitySourcePort;
-  reads: Array<[string | undefined, string]>;
-  opened: Array<string | undefined>;
-  closed: Array<string | undefined>;
+  reads: Array<[string, string]>;
+  opened: string[];
+  closed: string[];
 } {
-  const reads: Array<[string | undefined, string]> = [];
-  const opened: Array<string | undefined> = [];
-  const closed: Array<string | undefined> = [];
+  const reads: Array<[string, string]> = [];
+  const opened: string[] = [];
+  const closed: string[] = [];
 
   return {
     reads,
@@ -35,7 +36,7 @@ function source(script: SourceScriptInterface): {
     closed,
     source: {
       open: (proxy): Promise<CitySourceSessionInterface> => {
-        const route = proxy?.server;
+        const route = proxy.server;
         if (script.closed?.includes(route) === true) return Promise.reject(new Error('no route'));
 
         opened.push(route);
@@ -118,26 +119,26 @@ void test('goes on to the next route when one does not open, or stops working, a
     reads,
     closed,
   } = source({
-    closed: [undefined],
+    closed: [first.server],
     answer: (route, letter) =>
-      route === first.server && letter === 'В' ? new Error('timeout') : [city(letter, letter)],
+      route === second.server && letter === 'В' ? new Error('timeout') : [city(letter, letter)],
   });
 
   const found = await new FetchCitiesUseCase(cities, ['А', 'Б', 'В', 'Г']).execute(
-    [null, first, second],
+    [first, second, third],
     never,
     listener(),
   );
 
   assert.equal(found.length, 4);
   assert.deepEqual(reads, [
-    [first.server, 'А'],
-    [first.server, 'Б'],
-    [first.server, 'В'],
+    [second.server, 'А'],
+    [second.server, 'Б'],
     [second.server, 'В'],
-    [second.server, 'Г'],
+    [third.server, 'В'],
+    [third.server, 'Г'],
   ]);
-  assert.deepEqual(closed, [first.server, second.server]);
+  assert.deepEqual(closed, [second.server, third.server]);
 });
 
 void test('fails, and gives none of the cities, when no route can read a letter', async (): Promise<void> => {

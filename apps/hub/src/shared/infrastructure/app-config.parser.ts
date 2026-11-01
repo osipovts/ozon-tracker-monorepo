@@ -61,16 +61,15 @@ const configSchema = z.object({
   priceProxyCount: z.coerce.number().int().min(1).max(20).default(5),
   priceTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(30000),
   linkExpandTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(15000),
-  // Not given: the prices are refreshed every hour at `priceRefreshMinute`.
-  priceRefreshIntervalMs: z.coerce.number().int().min(0).nullable(),
-  priceRefreshMinute: z.coerce.number().int().min(0).max(59).default(55),
-  priceRefreshMaxAgeMs: z.coerce
+  priceRefreshAfterMs: z.coerce
     .number()
     .int()
-    .min(60_000)
-    .default(60 * 60_000),
+    .min(0)
+    .default(50 * 60_000),
+  priceRefreshPollMs: z.coerce.number().int().min(1000).default(60_000),
+  priceProxyLagMs: z.coerce.number().int().min(0).default(30_000),
   priceRefreshBatchSize: z.coerce.number().int().min(1).max(5000).default(200),
-  proxyRefreshIntervalMinutes: z.coerce.number().int().min(0).default(60),
+  proxyRefreshPauseMinutes: z.coerce.number().int().min(0).default(10),
   proxyRefreshMaxCandidates: z.coerce.number().int().min(1).max(5000).default(200),
   proxyRefreshProbeTimeoutMs: z.coerce.number().int().min(1000).max(60000).default(10000),
   authSessionIdleTtlMs: z.coerce
@@ -176,14 +175,11 @@ export class AppConfigParser {
         priceProxyCount: env['PRICE_PROXY_COUNT'],
         priceTimeoutMs: env['PRICE_TIMEOUT_MS'],
         linkExpandTimeoutMs: env['LINK_EXPAND_TIMEOUT_MS'],
-        priceRefreshIntervalMs:
-          env['PRICE_REFRESH_INTERVAL_MS'] === undefined || env['PRICE_REFRESH_INTERVAL_MS'] === ''
-            ? null
-            : env['PRICE_REFRESH_INTERVAL_MS'],
-        priceRefreshMinute: env['PRICE_REFRESH_MINUTE'],
-        priceRefreshMaxAgeMs: env['PRICE_REFRESH_MAX_AGE_MS'],
+        priceRefreshAfterMs: env['PRICE_REFRESH_AFTER_MS'],
+        priceRefreshPollMs: env['PRICE_REFRESH_POLL_MS'],
+        priceProxyLagMs: env['PRICE_PROXY_LAG_MS'],
         priceRefreshBatchSize: env['PRICE_REFRESH_BATCH_SIZE'],
-        proxyRefreshIntervalMinutes: env['PROXY_REFRESH_INTERVAL_MINUTES'],
+        proxyRefreshPauseMinutes: env['PROXY_REFRESH_PAUSE_MINUTES'],
         proxyRefreshMaxCandidates: env['PROXY_REFRESH_MAX_CANDIDATES'],
         proxyRefreshProbeTimeoutMs: env['PROXY_REFRESH_PROBE_TIMEOUT_MS'],
         authSessionIdleTtlMs: env['AUTH_SESSION_IDLE_TTL_MS'],

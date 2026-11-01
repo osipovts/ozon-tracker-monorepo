@@ -8,6 +8,7 @@ import {
   ResolveProductReferenceUseCase,
 } from 'product-reference';
 
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import { TooManyRequestsError } from '../../shared/application/too-many-requests.error.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import { InMemoryPriceObservationRepositoryAdapter } from '../infrastructure/in-memory-price-observation-repository.adapter.js';
@@ -16,7 +17,6 @@ import { AddProductUseCase } from './add-product.use-case.js';
 import { ListPriceHistoryUseCase } from './list-price-history.use-case.js';
 import { ListProductsUseCase } from './list-products.use-case.js';
 import type { MarketplaceCitiesPort } from './marketplace-cities.port.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductAddingInProgressError } from './product-adding-in-progress.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import type { ProductLimitsInterface } from './product-quota.type.js';

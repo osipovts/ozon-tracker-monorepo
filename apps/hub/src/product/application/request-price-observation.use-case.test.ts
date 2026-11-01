@@ -10,9 +10,9 @@ import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory
 import { ListBestProxyServersUseCase } from '../../proxy/application/index.js';
 import { ProxyEntity } from '../../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
 import { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
-import { NoProxiesAvailableError } from './no-proxies-available.error.js';
 import { ProductNotFoundError } from './product-not-found.error.js';
 import { RequestPriceObservationUseCase } from './request-price-observation.use-case.js';
 import type { TrackedProductReferenceInterface } from './tracked-product-repository.port.js';
@@ -100,7 +100,6 @@ void test('queues the product with the best alive proxies and records the job', 
   assert.equal(request.jobId, jobId);
   assert.deepEqual(request.routes, [
     { server: 'socks5://217.71.230.2:1080' },
-    { server: null },
     { server: 'socks5://217.71.230.3:1080' },
   ]);
   assert.deepEqual(request.products, [{ trackedProductId: productId, url: productUrl }]);
@@ -127,8 +126,8 @@ void test('gives the manual proxies first, with their credentials', async (): Pr
   await useCase.execute(userId, productId);
 
   assert.deepEqual(
-    requests[0]?.routes.map((route): string | null => route.server),
-    ['http://user:secret@217.71.230.5:3128/', null, 'socks5://217.71.230.1:1080'],
+    requests[0]?.routes.map((route): string => route.server),
+    ['http://user:secret@217.71.230.5:3128/', 'socks5://217.71.230.1:1080'],
   );
 });
 

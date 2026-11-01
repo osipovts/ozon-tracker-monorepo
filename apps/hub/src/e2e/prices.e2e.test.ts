@@ -50,8 +50,8 @@ before(
 
     hub = await startHub({
       stack: infrastructure,
-      // The schedule looks every 300 ms for products whose price is older than a minute.
-      env: { PRICE_REFRESH_INTERVAL_MS: '300', PRICE_REFRESH_MAX_AGE_MS: '60000' },
+      // The schedule looks every second for products whose price is older than a minute.
+      env: { PRICE_REFRESH_POLL_MS: '1000', PRICE_REFRESH_AFTER_MS: '60000' },
     });
     [jane, sam] = [hub.browser(), hub.browser()];
     for (const [browser, email] of [
@@ -105,7 +105,7 @@ void test('adding a product queues the read of its first price, a worker answers
   assert.equal(history.total, 1);
   assert.equal(history.items[0]?.prices[0]?.amountMinor, 129_900);
 
-  // The schedule reads the price again a minute after the last read, which this test sets as the maximum age.
+  // The schedule reads the price again a minute after the last read, which this test sets as the age of a price.
   const shown = z
     .object({ product: z.object({ nextCheckAt: z.iso.datetime().nullable() }) })
     .parse((await jane.request(`/products/${productId}/prices`)).body);
@@ -159,7 +159,7 @@ void test('the routes of the operator take the key, and show the proxies and the
 
 void test('the schedule reads a stale price again, as a job of the hub, and the history grows', async (): Promise<void> => {
   worker.setPrice(productUrl, 119_900);
-  // Seven hours ago: older than the maximum age, so the product is due at the next look of the schedule.
+  // Seven hours ago: older than the age of a price, so the product is due at the next look of the schedule.
   const longAgo = new Date(Date.now() - 7 * 3_600_000);
   await database.trackedProduct.update({
     where: { id: productId },

@@ -10,6 +10,7 @@ import { InMemoryJobRepositoryAdapter } from '../../job/infrastructure/in-memory
 import { ListBestProxyServersUseCase } from '../../proxy/application/list-best-proxy-servers.use-case.js';
 import { ProxyEntity } from '../../proxy/domain/proxy.entity.js';
 import { InMemoryProxyRepositoryAdapter } from '../../proxy/infrastructure/in-memory-proxy-repository.adapter.js';
+import { NoProxiesAvailableError } from '../../shared/application/no-proxies-available.error.js';
 import { RefreshHandbookUseCase } from './refresh-handbook.use-case.js';
 
 const checkedAt = new Date('2026-11-01T10:00:00Z');
@@ -61,7 +62,7 @@ async function setup(
   };
 }
 
-void test('queues the read through the best proxies, the manual ones with their credentials, and a direct connection last', async (): Promise<void> => {
+void test('queues the read through the best proxies, the manual ones with their credentials', async (): Promise<void> => {
   const manual = ProxyEntity.manual(
     'http://217.71.230.9:3128',
     { username: 'user', password: 'secret' },
@@ -83,7 +84,6 @@ void test('queues the read through the best proxies, the manual ones with their 
         'http://user:secret@217.71.230.9:3128/',
         'socks5://217.71.230.2:1080',
         'socks5://217.71.230.1:1080',
-        null,
       ],
     },
   ]);
@@ -92,15 +92,15 @@ void test('queues the read through the best proxies, the manual ones with their 
   assert.equal(job.snapshot.subject, 'dns-cities');
 });
 
-void test('reads directly when there is no proxy, and through as many proxies as asked for', async (): Promise<void> => {
+void test('queues nothing when there is no proxy, and goes through as many proxies as asked for', async (): Promise<void> => {
   const none = await setup([]);
-  await none.refresh.execute('dns-cities', null);
-  assert.deepEqual(none.requests[0]?.proxies, [null]);
+  await assert.rejects(none.refresh.execute('dns-cities', null), NoProxiesAvailableError);
+  assert.deepEqual(none.requests, []);
 
   const limited = await setup(
     [proxy('socks5://217.71.230.1:1080', 4), proxy('socks5://217.71.230.2:1080', 3)],
     1,
   );
   await limited.refresh.execute('dns-cities', null);
-  assert.deepEqual(limited.requests[0]?.proxies, ['socks5://217.71.230.1:1080', null]);
+  assert.deepEqual(limited.requests[0]?.proxies, ['socks5://217.71.230.1:1080']);
 });

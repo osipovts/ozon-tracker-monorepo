@@ -12,7 +12,7 @@ import type { LinkExpanderPort } from './link-expander.port.js';
 
 const job = {
   url: 'https://ozon.ru/t/AbC123',
-  routes: [{ server: null }],
+  routes: [{ server: 'socks5://217.71.230.1:1080' }],
   timeoutMs: 5000,
 };
 

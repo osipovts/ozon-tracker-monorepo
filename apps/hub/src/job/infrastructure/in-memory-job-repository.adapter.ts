@@ -4,11 +4,12 @@ import {
   type PaginationInterface,
 } from '../../shared/application/page.interface.js';
 import type {
+  JobActivityInterface,
   JobCountsType,
   JobFilterInterface,
   JobRepositoryPort,
 } from '../application/job-repository.port.js';
-import type { JobEntity } from '../domain/job.entity.js';
+import type { JobEntity, JobKindType } from '../domain/job.entity.js';
 
 export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
   private readonly jobs = new Map<string, JobEntity>();
@@ -17,6 +18,21 @@ export class InMemoryJobRepositoryAdapter implements JobRepositoryPort {
     this.jobs.set(job.snapshot.id, job);
 
     return Promise.resolve();
+  }
+
+  activity(kind: JobKindType, activeSince: Date): Promise<JobActivityInterface> {
+    const ofKind = Array.from(this.jobs.values()).filter(
+      ({ snapshot }): boolean => snapshot.kind === kind,
+    );
+    const finished = ofKind.flatMap(({ snapshot }): Date[] =>
+      snapshot.finishedAt === null ? [] : [snapshot.finishedAt],
+    );
+
+    return Promise.resolve({
+      active: ofKind.some((job): boolean => !job.finished && job.snapshot.createdAt >= activeSince),
+      lastFinishedAt:
+        finished.length === 0 ? null : new Date(Math.max(...finished.map((at) => at.getTime()))),
+    });
   }
 
   countByStatus(since: Date): Promise<JobCountsType> {

@@ -11,11 +11,14 @@ import type { ClockPort } from '../../shared/application/clock.port.js';
 import { InMemoryTrackedProductRepositoryAdapter } from '../infrastructure/in-memory-tracked-product-repository.adapter.js';
 import type { ChoosePriceRoutesUseCase } from './choose-price-routes.use-case.js';
 import { RefreshPricesUseCase } from './refresh-prices.use-case.js';
+import { SpreadPriceJobsUseCase } from './spread-price-jobs.use-case.js';
 
 const hour = 3_600_000;
 const start = new Date('2026-10-31T10:00:00Z');
 const jane = '6b1f4d1e-52f2-4d51-8a0e-0d6a9d3a7c22';
-const route = { server: 'socks5://217.71.230.1:1080', session: null };
+const route = { server: 'socks5://217.71.230.1:1080' };
+const otherRoute = { server: 'socks5://217.71.230.2:1080' };
+const lagMs = 30_000;
 
 interface SetupInterface {
   refresh: RefreshPricesUseCase;
@@ -29,7 +32,7 @@ interface SetupInterface {
 function setup(
   routes: Array<typeof route> = [route],
   batchSize = 200,
-  age: { maxAgeMs: number; periodMs: number } = { maxAgeMs: 6 * hour, periodMs: 15 * 60_000 },
+  refreshAfterMs = 50 * 60_000,
 ): SetupInterface {
   let current = start;
   const clock: ClockPort = { now: (): Date => current };
@@ -56,7 +59,8 @@ function setup(
       products,
       chooseRoutes,
       new ScheduleJobUseCase(port, jobs),
-      { ...age, batchSize, timeoutMs: 30_000 },
+      new SpreadPriceJobsUseCase(lagMs),
+      { refreshAfterMs, batchSize, timeoutMs: 30_000 },
       clock,
     ),
     products,
@@ -118,12 +122,12 @@ void test('does not queue a product again while its job may still be on its way,
   assert.equal(requests.length, 1);
   assert.equal(requests[0]?.products.length, 1);
 
-  at(1);
+  at(0.5);
   assert.deepEqual(await refresh.execute(), { products: 0, jobs: 0 });
   assert.equal(requests.length, 1);
 });
 
-void test('queues a product again once its last read or request is older than the maximum age', async (): Promise<void> => {
+void test('queues a product again once its last read or request is older than the refresh age', async (): Promise<void> => {
   const { refresh, products, requests, at } = setup();
   const id = await track(products, 1);
   await refresh.execute();
@@ -136,28 +140,59 @@ void test('queues a product again once its last read or request is older than th
 
   // A read that came back (even a failed one) counts as fresh as well.
   await products.markChecked(id, 'ok', new Date(start.getTime() + 12 * hour));
-  at(13);
+  at(12.5);
   assert.deepEqual(await refresh.execute(), { products: 0, jobs: 0 });
 });
 
-void test('with a maximum age as long as the period every run reads every price, and none twice in one', async (): Promise<void> => {
-  const { refresh, products, requests, at } = setup([route], 200, {
-    maxAgeMs: hour,
-    periodMs: hour,
-  });
+void test('reads a price again 50 minutes after its last read, and not a minute sooner', async (): Promise<void> => {
+  const { refresh, products, requests, at } = setup();
   const id = await track(products, 1);
-
   await refresh.execute();
-  assert.equal(requests.length, 1);
+  await products.markChecked(id, 'ok', new Date(start.getTime() + 5 * 60_000));
 
-  // A run is an hour after the last, and the price was read at the end of that one: it is 59 minutes old.
-  at(1);
-  await products.markChecked(id, 'ok', new Date(start.getTime() + 59 * 60_000));
-  await refresh.execute();
-  assert.equal(requests.length, 2);
-
-  // The same run again reads nothing: the request of a moment ago is not older than the run.
+  at(54 / 60);
   assert.deepEqual(await refresh.execute(), { products: 0, jobs: 0 });
+
+  at(56 / 60);
+  assert.deepEqual(await refresh.execute(), { products: 1, jobs: 1 });
+  assert.equal(requests.length, 2);
+});
+
+void test('catches up on everything that fell due while the hub was down', async (): Promise<void> => {
+  const { refresh, products, requests, at } = setup([route], 200, 50 * 60_000);
+  for (let n = 1; n <= 3; n += 1) await track(products, n);
+  await refresh.execute();
+
+  at(30);
+
+  assert.deepEqual(await refresh.execute(), { products: 3, jobs: 1 });
+  assert.equal(requests.length, 2);
+});
+
+void test('starts the jobs that run together on different proxies, and a lag apart on one proxy', async (): Promise<void> => {
+  const several = setup([route, otherRoute], 200);
+  for (let n = 1; n <= 100; n += 1) await track(several.products, n);
+
+  await several.refresh.execute();
+
+  assert.deepEqual(
+    several.requests.map((request): string | undefined => request.routes[0]?.server),
+    [route.server, otherRoute.server],
+  );
+  assert.deepEqual(
+    several.requests.map((request): number | undefined => request.delayMs),
+    [0, 0],
+  );
+
+  const single = setup([route], 200);
+  for (let n = 1; n <= 150; n += 1) await track(single.products, n);
+
+  await single.refresh.execute();
+
+  assert.deepEqual(
+    single.requests.map((request): number | undefined => request.delayMs),
+    [0, lagMs, 2 * lagMs],
+  );
 });
 
 void test('waits for a route instead of queueing a job that cannot run: the products stay due', async (): Promise<void> => {

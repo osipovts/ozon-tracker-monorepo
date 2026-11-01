@@ -11,8 +11,8 @@ import type {
 import type { ProductReaderPort } from './product-reader.port.js';
 
 export interface FetchPricesJobInterface {
-  /** Routes in the order they are tried; a null server is a direct connection. */
-  routes: ReadonlyArray<{ server: string | null }>;
+  /** Routes in the order they are tried: a product is never read without a proxy. */
+  routes: ReadonlyArray<{ server: string }>;
   products: ReadonlyArray<{
     trackedProductId: string;
     url: string;
@@ -64,18 +64,14 @@ export class FetchPricesUseCase {
     signal: AbortSignal,
     listener: FetchPricesListenerInterface,
   ): Promise<void> {
-    const candidates: Array<ProxyEndpointEntity | null> = [];
+    const candidates: ProxyEndpointEntity[] = [];
     for (const route of job.routes) {
-      let proxy: ProxyEndpointEntity | null = null;
       try {
-        if (route.server !== null) proxy = new ProxyEndpointEntity(route.server);
+        candidates.push(new ProxyEndpointEntity(route.server));
       } catch {
         // An unsafe or unsupported address is skipped like an unavailable proxy.
         this.logger.warn('Skipping a route with an unsafe or unsupported proxy address');
-        continue;
       }
-
-      candidates.push(proxy);
     }
 
     const reader = this.createReader(job.timeoutMs);
@@ -99,7 +95,7 @@ export class FetchPricesUseCase {
 
   private async fetchProduct(
     product: { trackedProductId: string; url: string; cityId?: string | undefined },
-    candidates: ReadonlyArray<ProxyEndpointEntity | null>,
+    candidates: readonly ProxyEndpointEntity[],
     reader: ProductReaderPort,
     signal: AbortSignal,
   ): Promise<ProductFetchResultInterface> {
@@ -130,7 +126,7 @@ export class FetchPricesUseCase {
   /** Tries the routes in order until the site gives an answer that another route cannot change. */
   private async readProduct(
     reference: ProductReferenceEntity,
-    candidates: ReadonlyArray<ProxyEndpointEntity | null>,
+    candidates: readonly ProxyEndpointEntity[],
     reader: ProductReaderPort,
     signal: AbortSignal,
   ): Promise<TrackingResultInterface> {
@@ -141,7 +137,7 @@ export class FetchPricesUseCase {
       signal.throwIfAborted();
       if (output.attempts.length > 0) await setTimeout(1000, undefined, { signal });
 
-      const route = `Attempt ${String(output.attempts.length + 1)} via ${proxy?.server ?? 'direct connection'}`;
+      const route = `Attempt ${String(output.attempts.length + 1)} via ${proxy.server}`;
       this.logger.verbose(route);
       const startedAt = performance.now();
       const result = await reader.read(reference, proxy, signal);
@@ -149,7 +145,7 @@ export class FetchPricesUseCase {
         `${route}: ${result.status} in ${String(Math.round(performance.now() - startedAt))} ms`,
       );
 
-      output.attempts.push({ proxy: proxy?.server ?? null, result });
+      output.attempts.push({ proxy: proxy.server, result });
       output.status = result.status;
       // A challenge is a site decision, not a dead proxy: do not rotate to evade it.
       if (

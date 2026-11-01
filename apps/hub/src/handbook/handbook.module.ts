@@ -27,7 +27,7 @@ import { HandbooksController } from './presentation/handbooks.controller.js';
 const day = 24 * 60 * 60_000;
 /** A handbook is read again once it is a week old: the cities of a marketplace hardly change. */
 const handbookMaxAgeMs = 7 * day;
-/** How many of the best proxies a read of a handbook tries before the direct connection. */
+/** How many of the best proxies a read of a handbook tries. */
 const handbookProxyCount = 10;
 /** How long the cities stay in memory: a key typed in the search of a city asks for them. */
 const handbookCacheMs = 60_000;
