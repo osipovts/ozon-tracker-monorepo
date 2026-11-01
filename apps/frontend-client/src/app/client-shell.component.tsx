@@ -22,8 +22,8 @@ import { BRAND_FONT } from './ayu.theme.js';
 function UserIcon(): ReactElement {
   return (
     <svg
-      width="24"
-      height="24"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -49,7 +49,7 @@ export function ClientShell(): ReactElement {
     <AppShell padding="md">
       <AppShell.Main pt={10}>
         <Container size="lg">
-          <Group mb="md" justify="space-between" wrap="nowrap">
+          <Group mb={{ base: 24, sm: 16 }} align="center" justify="space-between" wrap="nowrap">
             <Title order={4} ff={BRAND_FONT} fz={48} fw={400} lh={1}>
               <Anchor
                 component={Link}
@@ -65,7 +65,7 @@ export function ClientShell(): ReactElement {
             {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
             <Menu position="bottom-end" width={260} shadow="md">
               <Menu.Target>
-                <ActionIcon size={48} variant="default" aria-label={t('shell.account')}>
+                <ActionIcon size={32} variant="default" aria-label={t('shell.account')}>
                   <UserIcon />
                 </ActionIcon>
               </Menu.Target>
