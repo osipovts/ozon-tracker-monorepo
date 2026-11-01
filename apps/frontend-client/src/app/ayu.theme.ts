@@ -36,18 +36,18 @@ const dark: MantineColorsTuple = [
   '#05070a',
 ];
 
-/** The accent of both schemes: Ayu Dark amber (shade 5) and Ayu Light orange (shade 6). */
+/** The accent of both schemes: Ayu Dark blue (shade 5) and Ayu Light blue (shade 6). */
 const ayu: MantineColorsTuple = [
-  '#fff7e6',
-  '#ffeccc',
-  '#ffdd9e',
-  '#ffcd70',
-  '#ffbd47',
-  '#e6b450',
-  '#ff9940',
-  '#e68a38',
-  '#c97420',
-  '#a65f14',
+  '#e8f6ff',
+  '#cfeeff',
+  '#a8e0ff',
+  '#82d2ff',
+  '#6ccaff',
+  '#59c2ff',
+  '#399ee6',
+  '#2f87c7',
+  '#2670a8',
+  '#1d5a89',
 ];
 
 export const ayuTheme: MantineThemeOverride = createTheme({

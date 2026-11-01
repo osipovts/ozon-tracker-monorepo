@@ -85,7 +85,7 @@ export function ClientShell(): ReactElement {
       <AppShell.Main>
         <Container size="lg">
           {me.data?.emailVerified === false && (
-            <Alert color="yellow" mb="md" title={t('shell.confirmTitle')}>
+            <Alert color="blue" mb="md" title={t('shell.confirmTitle')}>
               <Group>
                 <Text size="sm">{t('shell.confirmText', { email: me.data.email })}</Text>
                 <Button

@@ -62,7 +62,7 @@ function Notices({
   return (
     <>
       {verifying && (
-        <Alert color="blue" role="status">
+        <Alert color="yellow" role="status">
           {t('login.confirmEmail')}
         </Alert>
       )}

@@ -195,7 +195,7 @@ function Price({ item }: { item: ProductListItemType }): ReactElement {
   const price = item.latest?.prices[0];
 
   if (item.latest === null) return <Badge color="gray">{t('products.waiting')}</Badge>;
-  if (price === undefined) return <Badge color="yellow">{t('products.noPrice')}</Badge>;
+  if (price === undefined) return <Badge color="blue">{t('products.noPrice')}</Badge>;
 
   return <>{formatPrice(price.amountMinor)}</>;
 }
