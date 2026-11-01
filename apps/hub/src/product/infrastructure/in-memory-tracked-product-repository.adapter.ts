@@ -65,6 +65,19 @@ export class InMemoryTrackedProductRepositoryAdapter implements TrackedProductRe
     return Promise.resolve(true);
   }
 
+  findSubscribedByReference(
+    userId: string,
+    reference: TrackedProductReferenceInterface,
+  ): Promise<TrackedProductEntity | null> {
+    const product = Array.from(this.products.values()).find(
+      (candidate): boolean => keyOf(candidate.snapshot) === keyOf(reference),
+    );
+
+    return Promise.resolve(
+      product !== undefined && this.subscribed(userId, product.snapshot.id) ? product : null,
+    );
+  }
+
   listDueForRefresh(before: Date, limit: number): Promise<TrackedProductEntity[]> {
     const lastTouch = (product: TrackedProductEntity): number =>
       Math.max(

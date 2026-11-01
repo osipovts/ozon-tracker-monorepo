@@ -41,9 +41,12 @@ const handbookProxyCount = 10;
     },
     {
       provide: SaveHandbookCitiesUseCase,
-      useFactory: (handbooks: HandbookRepositoryPort): SaveHandbookCitiesUseCase =>
-        new SaveHandbookCitiesUseCase(handbooks),
-      inject: [HANDBOOK_REPOSITORY],
+      useFactory: (
+        handbooks: HandbookRepositoryPort,
+        logger: LoggerPort,
+      ): SaveHandbookCitiesUseCase =>
+        new SaveHandbookCitiesUseCase(handbooks, undefined, logger.child('handbook')),
+      inject: [HANDBOOK_REPOSITORY, LOGGER],
     },
     {
       provide: ListHandbookCitiesUseCase,

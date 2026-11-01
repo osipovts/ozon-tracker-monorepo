@@ -187,6 +187,22 @@ void test('lets a user track so many products, and takes no more, nor creates a 
   assert.equal(counting.added, 3);
 });
 
+void test('does not refuse a product the user tracks already when their quota is full', async (): Promise<void> => {
+  const { add, reads } = setup({ maxProducts: 1, add: { limit: 100, windowMs: 60_000 } });
+  const first = await add.execute(jane, 'https://www.ozon.ru/product/1/');
+
+  const again = await add.execute(jane, 'https://ozon.ru/product/1/');
+
+  assert.equal(again.created, false);
+  assert.equal(again.jobId, null);
+  assert.equal(again.product.snapshot.id, first.product.snapshot.id);
+  assert.equal(reads.length, 1);
+  await assert.rejects(
+    add.execute(jane, 'https://www.ozon.ru/product/2/'),
+    ProductQuotaExceededError,
+  );
+});
+
 void test('lets a user add so fast, and stops one who adds faster, whatever the products', async (): Promise<void> => {
   const { add } = setup({ maxProducts: 100, add: { limit: 2, windowMs: 60_000 } });
 

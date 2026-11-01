@@ -103,12 +103,6 @@ export class AddProductUseCase {
 
     const city = await this.cityOf(reference, askedCityId);
 
-    // Before the product is created: a refused one would be left, tracked by nobody.
-    const tracking = await this.products.listSubscribed(userId, { page: 1, pageSize: 1 });
-    if (tracking.total >= this.limits.maxProducts) {
-      throw new ProductQuotaExceededError(this.limits.maxProducts);
-    }
-
     const tracked = {
       marketplace: reference.marketplace,
       externalId: reference.id,
@@ -116,6 +110,16 @@ export class AddProductUseCase {
       cityId: city?.id ?? null,
       cityName: city?.name ?? null,
     };
+
+    // Before the product is created: a refused one would be left, tracked by nobody.
+    const tracking = await this.products.listSubscribed(userId, { page: 1, pageSize: 1 });
+    if (tracking.total >= this.limits.maxProducts) {
+      // A full quota refuses a new product, not one the user tracks already.
+      const own = await this.products.findSubscribedByReference(userId, tracked);
+      if (own !== null) return { product: own, created: false, jobId: null };
+
+      throw new ProductQuotaExceededError(this.limits.maxProducts);
+    }
 
     let added: { product: TrackedProductEntity; created: boolean };
     try {

@@ -4,7 +4,10 @@ import type {
   LinkedIdentity as LinkedIdentityRow,
   PrismaClient,
 } from '../../generated/prisma/client.js';
-import type { LinkedIdentityRepositoryPort } from '../application/linked-identity-repository.port.js';
+import type {
+  LinkedIdentityRepositoryPort,
+  UnlinkOutcomeType,
+} from '../application/linked-identity-repository.port.js';
 import { LinkedIdentityEntity } from '../domain/linked-identity.entity.js';
 import { oauthProviders, type OauthProviderType } from '../domain/oauth-provider.type.js';
 
@@ -46,6 +49,29 @@ export class PrismaLinkedIdentityRepositoryAdapter implements LinkedIdentityRepo
     const { count } = await this.prisma.linkedIdentity.deleteMany({ where: { userId, provider } });
 
     return count > 0;
+  }
+
+  async unlink(
+    userId: string,
+    provider: OauthProviderType,
+    hasPassword: boolean,
+  ): Promise<UnlinkOutcomeType> {
+    return this.prisma.$transaction(async (tx): Promise<UnlinkOutcomeType> => {
+      // Two unlinks of one user wait for each other here: the second sees what the first left.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+      const linked = await tx.linkedIdentity.findMany({
+        where: { userId },
+        select: { provider: true },
+      });
+      if (!linked.some((row): boolean => row.provider === provider)) return 'not_linked';
+      if (!hasPassword && linked.every((row): boolean => row.provider === provider)) {
+        return 'last_login_method';
+      }
+
+      await tx.linkedIdentity.deleteMany({ where: { userId, provider } });
+
+      return 'unlinked';
+    });
   }
 
   async findByProviderSubject(

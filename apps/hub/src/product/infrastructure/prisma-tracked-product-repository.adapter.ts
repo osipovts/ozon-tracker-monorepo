@@ -100,6 +100,22 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
     });
   }
 
+  async findSubscribedByReference(
+    userId: string,
+    reference: TrackedProductReferenceInterface,
+  ): Promise<TrackedProductEntity | null> {
+    const row = await this.prisma.trackedProduct.findFirst({
+      where: {
+        marketplace: reference.marketplace,
+        externalId: reference.externalId,
+        cityId: reference.cityId ?? '',
+        subscriptions: { some: { userId } },
+      },
+    });
+
+    return row === null ? null : toEntity(row);
+  }
+
   async listDueForRefresh(before: Date, limit: number): Promise<TrackedProductEntity[]> {
     const rows = await this.prisma.trackedProduct.findMany({
       where: {

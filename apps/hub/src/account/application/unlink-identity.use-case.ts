@@ -15,15 +15,10 @@ export class UnlinkIdentityUseCase {
   ) {}
 
   async execute(userId: string, provider: OauthProviderType): Promise<void> {
-    const linked = await this.identities.listByUser(userId);
-    if (!linked.some(({ snapshot }): boolean => snapshot.provider === provider)) {
-      throw new IdentityNotFoundError(provider);
-    }
-
     const hasPassword = (await this.credentials.findByUserId(userId)) !== null;
-    const others = linked.filter(({ snapshot }): boolean => snapshot.provider !== provider);
-    if (!hasPassword && others.length === 0) throw new LastLoginMethodError();
 
-    await this.identities.remove(userId, provider);
+    const outcome = await this.identities.unlink(userId, provider, hasPassword);
+    if (outcome === 'not_linked') throw new IdentityNotFoundError(provider);
+    if (outcome === 'last_login_method') throw new LastLoginMethodError();
   }
 }

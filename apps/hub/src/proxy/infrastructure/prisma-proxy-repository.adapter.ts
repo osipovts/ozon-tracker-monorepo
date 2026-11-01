@@ -59,6 +59,28 @@ export class PrismaProxyRepositoryAdapter implements ProxyRepositoryPort {
     );
   }
 
+  async saveChecked(proxies: ProxyEntity[]): Promise<void> {
+    await this.prisma.$transaction(
+      proxies.map((proxy) => {
+        const { server, credentials, disabledAt, ...rest } = proxy.snapshot;
+        const data = { ...rest, successRate: proxy.successRate };
+
+        return this.prisma.proxy.upsert({
+          where: { server },
+          create: {
+            server,
+            ...data,
+            disabledAt,
+            username: credentials?.username ?? null,
+            password: credentials?.password ?? null,
+          },
+          // Not the time it was turned off nor the credentials: an administrator may have set them since the read.
+          update: data,
+        });
+      }),
+    );
+  }
+
   async stats(): Promise<ProxyStatsInterface> {
     const [total, alive, disabled, aggregate] = await this.prisma.$transaction([
       this.prisma.proxy.count(),
