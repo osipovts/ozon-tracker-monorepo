@@ -4,7 +4,7 @@ import { LoginPage } from '../features/auth/login.page.js';
 import { DashboardPage } from '../features/dashboard/dashboard.page.js';
 import { HandbooksPage } from '../features/handbooks/handbooks.page.js';
 import { ProxiesPage } from '../features/proxies/proxies.page.js';
-import { AdminShell } from './app-shell.component.js';
+import { AdminShell } from './admin-shell.component.js';
 import { ProtectedRoute } from './protected-route.component.js';
 
 export function createAppRouter(basename: string): ReturnType<typeof createBrowserRouter> {

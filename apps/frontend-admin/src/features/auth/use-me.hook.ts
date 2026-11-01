@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  type UseMutationResult,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import { ensure } from 'frontend-shared';
 
 import { api } from '../../shared/api/api.client.js';
@@ -13,7 +19,7 @@ export interface MeInterface {
 const meKey = ['me'] as const;
 
 /** Who is signed in: null for nobody. */
-export function useMe(): ReturnType<typeof useQuery<MeInterface | null>> {
+export function useMe(): UseQueryResult<MeInterface | null> {
   return useQuery({
     queryKey: meKey,
     queryFn: async (): Promise<MeInterface | null> => {
@@ -28,9 +34,7 @@ export function useMe(): ReturnType<typeof useQuery<MeInterface | null>> {
   });
 }
 
-export function useLogin(): ReturnType<
-  typeof useMutation<void, Error, { email: string; password: string }>
-> {
+export function useLogin(): UseMutationResult<void, Error, { email: string; password: string }> {
   const client = useQueryClient();
 
   return useMutation({
@@ -41,7 +45,7 @@ export function useLogin(): ReturnType<
   });
 }
 
-export function useLogout(): ReturnType<typeof useMutation<void, Error, void>> {
+export function useLogout(): UseMutationResult<void, Error, void> {
   const client = useQueryClient();
 
   return useMutation({

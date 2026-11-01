@@ -20,7 +20,7 @@ import { ErrorAlert, useLocale } from 'frontend-shared';
 import { type ReactElement, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { jobStatusLabel } from '../jobs/job-status-label.js';
+import { jobStatusLabel } from '../jobs/job-status-label.type.js';
 import {
   proxyPageSize,
   proxySources,
@@ -196,78 +196,80 @@ export function ProxiesPage(): ReactElement {
         !proxies.isError && <Loader />
       ) : (
         <>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>{t('proxies.server')}</Table.Th>
-                <Table.Th>{t('proxies.source')}</Table.Th>
-                <Table.Th>{t('proxies.country')}</Table.Th>
-                <Table.Th>{t('proxies.status')}</Table.Th>
-                <Table.Th>{t('proxies.latency')}</Table.Th>
-                <Table.Th>{t('proxies.success')}</Table.Th>
-                <Table.Th>{t('proxies.checked')}</Table.Th>
-                <Table.Th>{t('proxies.enabled')}</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {data.items.map((proxy): ReactElement => (
-                <Table.Tr key={proxy.server}>
-                  <Table.Td>{proxy.server}</Table.Td>
-                  <Table.Td>{proxy.source}</Table.Td>
-                  <Table.Td>{proxy.country ?? '-'}</Table.Td>
-                  <Table.Td>
-                    <Tooltip
-                      multiline
-                      w={260}
-                      label={proxy.alive ? t('proxies.aliveHint') : t('proxies.deadHint')}
-                    >
-                      <Badge color={proxy.alive ? 'green' : 'red'}>
-                        {proxy.alive ? t('proxies.alive') : t('proxies.dead')}
-                      </Badge>
-                    </Tooltip>
-                  </Table.Td>
-                  <Table.Td>
-                    {proxy.latencyMs === null
-                      ? '-'
-                      : t('proxies.milliseconds', { value: proxy.latencyMs })}
-                  </Table.Td>
-                  <Table.Td>
-                    {t('proxies.successOf', {
-                      percent: Math.round(proxy.successRate * 100),
-                      checks: proxy.checksTotal,
-                    })}
-                  </Table.Td>
-                  <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString(locale)}</Table.Td>
-                  <Table.Td>
-                    <Switch
-                      aria-label={t('proxies.enabledOf', { server: proxy.server })}
-                      checked={!proxy.disabled}
-                      disabled={setProxyDisabled.isPending}
-                      onChange={(event): void => {
-                        setProxyDisabled.mutate({
-                          server: proxy.server,
-                          disabled: !event.currentTarget.checked,
-                        });
-                      }}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <Button
-                      size="xs"
-                      color="red"
-                      variant="light"
-                      onClick={(): void => {
-                        setDeleting(proxy.server);
-                      }}
-                    >
-                      {t('proxies.delete')}
-                    </Button>
-                  </Table.Td>
+          <Table.ScrollContainer minWidth={900}>
+            <Table>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{t('proxies.server')}</Table.Th>
+                  <Table.Th>{t('proxies.source')}</Table.Th>
+                  <Table.Th>{t('proxies.country')}</Table.Th>
+                  <Table.Th>{t('proxies.status')}</Table.Th>
+                  <Table.Th>{t('proxies.latency')}</Table.Th>
+                  <Table.Th>{t('proxies.success')}</Table.Th>
+                  <Table.Th>{t('proxies.checked')}</Table.Th>
+                  <Table.Th>{t('proxies.enabled')}</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {data.items.map((proxy): ReactElement => (
+                  <Table.Tr key={proxy.server}>
+                    <Table.Td>{proxy.server}</Table.Td>
+                    <Table.Td>{proxy.source}</Table.Td>
+                    <Table.Td>{proxy.country ?? '-'}</Table.Td>
+                    <Table.Td>
+                      <Tooltip
+                        multiline
+                        w={260}
+                        label={proxy.alive ? t('proxies.aliveHint') : t('proxies.deadHint')}
+                      >
+                        <Badge color={proxy.alive ? 'green' : 'red'}>
+                          {proxy.alive ? t('proxies.alive') : t('proxies.dead')}
+                        </Badge>
+                      </Tooltip>
+                    </Table.Td>
+                    <Table.Td>
+                      {proxy.latencyMs === null
+                        ? '-'
+                        : t('proxies.milliseconds', { value: proxy.latencyMs })}
+                    </Table.Td>
+                    <Table.Td>
+                      {t('proxies.successOf', {
+                        percent: Math.round(proxy.successRate * 100),
+                        checks: proxy.checksTotal,
+                      })}
+                    </Table.Td>
+                    <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString(locale)}</Table.Td>
+                    <Table.Td>
+                      <Switch
+                        aria-label={t('proxies.enabledOf', { server: proxy.server })}
+                        checked={!proxy.disabled}
+                        disabled={setProxyDisabled.isPending}
+                        onChange={(event): void => {
+                          setProxyDisabled.mutate({
+                            server: proxy.server,
+                            disabled: !event.currentTarget.checked,
+                          });
+                        }}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <Button
+                        size="xs"
+                        color="red"
+                        variant="light"
+                        onClick={(): void => {
+                          setDeleting(proxy.server);
+                        }}
+                      >
+                        {t('proxies.delete')}
+                      </Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
           {data.items.length === 0 && <Text c="dimmed">{t('proxies.noMatch')}</Text>}
           {data.total > proxyPageSize && (
             <Pagination total={lastPage} value={page} onChange={setPage} />

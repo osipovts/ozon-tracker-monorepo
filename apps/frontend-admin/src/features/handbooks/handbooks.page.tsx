@@ -16,7 +16,7 @@ import { ErrorAlert, useLocale } from 'frontend-shared';
 import { type ReactElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { jobStatusLabel } from '../jobs/job-status-label.js';
+import { jobStatusLabel } from '../jobs/job-status-label.type.js';
 import { handbookPageSize, useHandbookCities, useRefreshHandbook } from './use-handbooks.hook.js';
 
 export function HandbooksPage(): ReactElement {

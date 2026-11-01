@@ -5,7 +5,7 @@ import { PrivacyPolicyPage, TermsOfServicePage } from '../features/legal/legal.p
 import { ProductPage } from '../features/products/product.page.js';
 import { ProductsPage } from '../features/products/products.page.js';
 import { SettingsPage } from '../features/settings/settings.page.js';
-import { ClientShell } from './app-shell.component.js';
+import { ClientShell } from './client-shell.component.js';
 import { ProtectedRoute } from './protected-route.component.js';
 
 export function createAppRouter(basename: string): ReturnType<typeof createBrowserRouter> {

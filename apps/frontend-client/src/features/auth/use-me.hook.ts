@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  type UseMutationResult,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import { ensure } from 'frontend-shared';
 
 import { api } from '../../shared/api/api.client.js';
@@ -13,7 +19,7 @@ export interface MeInterface {
 const meKey = ['me'] as const;
 
 /** Who is signed in: null for nobody. */
-export function useMe(): ReturnType<typeof useQuery<MeInterface | null>> {
+export function useMe(): UseQueryResult<MeInterface | null> {
   return useQuery({
     queryKey: meKey,
     queryFn: async (): Promise<MeInterface | null> => {
@@ -28,9 +34,7 @@ export function useMe(): ReturnType<typeof useQuery<MeInterface | null>> {
   });
 }
 
-export function useLogin(): ReturnType<
-  typeof useMutation<void, Error, { email: string; password: string }>
-> {
+export function useLogin(): UseMutationResult<void, Error, { email: string; password: string }> {
   const client = useQueryClient();
 
   return useMutation({
@@ -41,7 +45,7 @@ export function useLogin(): ReturnType<
   });
 }
 
-export function useLogout(): ReturnType<typeof useMutation<void, Error, void>> {
+export function useLogout(): UseMutationResult<void, Error, void> {
   const client = useQueryClient();
 
   return useMutation({
@@ -55,9 +59,7 @@ export function useLogout(): ReturnType<typeof useMutation<void, Error, void>> {
   });
 }
 
-export function useRegister(): ReturnType<
-  typeof useMutation<void, Error, { email: string; password: string }>
-> {
+export function useRegister(): UseMutationResult<void, Error, { email: string; password: string }> {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }): Promise<void> => {
       ensure(await api.POST('/auth/register', { body: credentials }));
@@ -65,7 +67,7 @@ export function useRegister(): ReturnType<
   });
 }
 
-export function useResendVerification(): ReturnType<typeof useMutation<void, Error, void>> {
+export function useResendVerification(): UseMutationResult<void, Error, void> {
   return useMutation({
     mutationFn: async (): Promise<void> => {
       ensure(await api.POST('/auth/verify-email/resend'));
@@ -80,7 +82,7 @@ function isOauthProvider(value: string): value is OauthProviderType {
 }
 
 /** The providers the hub has set up; none while they are not known, or when the hub does not say. */
-export function useOauthProviders(): ReturnType<typeof useQuery<OauthProviderType[]>> {
+export function useOauthProviders(): UseQueryResult<OauthProviderType[]> {
   return useQuery({
     queryKey: ['oauth-providers'],
     queryFn: async (): Promise<OauthProviderType[]> =>

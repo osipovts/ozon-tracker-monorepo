@@ -196,16 +196,6 @@ function Price({ item }: { item: ProductListItemType }): ReactElement {
   return <>{formatPrice(price.amountMinor)}</>;
 }
 
-function RemoveButton({
-  item,
-  onDeleted,
-}: {
-  item: ProductListItemType;
-  onDeleted: () => void;
-}): ReactElement {
-  return <DeleteProduct productId={item.id} title={titleOf(item)} onDeleted={onDeleted} />;
-}
-
 function ProductCards({
   items,
   onDeleted,
@@ -262,7 +252,7 @@ function ProductCards({
                   <Text size="sm" c="dimmed">
                     {t('products.nextCheck')}: <NextCheck at={item.nextCheckAt} />
                   </Text>
-                  <RemoveButton item={item} onDeleted={onDeleted} />
+                  <DeleteProduct productId={item.id} title={titleOf(item)} onDeleted={onDeleted} />
                 </Group>
               </Stack>
             </Stack>

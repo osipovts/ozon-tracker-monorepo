@@ -228,3 +228,14 @@ test('deletes the account only once its email is written', async (): Promise<voi
   expect(hubCalls).toContain('DELETE /auth/account');
   expect(hubBodies).toEqual([{ email: 'Jane@Example.com' }]);
 });
+
+test('asks for the email again when the confirmation is closed and opened anew', async (): Promise<void> => {
+  openSettings();
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+  await userEvent.type(await screen.findByLabelText('Email of the account'), 'Jane@Example.com');
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+
+  expect(await screen.findByLabelText('Email of the account')).toHaveValue('');
+});

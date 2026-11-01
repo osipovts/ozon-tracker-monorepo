@@ -10,7 +10,7 @@ import { ensure } from 'frontend-shared';
 
 import { api } from '../../shared/api/api.client.js';
 import type { operations } from '../../shared/api/schema.js';
-import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.js';
+import { isFinished, jobQuery, type JobQueryType } from '../jobs/job-query.type.js';
 
 export type ProxyPageType =
   operations['ProxiesController_list']['responses'][200]['content']['application/json'];
