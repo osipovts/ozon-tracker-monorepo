@@ -16,7 +16,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useLocale } from '../../i18n/use-locale.hook.js';
@@ -138,6 +138,12 @@ export function ProxiesPage(): ReactElement {
   const deleteAllProxies = useDeleteAllProxies();
   const addProxy = useAddProxy();
   const data = proxies.data;
+  const lastPage = Math.max(1, Math.ceil((data?.total ?? 0) / proxyPageSize));
+
+  // The last proxy of the last page is gone: the page goes with it.
+  useEffect((): void => {
+    if (data !== undefined && page > lastPage) setPage(lastPage);
+  }, [data, page, lastPage]);
 
   return (
     <Stack>
@@ -265,11 +271,7 @@ export function ProxiesPage(): ReactElement {
           </Table>
           {data.items.length === 0 && <Text c="dimmed">{t('proxies.noMatch')}</Text>}
           {data.total > proxyPageSize && (
-            <Pagination
-              total={Math.max(1, Math.ceil(data.total / proxyPageSize))}
-              value={page}
-              onChange={setPage}
-            />
+            <Pagination total={lastPage} value={page} onChange={setPage} />
           )}
         </>
       )}
