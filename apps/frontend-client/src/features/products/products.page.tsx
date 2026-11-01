@@ -15,12 +15,11 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { ErrorAlert, useLocale } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { linkHasCities } from './city-link.type.js';
 import { DeleteProduct } from './delete-product.component.js';
 import { formatMoment } from './moment-format.type.js';

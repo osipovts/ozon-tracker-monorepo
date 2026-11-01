@@ -1,9 +1,9 @@
 import { Center, Loader } from '@mantine/core';
+import { ErrorAlert } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { Navigate, Outlet } from 'react-router';
 
 import { useMe } from '../features/auth/use-me.hook.js';
-import { ErrorAlert } from '../shared/api/error-alert.component.js';
 import { AccessDenied } from './access-denied.component.js';
 
 /** Lets in the administrators only: the others are sent to log in, or told the panel is not theirs. */

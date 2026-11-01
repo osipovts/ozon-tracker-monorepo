@@ -11,12 +11,12 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { ApiError } from 'frontend-shared';
 import type { TFunction } from 'i18next';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
-import { ApiError } from '../../shared/api/api-error.error.js';
 import { LegalFooter } from '../legal/legal-footer.component.js';
 import { ProviderIcon } from './provider-icon.component.js';
 import { providerName } from './provider-name.type.js';

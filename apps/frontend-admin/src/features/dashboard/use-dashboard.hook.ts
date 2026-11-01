@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { ensure } from 'frontend-shared';
 
-import { api, ensure } from '../../shared/api/api.client.js';
+import { api } from '../../shared/api/api.client.js';
 import type { operations } from '../../shared/api/schema.js';
 
 export type DashboardType =

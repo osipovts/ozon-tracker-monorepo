@@ -10,14 +10,12 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { ApiError, ErrorAlert, useLocale } from 'frontend-shared';
 import type { TFunction } from 'i18next';
 import { type ReactElement, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ApiError } from '../../shared/api/api-error.error.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
 import { PriceChart } from './price-chart.component.js';

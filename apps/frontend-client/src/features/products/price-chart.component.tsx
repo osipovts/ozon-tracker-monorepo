@@ -1,4 +1,5 @@
 import { Card, Text, Title } from '@mantine/core';
+import { useLocale } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -11,7 +12,6 @@ import {
   YAxis,
 } from 'recharts';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
 import { formatPrice, formatPriceShort } from './price-format.type.js';
 import type { GranularityType, PriceBucketInterface } from './price-series.type.js';
 

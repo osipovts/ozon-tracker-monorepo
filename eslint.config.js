@@ -175,7 +175,7 @@ export default defineConfig(
 
   {
     // The panel runs in a browser, and its components are named in PascalCase.
-    files: ['apps/frontend-*/**/*.{ts,tsx}'],
+    files: ['apps/frontend-*/**/*.{ts,tsx}', 'packages/frontend-shared/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
     rules: {
       '@typescript-eslint/naming-convention': [

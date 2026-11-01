@@ -1,9 +1,9 @@
 import { Anchor, Container, Stack, Text, Title } from '@mantine/core';
+import { useLocale } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
 import type { LegalDocumentsType } from './legal-document.type.js';
 import { LegalFooter } from './legal-footer.component.js';
 import { privacyPolicy } from './privacy-policy.type.js';

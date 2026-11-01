@@ -9,13 +9,13 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { ApiError } from 'frontend-shared';
 import type { TFunction } from 'i18next';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
 import { LanguageControl } from '../../app/language.component.js';
-import { ApiError } from '../../shared/api/api-error.error.js';
 import { useLogin, useMe } from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */

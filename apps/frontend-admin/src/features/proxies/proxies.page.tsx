@@ -16,11 +16,10 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import { ErrorAlert, useLocale } from 'frontend-shared';
 import { type ReactElement, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { jobStatusLabel } from '../jobs/job-status-label.js';
 import {
   proxyPageSize,

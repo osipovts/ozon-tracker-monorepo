@@ -1,9 +1,8 @@
 import { Badge, Button, Card, Group, Loader, Stack, Text, Title } from '@mantine/core';
+import { ErrorAlert, useLocale } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useLocale } from '../../i18n/use-locale.hook.js';
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { formatMoment } from '../products/moment-format.type.js';
 import { describeDevice } from './device-name.type.js';
 import {

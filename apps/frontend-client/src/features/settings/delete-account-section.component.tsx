@@ -1,9 +1,9 @@
 import { Button, Card, Group, Modal, Stack, Text, TextInput, Title } from '@mantine/core';
+import { ErrorAlert } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { ErrorAlert } from '../../shared/api/error-alert.component.js';
 import { useMe } from '../auth/use-me.hook.js';
 import { useDeleteAccount } from './use-account.hook.js';
 
