@@ -176,7 +176,8 @@ export class PrismaTrackedProductRepositoryAdapter implements TrackedProductRepo
       this.prisma.productSubscription.findMany({
         where,
         include: { trackedProduct: true },
-        orderBy: { createdAt: 'desc' },
+        // The id settles products subscribed at the same moment: the pages must not repeat or skip one.
+        orderBy: [{ createdAt: 'desc' }, { trackedProductId: 'asc' }],
         skip: pageOffset(pagination),
         take: pagination.pageSize,
       }),
