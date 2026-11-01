@@ -1,10 +1,13 @@
 import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 import { LoginPage } from './login.page.js';
+
+const user = { id: 'u', email: 'jane@example.com', emailVerified: false, isAdmin: false };
 
 /** A hub where nobody is signed in, and the given providers are set up. */
 function stubHub(providers: string[]): void {
@@ -22,9 +25,13 @@ function stubHub(providers: string[]): void {
 }
 
 function openLogin(address = '/login'): void {
-  const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], {
-    initialEntries: [address],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/', element: <p>Products</p> },
+    ],
+    { initialEntries: [address] },
+  );
   render(
     <MantineProvider>
       <QueryClientProvider
@@ -86,4 +93,47 @@ test('has the links to the legal texts at its foot', async (): Promise<void> => 
     '/privacy',
   );
   expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+});
+
+test('finishes the confirmation of the email after the login, when the hub sends the user here from the link of the mail', async (): Promise<void> => {
+  const asked: string[] = [];
+  let signedIn = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((request: Request): Promise<Response> => {
+      const { pathname, search } = new URL(request.url);
+      asked.push(`${request.method} ${pathname}${search}`);
+      if (pathname === '/auth/oauth/providers')
+        return Promise.resolve(Response.json({ providers: [] }));
+      if (pathname === '/auth/login') {
+        signedIn = true;
+
+        return Promise.resolve(Response.json({ user }));
+      }
+      if (pathname === '/auth/verify-email')
+        return Promise.resolve(Response.json({ verified: true }));
+      if (pathname === '/auth/me' && signedIn) return Promise.resolve(Response.json({ user }));
+
+      return Promise.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    }),
+  );
+  openLogin('/login?verify=abc-123');
+
+  expect(await screen.findByText('Log in to confirm your email.')).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText(/Email/), 'jane@example.com');
+  await userEvent.type(screen.getByLabelText(/Password/), 'secret-pass');
+  await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
+
+  expect(await screen.findByText('Products')).toBeInTheDocument();
+  await waitFor((): void => {
+    expect(asked).toContain('GET /auth/verify-email?token=abc-123');
+  });
+});
+
+test('says nothing of a confirmation when the user did not come from the link of the mail', async (): Promise<void> => {
+  stubHub([]);
+  openLogin();
+
+  await screen.findByRole('button', { name: 'Log in' });
+  expect(screen.queryByText('Log in to confirm your email.')).not.toBeInTheDocument();
 });

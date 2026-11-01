@@ -20,7 +20,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { LegalFooter } from '../legal/legal-footer.component.js';
 import { ProviderIcon } from './provider-icon.component.js';
 import { providerName } from './provider-name.type.js';
-import { useLogin, useMe, useOauthProviders, useRegister } from './use-me.hook.js';
+import { useLogin, useMe, useOauthProviders, useRegister, useVerifyEmail } from './use-me.hook.js';
 
 /** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
 function explain(error: Error, t: TFunction): string {
@@ -68,6 +68,7 @@ export function LoginPage(): ReactElement {
   const me = useMe();
   const login = useLogin();
   const register = useRegister();
+  const verifyEmail = useVerifyEmail();
   const navigate = useNavigate();
   const [mode, setMode] = useState<string | null>('login');
   const [email, setEmail] = useState('');
@@ -75,6 +76,8 @@ export function LoginPage(): ReactElement {
   const signingUp = mode === 'register';
   const [params] = useSearchParams();
   const oauthFailed = params.get('error') === 'oauth';
+  // The link of the mail, opened where nobody is signed in: the hub sends the user here with its token.
+  const verifyToken = params.get('verify');
   const failure = signingUp ? (register.error ?? login.error) : login.error;
 
   if (me.data !== null && me.data !== undefined) return <Navigate to="/" replace />;
@@ -82,7 +85,16 @@ export function LoginPage(): ReactElement {
   const submit = (event: SyntheticEvent): void => {
     event.preventDefault();
     const enter = (): void => {
-      login.mutate({ email, password }, { onSuccess: (): void => void navigate('/') });
+      login.mutate(
+        { email, password },
+        {
+          onSuccess: (): void => {
+            // Whether the link still works or not, the user is in: the page of the app says what is left to do.
+            if (verifyToken === null) void navigate('/');
+            else verifyEmail.mutate(verifyToken, { onSettled: (): void => void navigate('/') });
+          },
+        },
+      );
     };
     // Signing up starts no session: the person is logged in right after.
     if (signingUp) register.mutate({ email, password }, { onSuccess: enter });
@@ -125,6 +137,11 @@ export function LoginPage(): ReactElement {
                 setPassword(event.currentTarget.value);
               }}
             />
+            {verifyToken !== null && (
+              <Alert color="blue" role="status">
+                {t('login.confirmEmail')}
+              </Alert>
+            )}
             {oauthFailed && failure === null && (
               <Alert color="red" role="alert">
                 {t('login.oauthFailed')}

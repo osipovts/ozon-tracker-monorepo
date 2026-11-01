@@ -30,6 +30,7 @@ export const en = {
     wrongCredentials:
       'The email or the password is wrong. If you have signed up just now with an email that already has an account, log in with the password of that account.',
     tooManyAttempts: 'Too many attempts.',
+    confirmEmail: 'Log in to confirm your email.',
     or: 'or',
     continueWith: 'Continue with {{provider}}',
     oauthFailed:

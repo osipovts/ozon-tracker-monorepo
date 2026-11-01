@@ -59,6 +59,18 @@ export function useLogout(): UseMutationResult<void, Error, void> {
   });
 }
 
+/** Proves the email with the token of the link of the mail; the user it is for has to be signed in. */
+export function useVerifyEmail(): UseMutationResult<void, Error, string> {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (token: string): Promise<void> => {
+      ensure(await api.GET('/auth/verify-email', { params: { query: { token } } }));
+    },
+    onSuccess: (): Promise<void> => client.invalidateQueries({ queryKey: meKey }),
+  });
+}
+
 export function useRegister(): UseMutationResult<void, Error, { email: string; password: string }> {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }): Promise<void> => {

@@ -553,6 +553,25 @@ void test('does not confirm the email for whoever opens the link without the acc
   assert.equal(authResponseSchema.parse((await me(cookie)).body).user.emailVerified, false);
 });
 
+void test('sends whoever opens the link without a session to the login page, which finishes the confirmation', async (): Promise<void> => {
+  await signUp('nora@example.com');
+  const link = linkTo('nora@example.com');
+  const token = new URL(link, baseUrl).searchParams.get('token') ?? '';
+
+  config.authFailureRedirect = '/app/login';
+  try {
+    const reply = await fetch(`${baseUrl}${link}`, { redirect: 'manual' });
+
+    assert.equal(reply.status, 302);
+    assert.equal(reply.headers.get('location'), `/app/login?verify=${token}`);
+  } finally {
+    config.authFailureRedirect = null;
+  }
+
+  // Where the hub knows no login page, it says so as an API does.
+  assert.equal((await call(link)).status, 401);
+});
+
 void test('refuses a link that is wrong', async (): Promise<void> => {
   const cookie = await signUp('rhea@example.com');
 
