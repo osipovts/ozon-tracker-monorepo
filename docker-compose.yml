@@ -11,6 +11,7 @@ x-hub-env: &hub-env
   DATABASE_URL: postgresql://hub:${POSTGRES_PASSWORD:-hub}@postgres:5432/hub
   HUB_API_KEY: ${HUB_API_KEY:-}
   ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+  PRICE_PROXY_COUNT: ${PRICE_PROXY_COUNT:-5}
   PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
   SMTP_URL: ${SMTP_URL:-}
   MAIL_FROM: ${MAIL_FROM:-Price Tracker <no-reply@localhost>}
