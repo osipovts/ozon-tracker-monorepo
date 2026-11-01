@@ -60,7 +60,9 @@ interface SiteInterface {
   /** The city the browser has when it comes, by the cookie of the site. */
   cityId?: string;
   /** What the site answers to the request to change the city. */
-  setCity?: { status: number; body: string };
+  setCity?: { status: number; body: string } | 'hangs';
+  /** The time the reader is given for a step; ten seconds when not said. */
+  timeoutMs?: number;
 }
 
 function createReader(site: SiteInterface): {
@@ -99,6 +101,8 @@ function createReader(site: SiteInterface): {
             });
           } else if (url === 'https://www.dns-shop.ru/city-service/set-city/') {
             requests.push(`set-city ${route.request().postData() ?? ''}`);
+            if (site.setCity === 'hangs') return;
+
             await route.fulfill({
               status: site.setCity?.status ?? 200,
               contentType: 'application/json',
@@ -115,7 +119,7 @@ function createReader(site: SiteInterface): {
     },
     new CamoufoxOptionsFactory(),
     parsers,
-    10_000,
+    site.timeoutMs ?? 10_000,
   );
 
   return { reader, requests };
@@ -216,3 +220,25 @@ void test('waits for the price that the card draws after an empty block of it is
   assert.deepEqual(result.snapshot.prices, [{ amountMinor: 15299900, currency: 'RUB' }]);
   assert.equal(result.snapshot.availability, 'in_stock');
 });
+
+void test(
+  'gives up on a site that never answers the change of the city, within the time it is given',
+  {
+    timeout: 20_000,
+  },
+  async (): Promise<void> => {
+    const { reader } = createReader({
+      pages: [inStock('153 999 ₽')],
+      cityId: moscow,
+      setCity: 'hangs',
+      timeoutMs: 1500,
+    });
+    const started = Date.now();
+
+    const result = await reader.read(reference.inCity(irkutsk), null, new AbortController().signal);
+
+    assert.equal(result.status, 'network_error');
+    assert.ok(Date.now() - started < 8000);
+    assert.equal(browser.contexts().length, 0);
+  },
+);

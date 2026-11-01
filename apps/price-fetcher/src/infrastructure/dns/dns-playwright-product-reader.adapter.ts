@@ -146,17 +146,24 @@ export class DnsPlaywrightProductReaderAdapter implements ProductReaderPort {
     return cookie !== undefined && this.parsers.cities.parse(cookie.value) === cityId;
   }
 
-  /** Does what the city selector of the site does: asks for the city, and the site answers with its id. */
+  /**
+   * Does what the city selector of the site does: asks for the city, and the site answers with its id.
+   * An answer that does not come within the time given is a failure, not a wait without end.
+   */
   private setCity(page: Page, cityId: string): Promise<boolean> {
-    return page.evaluate(async (id): Promise<boolean> => {
-      const response = await fetch('/city-service/set-city/', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ cityId: id }),
-        credentials: 'include',
-      });
+    return page.evaluate(
+      async ({ id, timeoutMs }): Promise<boolean> => {
+        const response = await fetch('/city-service/set-city/', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ cityId: id }),
+          credentials: 'include',
+          signal: AbortSignal.timeout(timeoutMs),
+        });
 
-      return response.ok && (await response.text()).replaceAll('"', '') === id;
-    }, cityId);
+        return response.ok && (await response.text()).replaceAll('"', '') === id;
+      },
+      { id: cityId, timeoutMs: this.timeoutMs },
+    );
   }
 }
