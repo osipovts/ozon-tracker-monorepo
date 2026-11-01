@@ -5,6 +5,7 @@ import { after, before, test } from 'node:test';
 
 import { type Browser, chromium, devices, type Page } from 'playwright';
 
+import { HttpImageDownloaderAdapter } from '../product/infrastructure/http-image-downloader.adapter.js';
 import { DockerStackAdapter } from './support/docker-stack.adapter.js';
 import { FakePriceWorkerAdapter } from './support/fake-price-worker.adapter.js';
 import {
@@ -51,6 +52,11 @@ before(
 
     hub = await startHub({
       stack: infrastructure,
+      // The marketplace of the test is a server on this machine, over plain HTTP.
+      imageDownloader: new HttpImageDownloaderAdapter({
+        protocols: ['http:'],
+        allows: (): boolean => true,
+      }),
       env: {
         // The default schedule, every hour at the 55th minute, which the page shows (the harness turns it off).
         PRICE_REFRESH_INTERVAL_MS: '',
