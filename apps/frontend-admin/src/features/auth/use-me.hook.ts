@@ -1,60 +1,21 @@
-import {
-  useMutation,
-  type UseMutationResult,
-  useQuery,
-  useQueryClient,
-  type UseQueryResult,
-} from '@tanstack/react-query';
-import { ensure } from 'frontend-shared';
+import { createAuthHooks, ensure, type MeInterface } from 'frontend-shared';
 
 import { api } from '../../shared/api/api.client.js';
 
-export interface MeInterface {
-  id: string;
-  email: string;
-  emailVerified: boolean;
-  isAdmin: boolean;
-}
+export type { MeInterface };
 
-const meKey = ['me'] as const;
+export const { useLogin, useLogout, useMe } = createAuthHooks({
+  me: async (): Promise<MeInterface | null> => {
+    const result = await api.GET('/auth/me');
+    // Nobody signed in is an answer, not a failure.
+    if (result.response.status === 401) return null;
 
-/** Who is signed in: null for nobody. */
-export function useMe(): UseQueryResult<MeInterface | null> {
-  return useQuery({
-    queryKey: meKey,
-    queryFn: async (): Promise<MeInterface | null> => {
-      const result = await api.GET('/auth/me');
-      // Nobody signed in is an answer, not a failure.
-      if (result.response.status === 401) return null;
-
-      return ensure(result)?.user ?? null;
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
-}
-
-export function useLogin(): UseMutationResult<void, Error, { email: string; password: string }> {
-  const client = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (credentials: { email: string; password: string }): Promise<void> => {
-      ensure(await api.POST('/auth/login', { body: credentials }));
-    },
-    onSuccess: (): Promise<void> => client.invalidateQueries({ queryKey: meKey }),
-  });
-}
-
-export function useLogout(): UseMutationResult<void, Error, void> {
-  const client = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (): Promise<void> => {
-      ensure(await api.POST('/auth/logout'));
-    },
-    // What was read with the session is not for whoever comes next.
-    onSuccess: (): void => {
-      client.clear();
-    },
-  });
-}
+    return ensure(result)?.user ?? null;
+  },
+  logIn: async (credentials): Promise<void> => {
+    ensure(await api.POST('/auth/login', { body: credentials }));
+  },
+  logOut: async (): Promise<void> => {
+    ensure(await api.POST('/auth/logout'));
+  },
+});

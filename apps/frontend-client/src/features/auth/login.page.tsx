@@ -11,8 +11,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { ApiError } from 'frontend-shared';
-import type { TFunction } from 'i18next';
+import { explainLoginRefusal } from 'frontend-shared';
 import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -21,22 +20,6 @@ import { LegalFooter } from '../legal/legal-footer.component.js';
 import { ProviderIcon } from './provider-icon.component.js';
 import { providerName } from './provider-name.type.js';
 import { useLogin, useMe, useOauthProviders, useRegister, useVerifyEmail } from './use-me.hook.js';
-
-/** What the person is told of a refusal: the hub's own words say too little of a wrong login. */
-function explain(error: Error, t: TFunction): string {
-  if (!(error instanceof ApiError)) return t('errors.unreachable');
-  if (error.status === 401) return t('login.wrongCredentials');
-  if (error.status === 429) {
-    const wait =
-      error.retryAfterSeconds === null
-        ? ''
-        : ` ${t('errors.tryAgain', { seconds: error.retryAfterSeconds })}`;
-
-    return `${t('login.tooManyAttempts')}${wait}`;
-  }
-
-  return error.message;
-}
 
 /** Buttons that take the browser to the login of a provider, which brings it back logged in. */
 function ProviderButtons(): ReactElement | null {
@@ -149,7 +132,7 @@ export function LoginPage(): ReactElement {
             )}
             {failure !== null && (
               <Alert color="red" role="alert">
-                {explain(failure, t)}
+                {explainLoginRefusal(failure, t)}
               </Alert>
             )}
             <Button type="submit" loading={login.isPending || register.isPending}>

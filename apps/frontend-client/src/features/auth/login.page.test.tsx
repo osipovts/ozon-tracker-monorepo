@@ -137,3 +137,63 @@ test('says nothing of a confirmation when the user did not come from the link of
   await screen.findByRole('button', { name: 'Log in' });
   expect(screen.queryByText('Log in to confirm your email.')).not.toBeInTheDocument();
 });
+
+/** A hub that refuses every login with the given answer. */
+function refuseLogins(answer: Response): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((request: Request): Promise<Response> => {
+      const { pathname } = new URL(request.url);
+      if (pathname === '/auth/oauth/providers') {
+        return Promise.resolve(Response.json({ providers: [] }));
+      }
+      if (pathname === '/auth/login') return Promise.resolve(answer.clone());
+
+      return Promise.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    }),
+  );
+}
+
+async function submitLogin(): Promise<void> {
+  await userEvent.type(await screen.findByLabelText(/Email/), 'jane@example.com');
+  await userEvent.type(screen.getByLabelText(/Password/), 'secret-pass');
+  await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
+}
+
+test('tells a wrong email or password in its own words, not in those of the hub', async (): Promise<void> => {
+  refuseLogins(Response.json({ message: 'Invalid credentials' }, { status: 401 }));
+  openLogin();
+
+  await submitLogin();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('The email or the password is wrong.');
+});
+
+test('tells to wait when the hub says there were too many attempts, and for how long', async (): Promise<void> => {
+  refuseLogins(
+    Response.json({ message: 'Slow down' }, { status: 429, headers: { 'retry-after': '90' } }),
+  );
+  openLogin();
+
+  await submitLogin();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Too many attempts. Try again in 90 s.',
+  );
+});
+
+test('says the hub could not be reached when the request does not get there', async (): Promise<void> => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((request: Request): Promise<Response> =>
+      new URL(request.url).pathname === '/auth/oauth/providers'
+        ? Promise.resolve(Response.json({ providers: [] }))
+        : Promise.reject(new TypeError('Failed to fetch')),
+    ),
+  );
+  openLogin();
+
+  await submitLogin();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('The hub could not be reached.');
+});

@@ -14,6 +14,11 @@ import {
   type PendingAddInterface,
   rememberPendingAdd,
 } from './pending-add.type.js';
+import {
+  historyPageSize,
+  loadPriceHistory,
+  type PriceHistoryInterface,
+} from './price-history.type.js';
 
 export type ProductPageType =
   operations['ProductsController_list']['responses'][200]['content']['application/json'];
@@ -23,18 +28,12 @@ type PriceHistoryPageType =
   operations['ProductsController_prices']['responses'][200]['content']['application/json'];
 export type ObservationType = PriceHistoryPageType['items'][number];
 
-export interface PriceHistoryInterface {
-  product: PriceHistoryPageType['product'];
-  /** The newest first, all of them. */
-  observations: ObservationType[];
-}
+export type ProductHistoryType = PriceHistoryInterface<
+  PriceHistoryPageType['product'],
+  ObservationType
+>;
 
 export const productPageSize = 20;
-
-/** The page of the history the hub gives at most. */
-const historyPageSize = 100;
-/** A product read every few hours does not get past this in years. */
-const historyPagesMax = 50;
 
 /** How long to wait for the first price of a product that has none yet, in milliseconds. */
 const firstPricePollMs = 3000;
@@ -98,28 +97,23 @@ export function useDeleteProduct(): UseMutationResult<void, Error, string> {
   });
 }
 
-export function usePriceHistory(id: string): UseQueryResult<PriceHistoryInterface | undefined> {
+export function usePriceHistory(id: string): UseQueryResult<ProductHistoryType | undefined> {
+  const client = useQueryClient();
+  const key = ['price-history', id];
+
   return useQuery({
-    queryKey: ['price-history', id],
-    queryFn: async (): Promise<PriceHistoryInterface | undefined> => {
-      const observations: ObservationType[] = [];
-      let product: PriceHistoryPageType['product'] | undefined;
-
-      for (let page = 1; page <= historyPagesMax; page += 1) {
-        const loaded = ensure(
-          await api.GET('/products/{id}/prices', {
-            params: { path: { id }, query: { page, pageSize: historyPageSize } },
-          }),
-        );
-        if (loaded === undefined) break;
-
-        product = loaded.product;
-        observations.push(...loaded.items);
-        if (observations.length >= loaded.total || loaded.items.length === 0) break;
-      }
-
-      return product === undefined ? undefined : { product, observations };
-    },
+    queryKey: key,
+    // What the page has of the history stays: a refresh asks for what is newer only.
+    queryFn: (): Promise<ProductHistoryType | undefined> =>
+      loadPriceHistory(
+        async (page) =>
+          ensure(
+            await api.GET('/products/{id}/prices', {
+              params: { path: { id }, query: { page, pageSize: historyPageSize } },
+            }),
+          ),
+        client.getQueryData<ProductHistoryType>(key),
+      ),
     refetchInterval: 60_000,
   });
 }
