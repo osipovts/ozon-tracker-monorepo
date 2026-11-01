@@ -3,6 +3,12 @@
 # the stack only (other projects of the machine hold the usual ports).
 #   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
 # Needs PUBLIC_DOMAIN and PUBLIC_URL (https://<domain>) in .env, besides the settings of the README.
+# The password of Postgres and the secret key of S3 have defaults in the base file that everybody knows,
+# and the pictures are served on the open domain: here they have to be set in .env.
+x-required-secrets:
+  postgres_password: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+  s3_secret_access_key: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+
 services:
   hub:
     ports: !reset []
