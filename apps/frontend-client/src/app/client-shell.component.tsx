@@ -44,11 +44,11 @@ export function ClientShell(): ReactElement {
   const navigate = useNavigate();
 
   return (
-    <AppShell header={{ height: 80 }} padding="md">
-      <AppShell.Header px="md">
+    <AppShell header={{ height: 64 }} padding="md" withBorder={false}>
+      <AppShell.Header px="md" pt={10}>
         <Container size="lg" h="100%">
           <Group h="100%" justify="space-between" wrap="nowrap">
-            <Title order={4} ff={BRAND_FONT} fz={64} fw={400} lh={1}>
+            <Title order={4} ff={BRAND_FONT} fz={48} fw={400} lh={1}>
               <Anchor
                 component={Link}
                 to="/"
