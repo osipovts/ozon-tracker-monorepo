@@ -23,7 +23,12 @@ export function AdminShell(): ReactElement {
     <AppShell header={{ height: 56 }} navbar={{ width: 220, breakpoint: 'sm' }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={4}>{t('shell.title')}</Title>
+          <Group gap="xs" align="baseline">
+            <Title order={4}>{t('shell.title')}</Title>
+            <Text size="xs" c="dimmed">
+              v{__APP_VERSION__}
+            </Text>
+          </Group>
           <Group>
             <LanguageControl />
             <ColorSchemeControl size="xs" />
