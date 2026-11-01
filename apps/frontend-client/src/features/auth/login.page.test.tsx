@@ -197,3 +197,39 @@ test('says the hub could not be reached when the request does not get there', as
 
   expect(await screen.findByRole('alert')).toHaveTextContent('The hub could not be reached.');
 });
+
+test('signs a visitor up and logs them in right after, since signing up starts no session', async () => {
+  const asked: string[] = [];
+  let signedIn = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((request: Request): Promise<Response> => {
+      const { pathname } = new URL(request.url);
+      asked.push(`${request.method} ${pathname}`);
+      if (pathname === '/auth/oauth/providers')
+        return Promise.resolve(Response.json({ providers: [] }));
+      if (pathname === '/auth/register')
+        return Promise.resolve(Response.json({ accepted: true }, { status: 202 }));
+      if (pathname === '/auth/login') {
+        signedIn = true;
+
+        return Promise.resolve(Response.json({ user }));
+      }
+      if (pathname === '/auth/me' && signedIn) return Promise.resolve(Response.json({ user }));
+
+      return Promise.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    }),
+  );
+  openLogin();
+
+  await userEvent.click(await screen.findByRole('tab', { name: 'Sign up' }));
+  await userEvent.type(screen.getByLabelText(/Email/), 'jane@example.com');
+  await userEvent.type(screen.getByLabelText(/Password/), 'secret-pass');
+  await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+
+  expect(await screen.findByText('Products')).toBeInTheDocument();
+  expect(asked.filter((call) => call.startsWith('POST'))).toEqual([
+    'POST /auth/register',
+    'POST /auth/login',
+  ]);
+});

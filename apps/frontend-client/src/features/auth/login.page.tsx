@@ -46,6 +46,39 @@ function ProviderButtons(): ReactElement | null {
   );
 }
 
+/** What the page has to say besides the form: why the user is here, and why the last try did not work. */
+function Notices({
+  verifying,
+  oauthFailed,
+  failure,
+}: {
+  verifying: boolean;
+  oauthFailed: boolean;
+  failure: Error | null;
+}): ReactElement {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {verifying && (
+        <Alert color="blue" role="status">
+          {t('login.confirmEmail')}
+        </Alert>
+      )}
+      {oauthFailed && failure === null && (
+        <Alert color="red" role="alert">
+          {t('login.oauthFailed')}
+        </Alert>
+      )}
+      {failure !== null && (
+        <Alert color="red" role="alert">
+          {explainLoginRefusal(failure, t)}
+        </Alert>
+      )}
+    </>
+  );
+}
+
 export function LoginPage(): ReactElement {
   const { t } = useTranslation();
   const me = useMe();
@@ -120,21 +153,7 @@ export function LoginPage(): ReactElement {
                 setPassword(event.currentTarget.value);
               }}
             />
-            {verifyToken !== null && (
-              <Alert color="blue" role="status">
-                {t('login.confirmEmail')}
-              </Alert>
-            )}
-            {oauthFailed && failure === null && (
-              <Alert color="red" role="alert">
-                {t('login.oauthFailed')}
-              </Alert>
-            )}
-            {failure !== null && (
-              <Alert color="red" role="alert">
-                {explainLoginRefusal(failure, t)}
-              </Alert>
-            )}
+            <Notices verifying={verifyToken !== null} oauthFailed={oauthFailed} failure={failure} />
             <Button type="submit" loading={login.isPending || register.isPending}>
               {signingUp ? t('login.signUp') : t('login.logIn')}
             </Button>
