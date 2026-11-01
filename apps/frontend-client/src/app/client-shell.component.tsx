@@ -15,6 +15,7 @@ import { Link, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe, useResendVerification } from '../features/auth/use-me.hook.js';
 import { LegalFooter } from '../features/legal/legal-footer.component.js';
+import { BRAND_FONT } from './ayu.theme.js';
 
 /** The arrow of a button that opens a menu. */
 function ChevronDown(): ReactElement {
@@ -44,45 +45,47 @@ export function ClientShell(): ReactElement {
 
   return (
     <AppShell header={{ height: 56 }} padding="md">
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="xs" align="baseline" wrap="nowrap">
-            <Title order={4}>
-              <Anchor component={Link} to="/" c="inherit" underline="never">
-                {t('shell.title')}
-              </Anchor>
-            </Title>
-            <Text size="sm" c="dimmed" visibleFrom="sm">
-              {t('brand.slogan')}
-            </Text>
+      <AppShell.Header px="md">
+        <Container size="lg" h="100%">
+          <Group h="100%" justify="space-between" wrap="nowrap">
+            <Group gap="xs" align="baseline" wrap="nowrap">
+              <Title order={4} ff={BRAND_FONT} fz={32} fw={400} lh={1}>
+                <Anchor component={Link} to="/" c="inherit" underline="never">
+                  {t('shell.title')}
+                </Anchor>
+              </Title>
+              <Text size="sm" c="dimmed" visibleFrom="sm">
+                {t('brand.slogan')}
+              </Text>
+            </Group>
+            {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
+            <Menu position="bottom-end" width={260} shadow="md">
+              <Menu.Target>
+                <Button size="xs" variant="default" rightSection={<ChevronDown />}>
+                  {t('shell.account')}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label mb="xs" style={{ overflowWrap: 'anywhere' }}>
+                  {me.data?.email}
+                </Menu.Label>
+                <Menu.Item component={Link} to="/settings">
+                  {t('shell.settings')}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  color="red"
+                  disabled={logout.isPending}
+                  onClick={(): void => {
+                    logout.mutate(undefined, { onSuccess: (): void => void navigate('/login') });
+                  }}
+                >
+                  {t('common.logOut')}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
-          {/* The email, the settings and the way out are one menu: the header stays one line on a phone. */}
-          <Menu position="bottom-end" width={260} shadow="md">
-            <Menu.Target>
-              <Button size="xs" variant="default" rightSection={<ChevronDown />}>
-                {t('shell.account')}
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label mb="xs" style={{ overflowWrap: 'anywhere' }}>
-                {me.data?.email}
-              </Menu.Label>
-              <Menu.Item component={Link} to="/settings">
-                {t('shell.settings')}
-              </Menu.Item>
-              <Menu.Divider />
-              <Menu.Item
-                color="red"
-                disabled={logout.isPending}
-                onClick={(): void => {
-                  logout.mutate(undefined, { onSuccess: (): void => void navigate('/login') });
-                }}
-              >
-                {t('common.logOut')}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
+        </Container>
       </AppShell.Header>
       <AppShell.Main>
         <Container size="lg">

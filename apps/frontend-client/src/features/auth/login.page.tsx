@@ -16,6 +16,7 @@ import { type ReactElement, type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
+import { BRAND_FONT } from '../../app/ayu.theme.js';
 import { LegalFooter } from '../legal/legal-footer.component.js';
 import { ProviderIcon } from './provider-icon.component.js';
 import { providerName } from './provider-name.type.js';
@@ -123,7 +124,9 @@ export function LoginPage(): ReactElement {
         <form onSubmit={submit}>
           <Stack>
             <Stack gap={0}>
-              <Title order={2}>{t('login.title')}</Title>
+              <Title order={2} ff={BRAND_FONT} fz={64} fw={400} lh={1.1}>
+                {t('login.title')}
+              </Title>
               <Text size="sm" c="dimmed">
                 {t('brand.slogan')}
               </Text>
