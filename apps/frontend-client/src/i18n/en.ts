@@ -14,7 +14,7 @@ export const en = {
     unreachable: 'The hub could not be reached.',
   },
   brand: {
-    slogan: 'price tracker',
+    slogan: 'price tracker: ozon, wb, dns, etc.',
   },
   legal: {
     privacy: 'Privacy Policy',

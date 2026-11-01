@@ -27,7 +27,7 @@ function ProviderRow({
         <Group gap="xs">
           <ProviderIcon provider={provider} />
           <Text fw={500}>{providerName(provider)}</Text>
-          {onlyWay && <Badge color="yellow">{t('settings.onlyWay')}</Badge>}
+          {onlyWay && <Badge color="blue">{t('settings.onlyWay')}</Badge>}
         </Group>
         <Text size="xs" c="dimmed">
           {t('settings.linkedOn', { when: formatMoment(linkedAt, locale) })}

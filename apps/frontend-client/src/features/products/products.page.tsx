@@ -195,7 +195,7 @@ function Price({ item }: { item: ProductListItemType }): ReactElement {
   const price = item.latest?.prices[0];
 
   if (item.latest === null) return <Badge color="gray">{t('products.waiting')}</Badge>;
-  if (price === undefined) return <Badge color="yellow">{t('products.noPrice')}</Badge>;
+  if (price === undefined) return <Badge color="blue">{t('products.noPrice')}</Badge>;
 
   return <>{formatPrice(price.amountMinor)}</>;
 }
@@ -279,8 +279,10 @@ export function ProductsPage(): ReactElement {
 
   return (
     <Stack>
-      <Title order={2}>{t('products.title')}</Title>
       <AddProduct />
+      <Title order={2} mt="md">
+        {t('products.title')}
+      </Title>
       {products.isError && <ErrorAlert error={products.error} />}
       {data === undefined ? (
         !products.isError && <Loader />

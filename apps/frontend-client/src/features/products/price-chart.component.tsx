@@ -61,7 +61,7 @@ export function PriceChart({
           />
           <Line
             dataKey="dashed"
-            stroke="var(--mantine-color-blue-6)"
+            stroke="var(--mantine-color-yellow-6)"
             strokeDasharray="6 4"
             dot={false}
             activeDot={false}
@@ -70,7 +70,7 @@ export function PriceChart({
           />
           <Line
             dataKey="solid"
-            stroke="var(--mantine-color-blue-6)"
+            stroke="var(--mantine-color-yellow-6)"
             strokeWidth={2}
             dot={{ r: 3 }}
             connectNulls={false}
