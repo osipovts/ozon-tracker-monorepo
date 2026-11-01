@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { jobStatusLabel } from '../jobs/job-status-label.type.js';
 import {
   proxyPageSize,
+  type ProxyPageType,
   proxySources,
   type ProxySourceType,
   useAddProxy,
@@ -32,6 +33,8 @@ import {
   useRefreshSources,
   useSetProxyDisabled,
 } from './use-proxies.hook.js';
+
+type ProxyItemType = ProxyPageType['items'][number];
 
 type ChoiceType = 'all' | 'true' | 'false';
 
@@ -117,16 +120,155 @@ function RefreshSource(): ReactElement {
   );
 }
 
-export function ProxiesPage(): ReactElement {
+/** One proxy of the list, with the switch that turns it off and the button that deletes it. */
+function ProxyRow({
+  proxy,
+  switching,
+  onSwitch,
+  onDelete,
+}: {
+  proxy: ProxyItemType;
+  switching: boolean;
+  onSwitch: (disabled: boolean) => void;
+  onDelete: () => void;
+}): ReactElement {
   const { t } = useTranslation();
   const locale = useLocale();
+
+  return (
+    <Table.Tr>
+      <Table.Td>{proxy.server}</Table.Td>
+      <Table.Td>{proxy.source}</Table.Td>
+      <Table.Td>{proxy.country ?? '-'}</Table.Td>
+      <Table.Td>
+        <Tooltip
+          multiline
+          w={260}
+          label={proxy.alive ? t('proxies.aliveHint') : t('proxies.deadHint')}
+        >
+          <Badge color={proxy.alive ? 'green' : 'red'}>
+            {proxy.alive ? t('proxies.alive') : t('proxies.dead')}
+          </Badge>
+        </Tooltip>
+      </Table.Td>
+      <Table.Td>
+        {proxy.latencyMs === null ? '-' : t('proxies.milliseconds', { value: proxy.latencyMs })}
+      </Table.Td>
+      <Table.Td>
+        {t('proxies.successOf', {
+          percent: Math.round(proxy.successRate * 100),
+          checks: proxy.checksTotal,
+        })}
+      </Table.Td>
+      <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString(locale)}</Table.Td>
+      <Table.Td>
+        <Switch
+          aria-label={t('proxies.enabledOf', { server: proxy.server })}
+          checked={!proxy.disabled}
+          disabled={switching}
+          onChange={(event): void => {
+            onSwitch(!event.currentTarget.checked);
+          }}
+        />
+      </Table.Td>
+      <Table.Td>
+        <Button size="xs" color="red" variant="light" onClick={onDelete}>
+          {t('proxies.delete')}
+        </Button>
+      </Table.Td>
+    </Table.Tr>
+  );
+}
+
+/** The dialog that takes the address of a proxy by hand. */
+function AddProxyDialog({
+  opened,
+  onClose,
+}: {
+  opened: boolean;
+  onClose: () => void;
+}): ReactElement {
+  const { t } = useTranslation();
+  const [address, setAddress] = useState('');
+  const addProxy = useAddProxy();
+
+  const close = (): void => {
+    setAddress('');
+    addProxy.reset();
+    onClose();
+  };
+
+  return (
+    <Modal opened={opened} title={t('proxies.addTitle')} onClose={close}>
+      <form
+        onSubmit={(event): void => {
+          event.preventDefault();
+          addProxy.mutate(address.trim(), { onSuccess: close });
+        }}
+      >
+        <Stack>
+          <TextInput
+            label={t('proxies.addAddress')}
+            description={t('proxies.addHint')}
+            placeholder="http://user:password@203.0.113.10:3128"
+            value={address}
+            autoComplete="off"
+            data-autofocus
+            onChange={(event): void => {
+              setAddress(event.currentTarget.value);
+            }}
+          />
+          {addProxy.error !== null && <ErrorAlert error={addProxy.error} />}
+          <Button type="submit" disabled={address.trim() === ''} loading={addProxy.isPending}>
+            {t('proxies.add')}
+          </Button>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+/** Asks to confirm, then runs `confirm`; the dialog closes when it succeeds. */
+function ConfirmDialog({
+  opened,
+  title,
+  text,
+  action,
+  error,
+  pending,
+  onConfirm,
+  onClose,
+}: {
+  opened: boolean;
+  title: string;
+  text: string;
+  action: string;
+  error: Error | null;
+  pending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}): ReactElement {
+  return (
+    <Modal opened={opened} title={title} onClose={onClose}>
+      <Stack>
+        <Text>{text}</Text>
+        {error !== null && <ErrorAlert error={error} />}
+        <Button color="red" loading={pending} onClick={onConfirm}>
+          {action}
+        </Button>
+      </Stack>
+    </Modal>
+  );
+}
+
+export function ProxiesPage(): ReactElement {
+  const { t } = useTranslation();
   const [alive, setAlive] = useState<ChoiceType>('all');
   const [disabled, setDisabled] = useState<ChoiceType>('all');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [address, setAddress] = useState('');
   const proxies = useProxies({
     alive: toFilter(alive),
     disabled: toFilter(disabled),
@@ -135,7 +277,6 @@ export function ProxiesPage(): ReactElement {
   const setProxyDisabled = useSetProxyDisabled();
   const deleteProxy = useDeleteProxy();
   const deleteAllProxies = useDeleteAllProxies();
-  const addProxy = useAddProxy();
   const data = proxies.data;
   const lastPage = Math.max(1, Math.ceil((data?.total ?? 0) / proxyPageSize));
 
@@ -152,7 +293,6 @@ export function ProxiesPage(): ReactElement {
           <Button
             variant="light"
             onClick={(): void => {
-              addProxy.reset();
               setAdding(true);
             }}
           >
@@ -213,59 +353,18 @@ export function ProxiesPage(): ReactElement {
               </Table.Thead>
               <Table.Tbody>
                 {data.items.map((proxy): ReactElement => (
-                  <Table.Tr key={proxy.server}>
-                    <Table.Td>{proxy.server}</Table.Td>
-                    <Table.Td>{proxy.source}</Table.Td>
-                    <Table.Td>{proxy.country ?? '-'}</Table.Td>
-                    <Table.Td>
-                      <Tooltip
-                        multiline
-                        w={260}
-                        label={proxy.alive ? t('proxies.aliveHint') : t('proxies.deadHint')}
-                      >
-                        <Badge color={proxy.alive ? 'green' : 'red'}>
-                          {proxy.alive ? t('proxies.alive') : t('proxies.dead')}
-                        </Badge>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td>
-                      {proxy.latencyMs === null
-                        ? '-'
-                        : t('proxies.milliseconds', { value: proxy.latencyMs })}
-                    </Table.Td>
-                    <Table.Td>
-                      {t('proxies.successOf', {
-                        percent: Math.round(proxy.successRate * 100),
-                        checks: proxy.checksTotal,
-                      })}
-                    </Table.Td>
-                    <Table.Td>{new Date(proxy.lastCheckedAt).toLocaleString(locale)}</Table.Td>
-                    <Table.Td>
-                      <Switch
-                        aria-label={t('proxies.enabledOf', { server: proxy.server })}
-                        checked={!proxy.disabled}
-                        disabled={setProxyDisabled.isPending}
-                        onChange={(event): void => {
-                          setProxyDisabled.mutate({
-                            server: proxy.server,
-                            disabled: !event.currentTarget.checked,
-                          });
-                        }}
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <Button
-                        size="xs"
-                        color="red"
-                        variant="light"
-                        onClick={(): void => {
-                          setDeleting(proxy.server);
-                        }}
-                      >
-                        {t('proxies.delete')}
-                      </Button>
-                    </Table.Td>
-                  </Table.Tr>
+                  <ProxyRow
+                    key={proxy.server}
+                    proxy={proxy}
+                    switching={setProxyDisabled.isPending}
+                    onSwitch={(off): void => {
+                      setProxyDisabled.mutate({ server: proxy.server, disabled: off });
+                    }}
+                    onDelete={(): void => {
+                      deleteProxy.reset();
+                      setDeleting(proxy.server);
+                    }}
+                  />
                 ))}
               </Table.Tbody>
             </Table>
@@ -276,95 +375,50 @@ export function ProxiesPage(): ReactElement {
           )}
         </>
       )}
-      <Modal
+      <AddProxyDialog
         opened={adding}
-        title={t('proxies.addTitle')}
         onClose={(): void => {
           setAdding(false);
-          setAddress('');
         }}
-      >
-        <form
-          onSubmit={(event): void => {
-            event.preventDefault();
-            addProxy.mutate(address.trim(), {
-              onSuccess: (): void => {
-                setAdding(false);
-                setAddress('');
-              },
-            });
-          }}
-        >
-          <Stack>
-            <TextInput
-              label={t('proxies.addAddress')}
-              description={t('proxies.addHint')}
-              placeholder="http://user:password@203.0.113.10:3128"
-              value={address}
-              autoComplete="off"
-              data-autofocus
-              onChange={(event): void => {
-                setAddress(event.currentTarget.value);
-              }}
-            />
-            {addProxy.error !== null && <ErrorAlert error={addProxy.error} />}
-            <Button type="submit" disabled={address.trim() === ''} loading={addProxy.isPending}>
-              {t('proxies.add')}
-            </Button>
-          </Stack>
-        </form>
-      </Modal>
-      <Modal
+      />
+      <ConfirmDialog
         opened={deleting !== null}
         title={t('proxies.deleteTitle')}
+        text={t('proxies.deleteText', { server: deleting ?? '' })}
+        action={t('proxies.delete')}
+        error={deleteProxy.error}
+        pending={deleteProxy.isPending}
+        onConfirm={(): void => {
+          if (deleting === null) return;
+
+          deleteProxy.mutate(deleting, {
+            onSuccess: (): void => {
+              setDeleting(null);
+            },
+          });
+        }}
         onClose={(): void => {
           setDeleting(null);
         }}
-      >
-        <Stack>
-          <Text>{t('proxies.deleteText', { server: deleting ?? '' })}</Text>
-          {deleteProxy.error !== null && <ErrorAlert error={deleteProxy.error} />}
-          <Button
-            color="red"
-            loading={deleteProxy.isPending}
-            onClick={(): void => {
-              if (deleting === null) return;
-              deleteProxy.mutate(deleting, {
-                onSuccess: (): void => {
-                  setDeleting(null);
-                },
-              });
-            }}
-          >
-            {t('proxies.delete')}
-          </Button>
-        </Stack>
-      </Modal>
-      <Modal
+      />
+      <ConfirmDialog
         opened={deletingAll}
         title={t('proxies.deleteAllTitle')}
+        text={t('proxies.deleteAllText')}
+        action={t('proxies.deleteAll')}
+        error={deleteAllProxies.error}
+        pending={deleteAllProxies.isPending}
+        onConfirm={(): void => {
+          deleteAllProxies.mutate(undefined, {
+            onSuccess: (): void => {
+              setDeletingAll(false);
+            },
+          });
+        }}
         onClose={(): void => {
           setDeletingAll(false);
         }}
-      >
-        <Stack>
-          <Text>{t('proxies.deleteAllText')}</Text>
-          {deleteAllProxies.error !== null && <ErrorAlert error={deleteAllProxies.error} />}
-          <Button
-            color="red"
-            loading={deleteAllProxies.isPending}
-            onClick={(): void => {
-              deleteAllProxies.mutate(undefined, {
-                onSuccess: (): void => {
-                  setDeletingAll(false);
-                },
-              });
-            }}
-          >
-            {t('proxies.deleteAll')}
-          </Button>
-        </Stack>
-      </Modal>
+      />
     </Stack>
   );
 }
