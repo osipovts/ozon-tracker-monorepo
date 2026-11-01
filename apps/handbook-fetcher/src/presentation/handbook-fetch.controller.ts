@@ -24,7 +24,12 @@ export class HandbookFetchController {
 
   /** `willRetry` tells whether the queue is going to deliver the job again after a failure. */
   async handle(data: unknown, signal: AbortSignal, willRetry = false): Promise<void> {
-    const job = this.messages.parse(handbookFetchJobSchema, data, 'handbook fetch job');
+    const job = await this.lifecycle.parse(
+      this.messages,
+      handbookFetchJobSchema,
+      data,
+      'handbook fetch job',
+    );
     this.logger.info(
       `Job ${job.jobId} started: ${job.handbook} through ${String(job.proxies.length)} routes`,
     );

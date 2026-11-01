@@ -33,7 +33,12 @@ export class PriceFetchController {
     willRetry = false,
     retryWith: (job: PriceFetchJobType) => Promise<void> = (): Promise<void> => Promise.resolve(),
   ): Promise<void> {
-    const job = this.messages.parse(priceFetchJobSchema, data, 'price fetch job');
+    const job = await this.lifecycle.parse(
+      this.messages,
+      priceFetchJobSchema,
+      data,
+      'price fetch job',
+    );
     this.logger.info(
       `Job ${job.jobId} started: ${String(job.products.length)} products, ${String(job.proxies.length)} routes, timeout ${String(job.timeoutMs)} ms`,
     );

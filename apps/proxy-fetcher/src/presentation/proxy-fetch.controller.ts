@@ -32,7 +32,12 @@ export class ProxyFetchController {
 
   /** `willRetry` tells whether the queue is going to deliver the job again after a failure. */
   async handle(data: unknown, signal: AbortSignal, willRetry = false): Promise<void> {
-    const job = this.messages.parse(proxyFetchJobSchema, data, 'proxy fetch job');
+    const job = await this.lifecycle.parse(
+      this.messages,
+      proxyFetchJobSchema,
+      data,
+      'proxy fetch job',
+    );
     this.logger.info(
       `Job ${job.jobId} started: ${job.source}, up to ${String(job.maxCandidates)} candidates, probe timeout ${String(job.probeTimeoutMs)} ms`,
     );
