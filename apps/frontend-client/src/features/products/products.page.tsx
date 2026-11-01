@@ -16,7 +16,7 @@ import {
   Title,
 } from '@mantine/core';
 import { ErrorAlert, useLocale } from 'frontend-shared';
-import { type ReactElement, type SyntheticEvent, useEffect, useState } from 'react';
+import { type ReactElement, type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -99,6 +99,7 @@ function AddProduct(): ReactElement {
   const [city, setCity] = useState<{ value: string; label: string } | null>(null);
   const add = useAddProduct();
   const [slow, setSlow] = useState(false);
+  const resumed = useRef(false);
 
   useEffect((): (() => void) | undefined => {
     if (!add.isPending) return undefined;
@@ -129,12 +130,15 @@ function AddProduct(): ReactElement {
 
   // A reload cut the add short, not stopped it: the hub joins it when the same link is sent again.
   useEffect((): void => {
+    // Once, when the page opens: React runs the effect twice in development.
+    if (resumed.current) return;
+
+    resumed.current = true;
     const pending = readPendingAdd();
     if (pending === null) return;
 
     setUrl(pending.url);
     track(pending);
-    // Once, when the page opens.
   }, []);
 
   return (

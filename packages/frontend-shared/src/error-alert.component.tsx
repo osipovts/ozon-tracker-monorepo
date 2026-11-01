@@ -14,7 +14,7 @@ export function ErrorAlert({ error }: { error: unknown }): ReactElement {
 
   return (
     <Alert color="red" title={t('errors.title')} role="alert">
-      {error instanceof Error ? error.message : t('errors.failed')}
+      {error instanceof ApiError ? error.message : t('errors.unreachable')}
       {wait}
     </Alert>
   );

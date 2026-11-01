@@ -12,7 +12,6 @@ export const ru: DictionaryType = {
   },
   errors: {
     title: 'Что-то пошло не так',
-    failed: 'Запрос не удался.',
     tryAgain: 'Повторите через {{seconds}} с.',
     unreachable: 'Не удалось связаться с хабом.',
   },

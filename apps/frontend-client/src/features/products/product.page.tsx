@@ -16,6 +16,7 @@ import { type ReactElement, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
+import { isHttpLink } from './http-link.type.js';
 import { formatMoment } from './moment-format.type.js';
 import { describeNextCheck } from './next-check.type.js';
 import { PriceChart } from './price-chart.component.js';
@@ -114,9 +115,11 @@ export function ProductPage(): ReactElement {
             {data.product.cityName !== null && (
               <Badge variant="light">{t('products.cityOf', { name: data.product.cityName })}</Badge>
             )}
-            <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
-              {t('product.openOn', { marketplace: data.product.marketplace })}
-            </Anchor>
+            {isHttpLink(data.product.url) && (
+              <Anchor href={data.product.url} target="_blank" rel="noreferrer noopener" size="sm">
+                {t('product.openOn', { marketplace: data.product.marketplace })}
+              </Anchor>
+            )}
           </Group>
         </Stack>
       </Group>
