@@ -6,6 +6,7 @@ import {
   type ResolveProductReferenceUseCase,
 } from 'product-reference';
 
+import { type ClockPort, systemClock } from '../../shared/application/clock.port.js';
 import { enforceRateLimits } from '../../shared/application/enforce-rate-limits.type.js';
 import type { RateLimiterPort } from '../../shared/application/rate-limiter.port.js';
 import type { TrackedProductEntity } from '../domain/tracked-product.entity.js';
@@ -33,6 +34,9 @@ export interface AddedProductInterface {
   jobId: string | null;
 }
 
+/** A read of the first price queued this long ago is on its way still: another user adding the product does not queue it again. */
+const firstReadPendingMs = 60_000;
+
 /**
  * Starts tracking a product for a user by any link to it; the users share one product. A product that
  * has no price yet gets its first read queued when a user starts tracking it: there is no other way to ask for one, the refreshes
@@ -51,6 +55,7 @@ export class AddProductUseCase {
     private readonly cities: MarketplaceCitiesPort = {
       find: (): Promise<{ name: string } | null> => Promise.resolve(null),
     },
+    private readonly clock: ClockPort = systemClock,
   ) {}
 
   /** The adds in progress by user: a link can take minutes to expand, and a reload sends it again. */
@@ -172,6 +177,7 @@ export class AddProductUseCase {
   /** The product is tracked whether or not its price can be read now: no proxy, or a queue that is down, is no reason to refuse it. */
   private async readFirstPrice(userId: string, productId: string): Promise<string | null> {
     if ((await this.observations.findLatestByProducts([productId])).length > 0) return null;
+    if (await this.isBeingRead(productId)) return null;
 
     try {
       return (await this.requestObservation.execute(userId, productId)).jobId;
@@ -182,5 +188,16 @@ export class AddProductUseCase {
 
       return null;
     }
+  }
+
+  /** Another user added the product a moment ago, and the read of its first price is on its way. */
+  private async isBeingRead(productId: string): Promise<boolean> {
+    const requestedAt = (await this.products.findById(productId))?.snapshot.lastRequestedAt;
+
+    return (
+      requestedAt !== null &&
+      requestedAt !== undefined &&
+      this.clock.now().getTime() - requestedAt.getTime() < firstReadPendingMs
+    );
   }
 }
