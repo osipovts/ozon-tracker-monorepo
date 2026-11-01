@@ -1,0 +1,19 @@
+# The images built by CI (.github/workflows/ci.yml) in place of the ones built on the machine.
+#   IMAGE_TAG=<commit sha> docker compose -p price-tracker -f docker-compose.yml -f docker-compose.staging.yml \
+#     -f docker-compose.registry.yml pull
+# then the same files with `up -d --no-build`.
+services:
+  migrate:
+    image: ${REGISTRY_IMAGE:-ghcr.io/osipovts/price-tracker}-hub:${IMAGE_TAG:-latest}
+
+  hub:
+    image: ${REGISTRY_IMAGE:-ghcr.io/osipovts/price-tracker}-hub:${IMAGE_TAG:-latest}
+
+  proxy-fetcher:
+    image: ${REGISTRY_IMAGE:-ghcr.io/osipovts/price-tracker}-proxy-fetcher:${IMAGE_TAG:-latest}
+
+  handbook-fetcher:
+    image: ${REGISTRY_IMAGE:-ghcr.io/osipovts/price-tracker}-handbook-fetcher:${IMAGE_TAG:-latest}
+
+  price-fetcher-worker:
+    image: ${REGISTRY_IMAGE:-ghcr.io/osipovts/price-tracker}-price-fetcher:${IMAGE_TAG:-latest}
