@@ -62,11 +62,18 @@ void test('records a queued proxy job and publishes it under the same id', async
     requestedBy: null,
     source: 'github-free-proxy-list',
     maxCandidates: 50,
+    recheck: [],
     probeTimeoutMs: 5000,
   });
 
   assert.deepEqual(proxyRequests, [
-    { jobId, source: 'github-free-proxy-list', maxCandidates: 50, probeTimeoutMs: 5000 },
+    {
+      jobId,
+      source: 'github-free-proxy-list',
+      maxCandidates: 50,
+      recheck: [],
+      probeTimeoutMs: 5000,
+    },
   ]);
   const job = await jobs.findById(jobId);
   assert.ok(job);
@@ -109,6 +116,7 @@ void test('fails the recorded job for good when the queue is down', async (): Pr
       requestedBy: null,
       source: 'github-free-proxy-list',
       maxCandidates: 50,
+      recheck: [],
       probeTimeoutMs: 5000,
     }),
     /redis is down/,

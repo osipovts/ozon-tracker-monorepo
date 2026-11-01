@@ -24,6 +24,7 @@ function proxy(server: string, checksAlive: number): ProxyEntity {
     checksTotal: 4,
     checksAlive,
     lastCheckedAt: new Date('2026-10-31T10:00:00Z'),
+    lastSeenAt: new Date('2026-10-31T10:00:00Z'),
     disabledAt: null,
     credentials: null,
   });
@@ -106,6 +107,7 @@ void test('a found proxy becomes manual and stays so after a check', async (): P
       {
         server: second,
         source: 'proxifly',
+        seen: true,
         alive: false,
         country: null,
         exitIp: null,

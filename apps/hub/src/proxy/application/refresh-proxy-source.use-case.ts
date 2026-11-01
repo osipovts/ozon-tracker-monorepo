@@ -19,12 +19,15 @@ export class RefreshProxySourceUseCase {
     options: RefreshProxySourceOptionsInterface,
     /** The administrator who asked, who follows the job; null for the operator with the API key. */
     requestedBy: string | null,
+    /** Proxies of the store to check as well: the ones no list names lately. */
+    recheck: string[] = [],
   ): Promise<{ jobId: string }> {
     const { jobId } = await this.scheduleJob.execute({
       kind: 'proxy_fetch',
       requestedBy,
       source,
       ...options,
+      recheck,
     });
 
     this.logger.info(

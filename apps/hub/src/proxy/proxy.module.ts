@@ -13,7 +13,9 @@ import { DeleteProxyUseCase } from './application/delete-proxy.use-case.js';
 import { GetProxyStatsUseCase } from './application/get-proxy-stats.use-case.js';
 import { ListBestProxyServersUseCase } from './application/list-best-proxy-servers.use-case.js';
 import { ListProxiesUseCase } from './application/list-proxies.use-case.js';
+import { ListProxiesToRecheckUseCase } from './application/list-proxies-to-recheck.use-case.js';
 import { PROXY_REPOSITORY, type ProxyRepositoryPort } from './application/proxy-repository.port.js';
+import { PruneProxiesUseCase } from './application/prune-proxies.use-case.js';
 import { RecordProxyChecksUseCase } from './application/record-proxy-checks.use-case.js';
 import { RefreshProxySourceUseCase } from './application/refresh-proxy-source.use-case.js';
 import { SetProxyDisabledUseCase } from './application/set-proxy-disabled.use-case.js';
@@ -48,6 +50,7 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
         refresh: RefreshProxySourceUseCase,
         activity: GetJobActivityUseCase,
         limiter: RateLimiterPort,
+        proxies: ProxyRepositoryPort,
         config: AppConfigInterface,
         logger: LoggerPort,
       ): PeriodicProxyRefreshAdapter =>
@@ -56,6 +59,10 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
           activity,
           limiter,
           {
+            prune: new PruneProxiesUseCase(proxies, logger.child('proxy-prune')),
+            recheck: new ListProxiesToRecheckUseCase(proxies),
+          },
+          {
             pauseMs: config.proxyRefreshPauseMinutes * 60_000,
             pollMs: 60_000,
             maxCandidates: config.proxyRefreshMaxCandidates,
@@ -63,7 +70,14 @@ import { ProxySourcesController } from './presentation/proxy-sources.controller.
           },
           logger.child('proxy-refresh'),
         ),
-      inject: [RefreshProxySourceUseCase, GetJobActivityUseCase, RATE_LIMITER, APP_CONFIG, LOGGER],
+      inject: [
+        RefreshProxySourceUseCase,
+        GetJobActivityUseCase,
+        RATE_LIMITER,
+        PROXY_REPOSITORY,
+        APP_CONFIG,
+        LOGGER,
+      ],
     },
     {
       provide: ListProxiesUseCase,

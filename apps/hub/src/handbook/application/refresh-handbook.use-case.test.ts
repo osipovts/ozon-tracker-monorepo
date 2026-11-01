@@ -25,6 +25,7 @@ const proxy = (server: string, checksAlive: number): ProxyEntity =>
     checksTotal: 4,
     checksAlive,
     lastCheckedAt: checkedAt,
+    lastSeenAt: checkedAt,
     disabledAt: null,
     credentials: null,
   });

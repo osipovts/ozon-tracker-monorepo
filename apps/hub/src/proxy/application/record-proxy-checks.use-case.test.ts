@@ -17,6 +17,7 @@ function check(overrides: Partial<ProxyCheckInterface>): ProxyCheckInterface {
     country: 'RU',
     exitIp: '217.71.230.103',
     checkedAt: new Date('2026-10-24T12:00:00.000Z'),
+    seen: true,
     ...overrides,
   };
 }
@@ -106,4 +107,12 @@ void test('does not undo a proxy turned off while the batch was being handled', 
   assert.ok(after !== undefined);
   assert.notEqual(after.snapshot.disabledAt, null);
   assert.equal(after.snapshot.checksTotal, 2);
+});
+
+void test('a recheck of a proxy that is gone does not bring it back', async (): Promise<void> => {
+  const repository = new InMemoryProxyRepositoryAdapter();
+
+  await new RecordProxyChecksUseCase(repository).execute([check({ seen: false })]);
+
+  assert.deepEqual(await repository.findByServers([server]), []);
 });

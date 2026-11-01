@@ -8,7 +8,10 @@ import type { GetJobActivityUseCase, JobActivityInterface } from '../../job/appl
 import type { JobKindType } from '../../job/domain/job.entity.js';
 import { InMemoryRateLimiterAdapter } from '../../shared/infrastructure/in-memory-rate-limiter.adapter.js';
 import type { RefreshProxySourceUseCase } from '../application/refresh-proxy-source.use-case.js';
-import { PeriodicProxyRefreshAdapter } from './periodic-proxy-refresh.adapter.js';
+import {
+  PeriodicProxyRefreshAdapter,
+  type ProxyUpkeepInterface,
+} from './periodic-proxy-refresh.adapter.js';
 
 type RefreshType = Pick<RefreshProxySourceUseCase, 'execute'>;
 
@@ -52,6 +55,20 @@ function recording(failing?: ProxySourceType): {
   };
 }
 
+/** The upkeep of the stored proxies: nothing to drop and, unless told, nothing to check again. */
+function upkeep(toRecheck: string[] = [], pruned: Date[] = []): ProxyUpkeepInterface {
+  return {
+    prune: {
+      execute: (now): Promise<number> => {
+        pruned.push(now);
+
+        return Promise.resolve(0);
+      },
+    },
+    recheck: { execute: (): Promise<string[]> => Promise.resolve(toRecheck) },
+  };
+}
+
 const wait = (ms: number): Promise<void> =>
   new Promise((resolve): void => {
     setTimeout(resolve, ms);
@@ -63,6 +80,7 @@ void test('queues every source with the settings when the hub starts, for no use
     refresh,
     activityOf(idle),
     new InMemoryRateLimiterAdapter(),
+    upkeep(),
     settings,
     silentLogger,
   );
@@ -84,6 +102,7 @@ void test('a source that cannot be queued does not keep the others from it', asy
     refresh,
     activityOf(idle),
     new InMemoryRateLimiterAdapter(),
+    upkeep(),
     settings,
     silentLogger,
   );
@@ -104,6 +123,7 @@ void test('repeats on every poll once the pause is over, until it shuts down', a
     refresh,
     activityOf({ active: false, lastFinishedAt: new Date(Date.now() - 60 * minute) }),
     new InMemoryRateLimiterAdapter(),
+    upkeep(),
     { ...settings, pollMs: 50 },
     silentLogger,
   );
@@ -124,7 +144,14 @@ void test('of the instances of the hub that share a Redis only one queues in a w
   const [first, second] = [recording(), recording()];
   const adapters = [first, second].map(
     ({ refresh }): PeriodicProxyRefreshAdapter =>
-      new PeriodicProxyRefreshAdapter(refresh, activityOf(idle), shared, settings, silentLogger),
+      new PeriodicProxyRefreshAdapter(
+        refresh,
+        activityOf(idle),
+        shared,
+        upkeep(),
+        settings,
+        silentLogger,
+      ),
   );
 
   for (const adapter of adapters) adapter.onApplicationBootstrap();
@@ -140,6 +167,7 @@ void test('does nothing when the pause is 0', async (): Promise<void> => {
     refresh,
     activityOf(idle),
     new InMemoryRateLimiterAdapter(),
+    upkeep(),
     { ...settings, pauseMs: 0 },
     silentLogger,
   );
@@ -173,6 +201,7 @@ void test('waits for the proxy jobs that are on their way, and for the pause aft
       refresh,
       activity,
       new InMemoryRateLimiterAdapter(),
+      upkeep(),
       settings,
       silentLogger,
     );
@@ -184,4 +213,55 @@ void test('waits for the proxy jobs that are on their way, and for the pause aft
     assert.equal(calls.length, queued);
     assert.deepEqual(activity.asked, ['proxy_fetch']);
   }
+});
+
+void test('drops the expired proxies, then deals the ones to check again among the jobs, one share for each', async (): Promise<void> => {
+  const shares: Array<[ProxySourceType, string[]]> = [];
+  const pruned: Date[] = [];
+  const adapter = new PeriodicProxyRefreshAdapter(
+    {
+      execute: (source, _options, _requestedBy, recheck): Promise<{ jobId: string }> => {
+        shares.push([source, recheck ?? []]);
+
+        return Promise.resolve({ jobId: 'job' });
+      },
+    },
+    activityOf(idle),
+    new InMemoryRateLimiterAdapter(),
+    upkeep(['a', 'b', 'c', 'd'], pruned),
+    settings,
+    silentLogger,
+  );
+
+  adapter.onApplicationBootstrap();
+  await wait(30);
+  await adapter.onApplicationShutdown();
+
+  assert.equal(pruned.length, 1);
+  assert.deepEqual(shares, [
+    ['github-free-proxy-list', ['a', 'd']],
+    ['proxifly', ['b']],
+    ['proxyscrape', ['c']],
+  ]);
+});
+
+void test('queues the sources even when the upkeep of the stored proxies fails', async (): Promise<void> => {
+  const { refresh, calls } = recording();
+  const adapter = new PeriodicProxyRefreshAdapter(
+    refresh,
+    activityOf(idle),
+    new InMemoryRateLimiterAdapter(),
+    {
+      prune: { execute: (): Promise<number> => Promise.reject(new Error('db is down')) },
+      recheck: { execute: (): Promise<string[]> => Promise.resolve([]) },
+    },
+    settings,
+    silentLogger,
+  );
+
+  adapter.onApplicationBootstrap();
+  await wait(30);
+  await adapter.onApplicationShutdown();
+
+  assert.equal(calls.length, 3);
 });

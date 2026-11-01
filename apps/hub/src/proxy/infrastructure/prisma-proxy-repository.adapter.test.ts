@@ -5,7 +5,7 @@ import { after, before, test } from 'node:test';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 import { PrismaClient } from '../../generated/prisma/client.js';
-import { ProxyEntity } from '../domain/proxy.entity.js';
+import { manualProxySource, ProxyEntity } from '../domain/proxy.entity.js';
 import { PrismaProxyRepositoryAdapter } from './prisma-proxy-repository.adapter.js';
 
 /** Needs a Postgres with the migrations applied: set TEST_DATABASE_URL to run it (never a database with data that matters). */
@@ -41,6 +41,7 @@ function proxy(n: number, disabledAt: Date | null): ProxyEntity {
     checksTotal: 1,
     checksAlive: 1,
     lastCheckedAt: new Date('2026-10-31T10:00:00Z'),
+    lastSeenAt: new Date('2026-10-31T10:00:00Z'),
     disabledAt,
     credentials: null,
   });
@@ -114,3 +115,34 @@ void test('creates the proxy that a check found', { skip }, async (): Promise<vo
   assert.equal(stored?.snapshot.alive, true);
   assert.equal(stored.snapshot.disabledAt, null);
 });
+
+void test(
+  'lists the found proxies no list named since a time, the longest unchecked first, and deletes them',
+  { skip },
+  async (): Promise<void> => {
+    const since = new Date('2026-10-31T09:00:00Z');
+    const unseen = (n: number, checkedAt: string, source = 'proxifly'): ProxyEntity =>
+      new ProxyEntity({
+        ...proxy(n, null).snapshot,
+        source,
+        lastCheckedAt: new Date(checkedAt),
+        lastSeenAt: new Date('2026-10-31T08:00:00Z'),
+      });
+    await proxies.saveMany([
+      unseen(30, '2026-10-31T08:30:00Z'),
+      unseen(31, '2026-10-31T08:10:00Z'),
+      unseen(32, '2026-10-31T08:20:00Z', manualProxySource),
+      proxy(33, null),
+    ]);
+
+    const listed = (await proxies.listUnseen(since, 10))
+      .map((item): string => item.snapshot.server)
+      .filter((server): boolean => server.startsWith('socks5://198.51.100.3'));
+
+    assert.deepEqual(listed, ['socks5://198.51.100.31:1080', 'socks5://198.51.100.30:1080']);
+    assert.equal(
+      await proxies.deleteMany(['socks5://198.51.100.31:1080', 'socks5://198.51.100.99:1080']),
+      1,
+    );
+  },
+);

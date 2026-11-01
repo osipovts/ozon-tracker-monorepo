@@ -66,6 +66,7 @@ export class ScheduleJobUseCase {
           jobId,
           source: request.source,
           maxCandidates: request.maxCandidates,
+          recheck: request.recheck,
           probeTimeoutMs: request.probeTimeoutMs,
         });
       case 'handbook_fetch':

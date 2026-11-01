@@ -6,6 +6,8 @@ export interface ProxyFetchRequestInterface {
   jobId: string;
   source: ProxySourceType;
   maxCandidates: number;
+  /** Proxies of the store to check as well. */
+  recheck: string[];
   probeTimeoutMs: number;
 }
 

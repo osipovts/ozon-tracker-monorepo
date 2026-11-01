@@ -1,20 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
 import {
   manualProxySource,
   ProxyEntity,
   proxyFailureLimit,
   proxyUnseenLimitMs,
 } from '../domain/proxy.entity.js';
+import { InMemoryProxyRepositoryAdapter } from '../infrastructure/in-memory-proxy-repository.adapter.js';
 import { ListProxiesToRecheckUseCase } from './list-proxies-to-recheck.use-case.js';
 import { PruneProxiesUseCase } from './prune-proxies.use-case.js';
 
 const now = new Date('2026-11-02T00:00:00Z');
 const old = new Date(now.getTime() - proxyUnseenLimitMs - 1000);
 
-function proxy(n: number, overrides: Partial<ConstructorParameters<typeof ProxyEntity>[0]>): ProxyEntity {
+function proxy(
+  n: number,
+  overrides: Partial<ConstructorParameters<typeof ProxyEntity>[0]>,
+): ProxyEntity {
   return new ProxyEntity({
     server: `socks5://198.51.100.${String(n)}:1080`,
     source: 'proxifly',
@@ -44,7 +47,9 @@ void test('drops only the dead found proxies that no list names, and keeps the r
 
   assert.equal(await new PruneProxiesUseCase(proxies).execute(now), 1);
   assert.deepEqual(
-    (await proxies.list({}, { page: 1, pageSize: 10 })).items.map((item): string => item.snapshot.server).toSorted(),
+    (await proxies.list({}, { page: 1, pageSize: 10 })).items
+      .map((item): string => item.snapshot.server)
+      .toSorted(),
     [2, 3, 4, 5].map((n): string => `socks5://198.51.100.${String(n)}:1080`),
   );
   assert.equal(await new PruneProxiesUseCase(proxies).execute(now), 0);

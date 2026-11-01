@@ -19,11 +19,13 @@ export class RecordProxyChecksUseCase {
 
     // Several checks of one proxy in a batch are applied in order.
     const updated = new Map<string, ProxyEntity>();
-    for (const check of checks)
-      updated.set(
-        check.server,
-        ProxyEntity.fromCheck(check, updated.get(check.server) ?? known.get(check.server)),
-      );
+    for (const check of checks) {
+      const previous = updated.get(check.server) ?? known.get(check.server);
+      // A recheck of a proxy that is gone meanwhile (deleted, or dropped) must not bring it back.
+      if (!check.seen && previous === undefined) continue;
+
+      updated.set(check.server, ProxyEntity.fromCheck(check, previous));
+    }
 
     await this.proxies.saveChecked(Array.from(updated.values()));
     this.logger.debug(

@@ -49,6 +49,7 @@ export class ProxyResultsConsumer extends ResultsConsumer<ProxyFetchResultType> 
             country: check.country,
             exitIp: check.exitIp,
             checkedAt: new Date(check.checkedAt),
+            seen: check.seen,
           })),
         );
     }

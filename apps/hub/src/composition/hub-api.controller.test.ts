@@ -328,6 +328,7 @@ function expectRequest(jobId: unknown, maxCandidates: number): unknown {
     jobId,
     source: 'github-free-proxy-list',
     maxCandidates,
+    recheck: [],
     probeTimeoutMs: 10000,
   };
 }
@@ -346,6 +347,7 @@ void test('lists proxies with pagination and validates the query', async (): Pro
           checksTotal: 1,
           checksAlive: index !== 3 ? 1 : 0,
           lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+          lastSeenAt: new Date('2026-10-24T12:00:00.000Z'),
           disabledAt: null,
           credentials: null,
         }),
@@ -662,6 +664,7 @@ void test('an administrator turns a proxy off and on, sees the ones that are off
       checksTotal: 2,
       checksAlive: 2,
       lastCheckedAt: new Date('2026-10-24T12:00:00.000Z'),
+      lastSeenAt: new Date('2026-10-24T12:00:00.000Z'),
       disabledAt: null,
       credentials: null,
     }),
