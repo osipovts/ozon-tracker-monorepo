@@ -24,6 +24,6 @@ test('the title of the panel is followed by the version of the release', () => {
 
   const title = screen.getByRole('heading', { level: 4 });
   expect(title).toHaveTextContent('Hub admin');
-  expect(title.nextElementSibling).toHaveTextContent(`v${__APP_VERSION__}`);
-  expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(title.nextElementSibling).toHaveTextContent(`v${APP_VERSION}`);
+  expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
 });

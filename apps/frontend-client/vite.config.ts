@@ -10,8 +10,10 @@ const hubOrigin = process.env['HUB_ORIGIN'] ?? hub;
 
 export default defineConfig({
   plugins: [react()],
-  // The version of the release, which the root package.json holds: the page shows it.
-  define: { __APP_VERSION__: JSON.stringify(rootPackage.version) },
+  // The version of the release, which the root package.json holds: the page shows it. The constant is
+  // named in capitals, like the other build-time constants.
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  define: { APP_VERSION: JSON.stringify(rootPackage.version) },
   // The hub serves the built app under this path.
   base: '/app/',
   server: {

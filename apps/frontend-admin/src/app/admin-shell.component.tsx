@@ -26,7 +26,7 @@ export function AdminShell(): ReactElement {
           <Group gap="xs" align="baseline">
             <Title order={4}>{t('shell.title')}</Title>
             <Text size="xs" c="dimmed">
-              v{__APP_VERSION__}
+              v{APP_VERSION}
             </Text>
           </Group>
           <Group>

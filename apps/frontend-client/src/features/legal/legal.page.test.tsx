@@ -49,8 +49,8 @@ test('the foot of the page shows the version of the app under the links', () => 
   open('/terms');
 
   const footer = screen.getByRole('contentinfo');
-  expect(footer).toHaveTextContent(`v${__APP_VERSION__}`);
-  expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(footer).toHaveTextContent(`v${APP_VERSION}`);
+  expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
 });
 
 test('they are in Russian for a Russian interface', () => {

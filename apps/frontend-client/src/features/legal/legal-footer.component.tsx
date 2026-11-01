@@ -18,7 +18,7 @@ export function LegalFooter(): ReactElement {
         </Anchor>
       </Group>
       <Text size="xs" c="dimmed">
-        v{__APP_VERSION__}
+        v{APP_VERSION}
       </Text>
     </Stack>
   );
