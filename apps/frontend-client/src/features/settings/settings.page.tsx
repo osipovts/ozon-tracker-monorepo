@@ -1,8 +1,8 @@
 import { Card, Stack, Text, Title } from '@mantine/core';
+import { ColorSchemeControl } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ColorSchemeControl } from '../../app/color-scheme.component.js';
 import { LanguageControl } from '../../app/language.component.js';
 import { AccountSection } from './account-section.component.js';
 import { DeleteAccountSection } from './delete-account-section.component.js';

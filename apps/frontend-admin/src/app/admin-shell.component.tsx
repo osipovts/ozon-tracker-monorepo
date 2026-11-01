@@ -1,10 +1,10 @@
 import { AppShell, Button, Group, NavLink, Text, Title } from '@mantine/core';
+import { ColorSchemeControl } from 'frontend-shared';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink as RouterLink, Outlet, useNavigate } from 'react-router';
 
 import { useLogout, useMe } from '../features/auth/use-me.hook.js';
-import { ColorSchemeControl } from './color-scheme.component.js';
 import { LanguageControl } from './language.component.js';
 
 const sections = [
@@ -26,7 +26,7 @@ export function AdminShell(): ReactElement {
           <Title order={4}>{t('shell.title')}</Title>
           <Group>
             <LanguageControl />
-            <ColorSchemeControl />
+            <ColorSchemeControl size="xs" />
             <Text size="sm">{me.data?.email}</Text>
             <Button
               size="xs"

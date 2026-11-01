@@ -1,9 +1,8 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ColorSchemeControl } from 'frontend-shared';
 import { afterEach, expect, test, vi } from 'vitest';
-
-import { ColorSchemeControl } from './color-scheme.component.js';
 
 function systemPrefers(scheme: 'dark' | 'light'): void {
   vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
