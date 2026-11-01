@@ -64,6 +64,7 @@ COPY apps/${APP_NAME} ./apps/${APP_NAME}
 # Links the app and the workspace packages it depends on from the store, without the registry.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    --mount=type=cache,id=prisma-engines,target=/root/.cache/prisma \
     pnpm --trust-lockfile install --offline --frozen-lockfile --filter ${APP_NAME}...
 
 ################################
@@ -75,6 +76,7 @@ ARG APP_NAME
 RUN pnpm --filter ${APP_NAME}... build
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    --mount=type=cache,id=prisma-engines,target=/root/.cache/prisma \
     pnpm --trust-lockfile --offline --filter ${APP_NAME} deploy --prod /deploy
 
 ################################
@@ -117,6 +119,8 @@ COPY --from=build /deploy/dist ./dist
 COPY --from=build /deploy/prisma ./prisma
 COPY --from=build /deploy/prisma.config.js ./prisma.config.js
 COPY --from=build /deploy/package.json ./package.json
+# A failed download of the Prisma engine does not fail the install: without the engine `migrate` cannot run.
+RUN find node_modules/.pnpm -path '*@prisma/engines/schema-engine-*' | grep -q .
 USER node
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
