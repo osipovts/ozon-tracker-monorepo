@@ -88,6 +88,8 @@ services:
       args:
         APP_NAME: proxy-fetcher
     environment: *app-env
+    # Lets the check in progress stop on its own: the worker asks its jobs to stop at 50 s.
+    stop_grace_period: 70s
     depends_on: *depends-on-redis
 
   handbook-fetcher:

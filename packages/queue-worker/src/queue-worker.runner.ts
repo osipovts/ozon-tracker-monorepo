@@ -1,6 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import type { LoggerPort } from 'logger';
 
+import { closeWithin } from './close-within.type.js';
+
 export interface QueueWorkerSettingsInterface {
   redisUrl: string;
   jobsQueue: string;
@@ -8,7 +10,12 @@ export interface QueueWorkerSettingsInterface {
   resultsQueue?: string;
   /** Jobs handled in parallel. */
   concurrency: number;
+  /** How long a stop lets the jobs in progress run before it asks them to stop. */
+  cancelAfterMs?: number;
 }
+
+/** Shorter than the 70 s the containers are given to stop in. */
+const defaultCancelAfterMs = 50_000;
 
 /**
  * Handles a raw job message; `willRetry` tells whether the queue delivers the job again after a failure.
@@ -82,9 +89,22 @@ export class QueueWorkerRunner<ResultType extends { type: string; jobId: string 
     );
   }
 
-  /** Stops taking jobs, lets the one in progress finish, and closes the queues. */
+  /**
+   * Stops taking jobs, lets the ones in progress finish, and closes the queues. A job that has not
+   * finished by `cancelAfterMs` is asked to stop: it fails with what it has read, and is delivered again.
+   */
   async close(): Promise<void> {
-    await this.worker?.close();
+    const worker = this.worker;
+    if (worker !== null) {
+      await closeWithin(
+        worker.close(),
+        (): void => {
+          this.logger.warn('The jobs in progress are asked to stop');
+          worker.cancelAllJobs('shutdown');
+        },
+        this.settings.cancelAfterMs ?? defaultCancelAfterMs,
+      );
+    }
     await this.results?.close();
   }
 
